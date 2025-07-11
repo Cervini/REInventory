@@ -12,20 +12,39 @@ const initialItems = [
 ];
 
 const GRID_WIDTH = 12;
-const GRID_HEIGHT = 9;
+const GRID_HEIGHT = 6;
 
-function outOfBounds(X, Y) {
+function outOfBounds(X, Y, item) {
   // Check if cooridnates are inside of grid
   // if false item is inside borders
   if (X<0 || X>GRID_WIDTH || Y<0 || Y>GRID_HEIGHT)
-    return true
+    return true;
   else
-    return false
+    if(X+item.w>GRID_WIDTH || Y+item.h>GRID_HEIGHT)
+      return true;
+    else
+      return false;
+}
+
+function occupiedTiles(X, Y, W, H) {
+  let set = new Set();
+  for(let i=0; i<W; i++)
+    for(let j=0; j<H; j++)
+      set.add(`${X + i},${Y + j}`);
+    return set;
 }
 
 function onOtherItem(X, Y, activeItem, passiveItem) {
   //check top left
-  
+  let set1 = occupiedTiles(X, Y, activeItem.w, activeItem.h);
+  let set2 = occupiedTiles(passiveItem.x, passiveItem.y, passiveItem.w, passiveItem.h);
+  // Iterate over the first set
+  for (const tile of set1) {
+    if (set2.has(tile)) {
+      return true; // Found a common tile -> overlap.
+    }
+  }
+  return false;
 }
 
 export default function InventoryGrid() {
@@ -58,12 +77,30 @@ export default function InventoryGrid() {
     const currentItem = items.find(item => item.id === active.id);
     if (!currentItem) return;
 
-    // Calculate grid cell changes
-    const colChange = Math.round(delta.x / cellSize.current.width);
-    const rowChange = Math.round(delta.y / cellSize.current.height);
+    // calculate top left corner coordinates
+    const draggedItemLeft = (currentItem.x * cellSize.current.width) + delta.x;
+    const draggedItemTop = (currentItem.y * cellSize.current.height) + delta.y;
 
-    const newX = currentItem.x + colChange;
-    const newY = currentItem.y + rowChange;
+    const newX = Math.round(draggedItemLeft / cellSize.current.width);
+    const newY = Math.round(draggedItemTop / cellSize.current.height);
+
+    // check if out of bounds
+    if (outOfBounds(newX, newY, currentItem))
+      return;
+
+    // check if items overlap
+    const isColliding = items.some(otherItem => {
+      // We only care about OTHER items, not the one we are dragging
+      if (otherItem.id === active.id) {
+        return false;
+      }
+      // Use your helper function to check for overlap
+      return onOtherItem(newX, newY, currentItem, otherItem);
+    });
+
+    if (isColliding) {
+      return; // Stop if a collision is detected
+    }
 
     // Update the state
     setItems((prevItems) => {
@@ -71,15 +108,12 @@ export default function InventoryGrid() {
       return prevItems.map(item => {
         // Find the item that was dragged
         if (item.id === active.id) {
-          if (outOfBounds(newX, newY))
-            return item;
-          else
-            // Return a new object for this item with the updated coordinates
-            return {
-              ...item,
-              x: newX,
-              y: newY,
-            };
+          // Return a new object for this item with the updated coordinates
+          return {
+            ...item,
+            x: newX,
+            y: newY,
+          };
         }
         // For all other items, return them as they were
         return item;
