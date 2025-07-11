@@ -1,8 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { DndContext } from '@dnd-kit/core';
 import InventoryItem from './InventoryItem';
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from '../firebase';
+
+const initialItems = [
+  { id: 1, name: 'Health Potion', x: 0, y: 0, w: 1, h: 2, color: 'bg-red-500' },
+  { id: 2, name: 'Mana Potion', x: 1, y: 0, w: 1, h: 2, color: 'bg-blue-500' },
+  { id: 3, name: 'Throwing Dagger', x: 0, y: 2, w: 1, h: 3, color: 'bg-gray-400' },
+  { id: 4, name: 'Gold Coins', x: 2, y: 0, w: 1, h: 1, color: 'bg-yellow-400' },
+  { id: 5, name: 'Bedroll', x: 3, y: 0, w: 2, h: 3, color: 'bg-green-600' },
+  { id: 6, name: 'Mysterious Grimoire', x: 2, y: 3, w: 2, h: 2, color: 'bg-purple-600' },
+];
 
 const GRID_WIDTH = 12;
 const GRID_HEIGHT = 6;
@@ -41,31 +48,9 @@ function onOtherItem(X, Y, activeItem, passiveItem) {
 }
 
 export default function InventoryGrid() {
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(initialItems);
   const gridRef = useRef(null);
   const cellSize = useRef({ width: 0, height: 0 });
-
-  useEffect(() => {
-    // Create a reference to the specific document we want to listen to
-    const docRef = doc(db, "inventories", "main_inventory");
-
-    // Set up the real-time listener
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-    if (docSnap.exists()) {
-        // If the document exists, get its data
-        const data = docSnap.data();
-        // Update our component's state with the items from the database
-        console.log("Data received from Firestore:", data.items);
-        setItems(data.items || []);
-      } else {
-        console.log("No such document in Firestore!");
-      }
-    });
-
-    // Cleanup function: This runs when the component unmounts
-    // to prevent memory leaks by stopping the listener.
-    return () => unsubscribe();
-  }, []);
 
   useEffect(() => {
     if (gridRef.current) {
