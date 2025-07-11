@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 
 const TEXT_VISIBILITY_THRESHOLD = {
-  // Text disappears if wrapper is under one of these sizes
+  // Text disappears if wrapper's smaller than this
   width: 50,
   height: 50,
 };

@@ -10,8 +10,23 @@ const initialItems = [
   { id: 5, name: 'Bedroll', x: 3, y: 0, w: 2, h: 3, color: 'bg-green-600' },
   { id: 6, name: 'Mysterious Grimoire', x: 2, y: 3, w: 2, h: 2, color: 'bg-purple-600' },
 ];
+
 const GRID_WIDTH = 12;
 const GRID_HEIGHT = 9;
+
+function outOfBounds(X, Y) {
+  // Check if cooridnates are inside of grid
+  // if false item is inside borders
+  if (X<0 || X>GRID_WIDTH || Y<0 || Y>GRID_HEIGHT)
+    return true
+  else
+    return false
+}
+
+function onOtherItem(X, Y, activeItem, passiveItem) {
+  //check top left
+  
+}
 
 export default function InventoryGrid() {
   const [items, setItems] = useState(initialItems);
@@ -39,21 +54,37 @@ export default function InventoryGrid() {
   function handleDragEnd(event) {
     const { active, delta } = event;
 
-    // Find the item that was dragged
+    // get the item
     const currentItem = items.find(item => item.id === active.id);
     if (!currentItem) return;
 
-    // Calculate how many grid cells the item was dragged
+    // Calculate grid cell changes
     const colChange = Math.round(delta.x / cellSize.current.width);
     const rowChange = Math.round(delta.y / cellSize.current.height);
 
-    // Calculate the new potential coordinates
     const newX = currentItem.x + colChange;
     const newY = currentItem.y + rowChange;
 
-    console.log(`Item ${active.id} moved from (${currentItem.x}, ${currentItem.y}) to a new potential spot at (${newX}, ${newY})`);
-
     // Update the state
+    setItems((prevItems) => {
+      // Create a new array by mapping over the previous items
+      return prevItems.map(item => {
+        // Find the item that was dragged
+        if (item.id === active.id) {
+          if (outOfBounds(newX, newY))
+            return item;
+          else
+            // Return a new object for this item with the updated coordinates
+            return {
+              ...item,
+              x: newX,
+              y: newY,
+            };
+        }
+        // For all other items, return them as they were
+        return item;
+      });
+    });
   }
 
   return (
@@ -75,3 +106,4 @@ export default function InventoryGrid() {
     </DndContext>
   );
 }
+
