@@ -1,15 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { DndContext } from '@dnd-kit/core';
 import InventoryItem from './InventoryItem';
-
-const initialItems = [
-  { id: 1, name: 'Health Potion', x: 0, y: 0, w: 1, h: 2, color: 'bg-red-500' },
-  { id: 2, name: 'Mana Potion', x: 1, y: 0, w: 1, h: 2, color: 'bg-blue-500' },
-  { id: 3, name: 'Throwing Dagger', x: 0, y: 2, w: 1, h: 3, color: 'bg-gray-400' },
-  { id: 4, name: 'Gold Coins', x: 2, y: 0, w: 1, h: 1, color: 'bg-yellow-400' },
-  { id: 5, name: 'Bedroll', x: 3, y: 0, w: 2, h: 3, color: 'bg-green-600' },
-  { id: 6, name: 'Mysterious Grimoire', x: 2, y: 3, w: 2, h: 2, color: 'bg-purple-600' },
-];
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { db } from '../firebase';
 
 const GRID_WIDTH = 12;
 const GRID_HEIGHT = 6;
@@ -48,9 +41,31 @@ function onOtherItem(X, Y, activeItem, passiveItem) {
 }
 
 export default function InventoryGrid() {
-  const [items, setItems] = useState(initialItems);
+  const [items, setItems] = useState([]);
   const gridRef = useRef(null);
   const cellSize = useRef({ width: 0, height: 0 });
+
+  useEffect(() => {
+    // Create a reference to the specific document we want to listen to
+    const docRef = doc(db, "inventories", "main_inventory");
+
+    // Set up the real-time listener
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        // If the document exists, get its data
+        const data = docSnap.data();
+        // Update our component's state with the items from the database
+        console.log("Data received from Firestore:", data.items);
+        setItems(data.items || []);
+      } else {
+        console.log("No such document in Firestore!");
+      }
+    });
+
+    // Cleanup function: This runs when the component unmounts
+    // to prevent memory leaks by stopping the listener.
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (gridRef.current) {
@@ -70,55 +85,40 @@ export default function InventoryGrid() {
   };
 
   // Drag handler logic
-  function handleDragEnd(event) {
+  async function handleDragEnd(event) {
     const { active, delta } = event;
 
-    // get the item
     const currentItem = items.find(item => item.id === active.id);
     if (!currentItem) return;
 
-    // calculate top left corner coordinates
     const draggedItemLeft = (currentItem.x * cellSize.current.width) + delta.x;
     const draggedItemTop = (currentItem.y * cellSize.current.height) + delta.y;
-
     const newX = Math.round(draggedItemLeft / cellSize.current.width);
     const newY = Math.round(draggedItemTop / cellSize.current.height);
 
-    // check if out of bounds
-    if (outOfBounds(newX, newY, currentItem))
-      return;
+    if (outOfBounds(newX, newY, currentItem)) return;
 
-    // check if items overlap
     const isColliding = items.some(otherItem => {
-      // We only care about OTHER items, not the one we are dragging
-      if (otherItem.id === active.id) {
-        return false;
-      }
-      // Use your helper function to check for overlap
+      if (otherItem.id === active.id) { return false; }
       return onOtherItem(newX, newY, currentItem, otherItem);
     });
 
-    if (isColliding) {
-      return; // Stop if a collision is detected
-    }
+    if (isColliding) { return; }
 
-    // Update the state
-    setItems((prevItems) => {
-      // Create a new array by mapping over the previous items
-      return prevItems.map(item => {
-        // Find the item that was dragged
-        if (item.id === active.id) {
-          // Return a new object for this item with the updated coordinates
-          return {
-            ...item,
-            x: newX,
-            y: newY,
-          };
-        }
-        // For all other items, return them as they were
-        return item;
-      });
+    // 1. Create the new array of items first.
+    const newItems = items.map(item => {
+      if (item.id === active.id) {
+        return { ...item, x: newX, y: newY };
+      }
+      return item;
     });
+
+    // 2. Update the local state immediately for a snappy feel.
+    setItems(newItems);
+
+    // 3. Save the new array to the database.
+    const docRef = doc(db, "inventories", "main_inventory");
+    await updateDoc(docRef, { items: newItems });
   }
 
   return (
