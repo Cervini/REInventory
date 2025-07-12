@@ -6,8 +6,15 @@ import { db, auth } from '../firebase';
 // This component receives a function from App.js to set the active campaign
 export default function CampaignSelector({ onCampaignSelected }) {
   const [loading, setLoading] = useState(false);
+  const [campaignName, setCampaignName] = useState('');
 
   const handleCreateCampaign = async () => {
+    // Basic validation
+    if (!campaignName.trim()) {
+      alert("Please enter a campaign name.");
+      return;
+    }
+
     setLoading(true);
     const currentUser = auth.currentUser;
 
@@ -18,19 +25,18 @@ export default function CampaignSelector({ onCampaignSelected }) {
     }
 
     try {
-      // 1. Create the main campaign document
+      // Create the main campaign document
       const campaignDocRef = await addDoc(collection(db, "campaigns"), {
         dmId: currentUser.uid, // Store the DM's user ID
         dmEmail: currentUser.email,
         createdAt: serverTimestamp(), // Store the creation date
-        name: "My New Campaign", // A default name
-        // We'll also store a list of player IDs for later use
-        players: [currentUser.uid] 
+        name: campaignName,
+        players: [currentUser.uid] // Store a list of player IDs for later use
       });
 
       console.log("New campaign created with ID: ", campaignDocRef.id);
 
-      // 2. Create an initial, empty inventory for the DM (who is also the first player)
+      // Create an initial, empty inventory for the DM (who is also the first player)
       // We create a reference to a new document inside the 'inventories' sub-collection
       const inventoryDocRef = doc(db, "campaigns", campaignDocRef.id, "inventories", currentUser.uid);
       
@@ -41,8 +47,7 @@ export default function CampaignSelector({ onCampaignSelected }) {
       });
 
       console.log("Initial inventory created for DM.");
-      
-      // 3. Tell the parent App component which campaign is now active
+      // Tell the parent App component which campaign is now active
       onCampaignSelected(campaignDocRef.id);
 
     } catch (error) {
@@ -60,6 +65,13 @@ export default function CampaignSelector({ onCampaignSelected }) {
       </p>
       
       <div className="flex flex-col items-center space-y-4">
+         <input
+          type="text"
+          placeholder="Enter New Campaign Name"
+          value={campaignName}
+          onChange={(e) => setCampaignName(e.target.value)}
+          className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:shadow-outline"
+        />
         <button
           onClick={handleCreateCampaign}
           disabled={loading}

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase';
-
-// Import our three main components
+import './App.css';
+// Import main components
 import InventoryGrid from './components/InventoryGrid';
 import Auth from './components/Auth';
 import CampaignSelector from './components/CampaignSelector';
@@ -26,7 +26,17 @@ export default function App() {
 
   const renderContent = () => {
     if (loading) {
-      return <h1 className="text-3xl">Loading...</h1>;
+      return <div>Loading...</div>; // Or a proper spinner component
+    }
+
+    // This function will be passed to CampaignSelector
+    const handleCampaignSelect = (id) => {
+      setCampaignId(id);
+    };
+    
+    // This function allows the user to go back to campaign selection
+    const handleBackToCampaigns = () => {
+      setCampaignId(null);
     }
 
     // If there's no user, show the login form

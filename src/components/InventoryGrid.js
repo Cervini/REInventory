@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { DndContext } from '@dnd-kit/core';
 import InventoryItem from './InventoryItem';
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, collection } from "firebase/firestore";
 import { db } from '../firebase';
 
 const GRID_WIDTH = 12;
@@ -40,32 +40,30 @@ function onOtherItem(X, Y, activeItem, passiveItem) {
   return false;
 }
 
-export default function InventoryGrid() {
+export default function InventoryGrid({ campaignId, user }) {
   const [items, setItems] = useState([]);
   const gridRef = useRef(null);
   const cellSize = useRef({ width: 0, height: 0 });
 
   useEffect(() => {
-    // Create a reference to the specific document we want to listen to
-    const docRef = doc(db, "inventories", "main_inventory");
+    // Can't have inventory without campaign or user
+    if (!campaignId || !user) return;
 
-    // Set up the real-time listener
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+    // Points to the document with the user's ID within the 'inventories' sub-collection
+    const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', user.uid);
+    
+    const unsubscribe = onSnapshot(inventoryDocRef, (docSnap) => {
       if (docSnap.exists()) {
-        // If the document exists, get its data
         const data = docSnap.data();
-        // Update our component's state with the items from the database
-        console.log("Data received from Firestore:", data.items);
         setItems(data.items || []);
       } else {
-        console.log("No such document in Firestore!");
+        console.log("User inventory document not found in Firebase.");
+        setItems([]); // Clear items if doc doesn't exist
       }
     });
 
-    // Cleanup function: This runs when the component unmounts
-    // to prevent memory leaks by stopping the listener.
     return () => unsubscribe();
-  }, []);
+  }, [campaignId, user]); // Re-run this effect if the campaignId changes (or the user)
 
   useEffect(() => {
     if (gridRef.current) {
@@ -117,8 +115,8 @@ export default function InventoryGrid() {
     setItems(newItems);
 
     // 3. Save the new array to the database.
-    const docRef = doc(db, "inventories", "main_inventory");
-    await updateDoc(docRef, { items: newItems });
+    const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', user.uid);
+    await updateDoc(inventoryDocRef, { items: newItems });
   }
 
   return (
