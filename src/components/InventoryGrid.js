@@ -1,11 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { DndContext } from '@dnd-kit/core';
-import InventoryItem from './InventoryItem';
-import { doc, onSnapshot, updateDoc, collection } from "firebase/firestore";
+import { restrictToRect } from '@dnd-kit/modifiers';
+import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from '../firebase';
+import InventoryItem from './InventoryItem';
+import AddItem from './AddItem';
+import ContextMenu from './ContextMenu';
 
 const GRID_WIDTH = 20;
-const GRID_HEIGHT = 20;
+const GRID_HEIGHT = 15;
 
 function outOfBounds(X, Y, item) {
   // Check if cooridnates are inside of grid
@@ -41,10 +44,18 @@ function onOtherItem(X, Y, activeItem, passiveItem) {
 }
 
 export default function InventoryGrid({ campaignId, user }) {
+  // states
   const [items, setItems] = useState([]);
+  const [isCopied, setIsCopied] = useState(false);
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [contextMenu, setContextMenu] = useState({
+    visible: false,
+    position: null, // { x, y }
+    item: null,
+  });
+  // references
   const gridRef = useRef(null);
   const cellSize = useRef({ width: 0, height: 0 });
-  const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     // Can't have inventory without campaign or user
@@ -76,12 +87,6 @@ export default function InventoryGrid({ campaignId, user }) {
       };
     }
   }, []); //`[]` => this effect runs only once after the component mounts
-
-  const gridStyle = {
-    gridTemplateColumns: `repeat(${GRID_WIDTH}, 1fr)`,
-    gridTemplateRows: `repeat(${GRID_HEIGHT}, 1fr)`,
-    gap: '1px',
-  };
 
   // Drag handler logic
   async function handleDragEnd(event) {
@@ -121,7 +126,6 @@ export default function InventoryGrid({ campaignId, user }) {
 
   }
 
-  // 4. Campaing id copy handler
   const handleCopy = () => {
     navigator.clipboard.writeText(campaignId).then(() => {
       setIsCopied(true);
@@ -129,8 +133,51 @@ export default function InventoryGrid({ campaignId, user }) {
     });
   };
 
+  const handleAddItem = async (newItem) => {
+    if (!campaignId || !user) return;
+    const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', user.uid);
+    await updateDoc(inventoryDocRef, {
+      items: arrayUnion(newItem)
+    });
+  };
+
+  const handleContextMenu = (event, item) => {
+    event.preventDefault(); // Prevent native browser menu
+    setContextMenu({
+      visible: true,
+      position: { x: event.clientX, y: event.clientY },
+      item: item,
+    });
+  };
+
+  const handleDeleteItem = async () => {
+    if (!contextMenu.item) return;
+
+    const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', user.uid);
+    // Use arrayRemove to pull the exact item object from the array
+    await updateDoc(inventoryDocRef, {
+      items: arrayRemove(contextMenu.item)
+    });
+  };
+
+  // Define the actions for the context menu
+  const contextMenuActions = [
+    { label: 'Delete Item', onClick: handleDeleteItem },
+    // Add more actions like "Edit" here later
+  ];
+
   return (
     <div className="w-full flex flex-col items-center flex-grow">
+        {/* conditionally render AddItem form as a modal */}
+        {showAddItem && <AddItem onAddItem={handleAddItem} onClose={() => setShowAddItem(false)} />}
+        {/* conditionally render ContextMenu */}
+        {contextMenu.visible && (
+        <ContextMenu
+          menuPosition={contextMenu.position}
+          actions={contextMenuActions}
+          onClose={() => setContextMenu({ visible: false, position: null, item: null })}
+        />
+        )}
       <div className="bg-gray-800 p-2 rounded-md mb-4 flex items-center space-x-4">
         <span className="text-gray-400 font-mono text-sm">
           Campaign Code: <span className="font-bold text-gray-200">{campaignId}</span>
@@ -140,6 +187,9 @@ export default function InventoryGrid({ campaignId, user }) {
           className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline"
         >
           {isCopied ? 'Copied!' : 'Copy'}
+        </button>
+        <button onClick={() => setShowAddItem(true)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-4 rounded">
+          Add Item
         </button>
       </div>
 
@@ -158,7 +208,10 @@ export default function InventoryGrid({ campaignId, user }) {
               <div key={index} className="bg-gray-800/50 rounded-sm"></div>
             ))}
             {items.map(item => (
-              <InventoryItem key={item.id} item={item} />
+              <InventoryItem 
+                key={item.id} 
+                item={item} 
+                onContextMenu={handleContextMenu}/>
             ))}
           </div>
       </DndContext>

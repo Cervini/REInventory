@@ -7,7 +7,7 @@ const TEXT_VISIBILITY_THRESHOLD = {
   height: 50,
 };
 
-export default function InventoryItem({ item }) {
+export default function InventoryItem({ item, onContextMenu }) {
   const {attributes, listeners, setNodeRef, transform} = useDraggable({
     id: item.id,
   });
@@ -54,7 +54,7 @@ export default function InventoryItem({ item }) {
 
   return (
     // apply combined refs
-    <div ref={setRefs} style={{...wrapperStyle, ...style}} className="relative">
+    <div ref={setRefs} style={{...wrapperStyle, ...style}} className="relative" onContextMenu={(e) => onContextMenu(e, item)}>
       <div
         {...listeners}
         {...attributes}
