@@ -61,7 +61,7 @@ export default function App() {
     <main className="text-white h-screen flex flex-col items-center p-4 font-sans">
       <div className="w-full max-w-4xl flex flex-col flex-grow">
         <div className="relative flex justify-center items-center mb-4">
-          <h1 className="text-4xl font-bold text-center">REInventory</h1>
+          <h1 className="text-4xl font-bold text-center"><span className="text-red-500">RE</span>Inventory</h1>
           <div className="absolute right-0">
             {user && (
               <button 

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { DndContext } from '@dnd-kit/core';
-import { restrictToRect } from '@dnd-kit/modifiers';
+import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from '../firebase';
 import InventoryItem from './InventoryItem';
@@ -53,6 +53,7 @@ export default function InventoryGrid({ campaignId, user }) {
     position: null, // { x, y }
     item: null,
   });
+  const [gridRect, setGridRect] = useState(null);
   // references
   const gridRef = useRef(null);
   const cellSize = useRef({ width: 0, height: 0 });
@@ -87,6 +88,26 @@ export default function InventoryGrid({ campaignId, user }) {
       };
     }
   }, []); //`[]` => this effect runs only once after the component mounts
+
+    useEffect(() => {
+    const gridElement = gridRef.current;
+    if (!gridElement) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (gridElement) {
+        const rect = gridElement.getBoundingClientRect();
+        // 3. Update both the cell size and the grid rectangle on resize
+        setGridRect(rect); 
+        cellSize.current = {
+          width: rect.width / GRID_WIDTH,
+          height: rect.height / GRID_HEIGHT,
+        };
+      }
+    });
+
+    resizeObserver.observe(gridElement);
+    return () => resizeObserver.disconnect();
+  }, []);
 
   // Drag handler logic
   async function handleDragEnd(event) {
@@ -193,7 +214,10 @@ export default function InventoryGrid({ campaignId, user }) {
         </button>
       </div>
 
-      <DndContext onDragEnd={handleDragEnd}>
+      <DndContext 
+        onDragEnd={handleDragEnd}
+        modifiers={[restrictToParentElement]}
+      >
         <div
             ref={gridRef}
             style={{
