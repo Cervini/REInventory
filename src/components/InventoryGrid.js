@@ -4,8 +4,8 @@ import InventoryItem from './InventoryItem';
 import { doc, onSnapshot, updateDoc, collection } from "firebase/firestore";
 import { db } from '../firebase';
 
-const GRID_WIDTH = 12;
-const GRID_HEIGHT = 6;
+const GRID_WIDTH = 20;
+const GRID_HEIGHT = 20;
 
 function outOfBounds(X, Y, item) {
   // Check if cooridnates are inside of grid
@@ -44,6 +44,7 @@ export default function InventoryGrid({ campaignId, user }) {
   const [items, setItems] = useState([]);
   const gridRef = useRef(null);
   const cellSize = useRef({ width: 0, height: 0 });
+  const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     // Can't have inventory without campaign or user
@@ -117,25 +118,50 @@ export default function InventoryGrid({ campaignId, user }) {
     // 3. Save the new array to the database.
     const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', user.uid);
     await updateDoc(inventoryDocRef, { items: newItems });
+
   }
 
-  return (
-    <DndContext onDragEnd={handleDragEnd}>
-      <div className="relative p-4">
-        {/* We attach the ref to the background grid to measure it */}
-        <div ref={gridRef} className="grid bg-gray-700" style={gridStyle}>
-          {Array.from({ length: GRID_WIDTH * GRID_HEIGHT }).map((_, index) => (
-            <div key={index} className="bg-gray-800/50 aspect-square"></div>
-          ))}
-        </div>
+  // 4. Campaing id copy handler
+  const handleCopy = () => {
+    navigator.clipboard.writeText(campaignId).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
+    });
+  };
 
-        <div className="absolute top-4 left-4 right-4 bottom-4 grid" style={gridStyle}>
-          {items.map(item => (
-            <InventoryItem key={item.id} item={item} />
-          ))}
-        </div>
+  return (
+    <div className="w-full flex flex-col items-center flex-grow">
+      <div className="bg-gray-800 p-2 rounded-md mb-4 flex items-center space-x-4">
+        <span className="text-gray-400 font-mono text-sm">
+          Campaign Code: <span className="font-bold text-gray-200">{campaignId}</span>
+        </span>
+        <button
+          onClick={handleCopy}
+          className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline"
+        >
+          {isCopied ? 'Copied!' : 'Copy'}
+        </button>
       </div>
-    </DndContext>
+
+      <DndContext onDragEnd={handleDragEnd}>
+        <div
+            ref={gridRef}
+            style={{
+              gridTemplateColumns: `repeat(${GRID_WIDTH}, 1fr)`,
+              gridTemplateRows: `repeat(${GRID_HEIGHT}, 1fr)`,
+              aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}`,
+              gap: '1px',
+            }}
+            className="w-full h-auto grid bg-gray-700 rounded-lg"
+          >
+            {Array.from({ length: GRID_WIDTH * GRID_HEIGHT }).map((_, index) => (
+              <div key={index} className="bg-gray-800/50 rounded-sm"></div>
+            ))}
+            {items.map(item => (
+              <InventoryItem key={item.id} item={item} />
+            ))}
+          </div>
+      </DndContext>
+    </div>
   );
 }
-

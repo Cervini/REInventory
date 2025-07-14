@@ -58,8 +58,8 @@ export default function App() {
   };
 
   return (
-    <main className="text-white min-h-screen flex flex-col items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-4xl">
+    <main className="text-white h-screen flex flex-col items-center p-4 font-sans">
+      <div className="w-full max-w-4xl flex flex-col flex-grow">
         <div className="relative flex justify-center items-center mb-4">
           <h1 className="text-4xl font-bold text-center">REInventory</h1>
           <div className="absolute right-0">
@@ -73,7 +73,9 @@ export default function App() {
             )}
           </div>
         </div>
-        {renderContent()}
+        <div className="flex flex-col flex-grow">
+            {renderContent()}
+        </div>
       </div>
     </main>
   );
