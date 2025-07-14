@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import PlayerInventoryGrid from './PlayerInventoryGrid'; // 1. Import the new component
+import PlayerInventoryGrid from './PlayerInventoryGrid';
 import AddItem from './AddItem';
 import ContextMenu from './ContextMenu';
 import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove, getDoc, collection } from "firebase/firestore";
@@ -101,17 +101,31 @@ export default function InventoryGrid({ campaignId, user }) {
     });
   };
   
-  // We will fix AddItem in the next step
-  const handleAddItem = async (newItem) => { alert("Add Item needs to be updated for multiple inventories!"); };
+  const handleAddItem = async (newItem, targetPlayerId) => {
+    if (!campaignId || !targetPlayerId) return;
+    
+    // Use the targetPlayerId to update the correct document
+    const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', targetPlayerId);
+    
+    await updateDoc(inventoryDocRef, {
+      items: arrayUnion(newItem)
+    }, { merge: true }); // Use merge to create doc if it doesn't exist (edge case)
+  };
+
   const handleCopy = () => { navigator.clipboard.writeText(campaignId); /* ... */ };
 
   const contextMenuActions = [{ label: 'Delete Item', onClick: handleDeleteItem }];
 
-  console.log("Current Inventories State:", inventories);
-
   return (
     <div className="w-full flex flex-col items-center flex-grow">
-      {showAddItem && <AddItem onAddItem={handleAddItem} onClose={() => setShowAddItem(false)} />}
+      {showAddItem && (
+        <AddItem 
+          onAddItem={handleAddItem} 
+          onClose={() => setShowAddItem(false)} 
+          players={Object.keys(inventories)}
+          dmId={campaign?.dmId}
+        />
+      )}
       {contextMenu.visible && (
         <ContextMenu
           menuPosition={contextMenu.position}
@@ -122,6 +136,14 @@ export default function InventoryGrid({ campaignId, user }) {
 
       {/* Header section */}
       <div className="bg-gray-800 p-2 rounded-md mb-4 flex items-center justify-between w-full max-w-4xl">
+        {showAddItem && (
+        <AddItem 
+          onAddItem={handleAddItem} 
+          onClose={() => setShowAddItem(false)} 
+          players={Object.keys(inventories)}
+          dmId={campaign?.dmId}
+        />
+        )}
         <div className="flex items-center space-x-4">
           <span className="text-gray-400 font-mono text-sm">
             Campaign Code: <span className="font-bold text-gray-200">{campaignId}</span>
