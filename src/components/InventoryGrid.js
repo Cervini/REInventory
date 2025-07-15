@@ -17,6 +17,7 @@ export default function InventoryGrid({ campaignId, user }) {
     playerId: null, // We now need to know which player's item was clicked
   });
   const [playerProfiles, setPlayerProfiles] = useState({});
+  const [itemToEdit, setItemToEdit] = useState(null);
 
   // Data fetching logic remains the same
   useEffect(() => {
@@ -97,30 +98,71 @@ export default function InventoryGrid({ campaignId, user }) {
     });
   };
   
-  const handleAddItem = async (newItem, targetPlayerId) => {
-    if (!campaignId || !targetPlayerId) return;
-    
-    // Use the targetPlayerId to update the correct document
-    const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', targetPlayerId);
-    
-    await updateDoc(inventoryDocRef, {
-      items: arrayUnion(newItem)
-    }, { merge: true }); // Use merge to create doc if it doesn't exist (edge case)
+  const handleStartEdit = () => {
+    if (!contextMenu.item) return;
+    setItemToEdit({ 
+      item: contextMenu.item,
+      playerId: contextMenu.playerId 
+    });
+    setShowAddItem(true); // Open the form
   };
 
-  const handleCopy = () => { navigator.clipboard.writeText(campaignId); /* ... */ };
+  const handleAddItem = async (itemData, targetPlayerId) => {
+    // If we are editing, the player ID comes from the `itemToEdit` state.
+    // Otherwise, it comes from the form's dropdown.
+    const finalPlayerId = itemToEdit ? itemToEdit.playerId : targetPlayerId;
 
-  const contextMenuActions = [{ label: 'Delete Item', onClick: handleDeleteItem }];
+    if (!campaignId || !finalPlayerId) return;
+    
+    const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', finalPlayerId);
+
+    // If editing an existing item...
+    if (itemToEdit) {
+      const currentItems = inventories[finalPlayerId] || [];
+      // Create a new array with the old item replaced by the updated one
+      const newItems = currentItems.map(i => 
+        (i.id === itemToEdit.item.id ? { ...i, ...itemData } : i)
+      );
+      await updateDoc(inventoryDocRef, { items: newItems });
+    } 
+    // If adding a new item...
+    else {
+      await updateDoc(inventoryDocRef, {
+        items: arrayUnion(itemData)
+      }, { merge: true });
+    }
+
+    // Reset state after submitting
+    setItemToEdit(null);
+    setShowAddItem(false);
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(campaignId).then(() => {
+      setIsCopied(true);
+      // Reset the button text after 2 seconds
+      setTimeout(() => setIsCopied(false), 2000); 
+    });
+  };
+
+  const contextMenuActions = [
+    { label: 'Edit Item', onClick: handleStartEdit },
+    { label: 'Delete Item', onClick: handleDeleteItem },
+  ];
 
   return (
     <div className="w-full flex flex-col items-center flex-grow">
       {showAddItem && (
         <AddItem 
           onAddItem={handleAddItem} 
-          onClose={() => setShowAddItem(false)} 
+          onClose={() => {
+            setShowAddItem(false);
+            setItemToEdit(null); // Reset edit state on close
+          }} 
           players={Object.keys(inventories)}
           dmId={campaign?.dmId}
           playerProfiles={playerProfiles}
+          itemToEdit={itemToEdit} // Pass the item to be edited
         />
       )}
       {contextMenu.visible && (
@@ -153,7 +195,6 @@ export default function InventoryGrid({ campaignId, user }) {
             <h2 className="text-xl font-bold text-white mb-2">
               Inventory for: {playerProfiles[playerId]?.displayName || playerId}
             </h2>
-            
             <PlayerInventoryGrid
               campaignId={campaignId}
               playerId={playerId}

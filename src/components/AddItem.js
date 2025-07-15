@@ -1,57 +1,68 @@
-// src/components/AddItem.js
+import React, { useState } from 'react';
 
-import React, { useState, useEffect } from 'react';
+// We accept itemToEdit, which is an object: { item: {...}, playerId: '...' }
+export default function AddItem({ onAddItem, onClose, players = [], dmId, playerProfiles = {}, itemToEdit }) {
+  
+  const isEditMode = !!itemToEdit;
+  // Get the actual item object, or null if we're not editing
+  const itemBeingEdited = isEditMode ? itemToEdit.item : null;
 
-// 1. Accept new props: players and dmId
-export default function AddItem({ onAddItem, onClose, players, dmId, playerProfiles }) {
-  const [name, setName] = useState('');
-  const [w, setW] = useState(1);
-  const [h, setH] = useState(1);
-  const [color, setColor] = useState('bg-gray-500');
-  // 2. New state to hold the selected player ID
-  const [targetPlayerId, setTargetPlayerId] = useState(dmId || '');
-
-  // Set the default selection to the DM if players list loads
-  useEffect(() => {
-    setTargetPlayerId(dmId);
-  }, [dmId]);
+  // Set the initial state based on whether we are adding or editing
+  const [name, setName] = useState(isEditMode ? itemBeingEdited.name : '');
+  const [w, setW] = useState(isEditMode ? itemBeingEdited.w : 1);
+  const [h, setH] = useState(isEditMode ? itemBeingEdited.h : 1);
+  const [color, setColor] = useState(isEditMode ? itemBeingEdited.color : 'bg-gray-500');
+  
+  // The player ID is known and disabled in edit mode
+  const [targetPlayerId, setTargetPlayerId] = useState(
+    isEditMode ? itemToEdit.playerId : (dmId || '')
+  );
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name.trim() || w <= 0 || h <= 0 || !targetPlayerId) {
-      alert("Please fill out all fields and select a player.");
+    if (!name.trim() || w <= 0 || h <= 0) {
+      alert("Please fill out all fields correctly.");
       return;
     }
 
-    const newItem = {
-      id: Date.now().toString(),
-      name,
-      w: parseInt(w, 10),
-      h: parseInt(h, 10),
-      color,
-      x: 0,
-      y: 0,
-    };
+    if (isEditMode) {
+      // Pass back only the fields that can change
+      onAddItem({ name, w: parseInt(w, 10), h: parseInt(h, 10), color });
+    } else {
+      if (!targetPlayerId) {
+        alert("Please select a player.");
+        return;
+      }
+      // Pass back a full new item object
+      onAddItem({
+        id: Date.now().toString(),
+        name,
+        w: parseInt(w, 10),
+        h: parseInt(h, 10),
+        color,
+        x: 0,
+        y: 0,
+      }, targetPlayerId);
+    }
     
-    // 3. Pass both the item and the target player's ID back up
-    onAddItem(newItem, targetPlayerId);
     onClose();
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-20">
       <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-sm">
-        <h3 className="text-xl font-bold mb-4">Add New Item</h3>
+        <h3 className="text-xl font-bold mb-4">{isEditMode ? 'Edit Item' : 'Add New Item'}</h3>
         <form onSubmit={handleSubmit}>
-          {/* 4. Add the Player Select dropdown */}
+          {/* Player dropdown is disabled in edit mode */}
           <div className="mb-4">
             <label className="block text-sm font-bold mb-2">Player</label>
             <select 
               value={targetPlayerId} 
               onChange={(e) => setTargetPlayerId(e.target.value)} 
-              className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              disabled={isEditMode}
+              className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-900 disabled:text-gray-500"
             >
-               <option value="">-- Select a Player --</option>
+              <option value="">-- Select a Player --</option>
               {players.map(playerId => (
                 <option key={playerId} value={playerId}>
                   {playerProfiles[playerId]?.displayName || playerId}
@@ -71,7 +82,6 @@ export default function AddItem({ onAddItem, onClose, players, dmId, playerProfi
               className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             />
           </div>
-          {/* Width, Height, Color inputs (no changes) */}
           <div className="flex space-x-4 mb-4">
             <div className="w-1/2">
               <label className="block text-sm font-bold mb-2">Width (w)</label>
@@ -94,10 +104,11 @@ export default function AddItem({ onAddItem, onClose, players, dmId, playerProfi
             </select>
           </div>
           
-          {/* Buttons (no changes) */}
           <div className="flex justify-end space-x-4">
             <button type="button" onClick={onClose} className="bg-gray-600 hover:bg-gray-700 font-bold py-2 px-4 rounded">Cancel</button>
-            <button type="submit" className="bg-blue-500 hover:bg-blue-700 font-bold py-2 px-4 rounded">Create Item</button>
+            <button type="submit" className="bg-blue-500 hover:bg-blue-700 font-bold py-2 px-4 rounded">
+              {isEditMode ? 'Save Changes' : 'Create Item'}
+            </button>
           </div>
         </form>
       </div>
