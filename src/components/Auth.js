@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-// Import the auth object and the functions we need
-import { auth } from '../firebase';
+import { db, auth } from '../firebase';
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword 
@@ -14,9 +14,13 @@ export default function Auth() {
   const handleSignUp = async () => {
     setError(''); // Clear previous errors
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      // The user is now signed up and logged in.
-      // The main App component will detect this change.
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        displayName: user.email.split('@')[0], // Use email prefix as default name
+        createdAt: serverTimestamp(),
+      });
     } catch (err) {
       setError(err.message); // Display any errors from Firebase
     }

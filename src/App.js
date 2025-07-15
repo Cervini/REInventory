@@ -1,28 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from './firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { auth, db } from './firebase';
 import './App.css';
 // Import main components
 import InventoryGrid from './components/InventoryGrid';
 import Auth from './components/Auth';
 import CampaignSelector from './components/CampaignSelector';
+import ProfileSettings from './components/ProfileSettings';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [campaignId, setCampaignId] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      setLoading(false);
-      // If user logs out, clear the campaign selection
       if (!currentUser) {
+        setUserProfile(null);
         setCampaignId(null);
+        setLoading(false);
       }
     });
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      const userDocRef = doc(db, 'users', user.uid);
+      const unsubscribeProfile = onSnapshot(userDocRef, (doc) => {
+        if (doc.exists()) {
+          setUserProfile(doc.data());
+        }
+        setLoading(false); // Stop loading once we have user and profile info
+      });
+      return () => unsubscribeProfile();
+    }
+  }, [user]);
 
   const renderContent = () => {
     if (loading) {
@@ -59,17 +76,35 @@ export default function App() {
 
   return (
     <main className="text-white h-screen flex flex-col items-center p-4 font-sans">
+      {showSettings && (
+        <ProfileSettings 
+          user={user}
+          currentDisplayName={userProfile?.displayName}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
       <div className="w-full max-w-4xl flex flex-col flex-grow">
         <div className="relative flex justify-center items-center mb-4">
           <h1 className="text-4xl font-bold text-center"><span className="text-red-500">RE</span>Inventory</h1>
           <div className="absolute right-0">
             {user && (
-              <button 
-                onClick={() => auth.signOut()}
-                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-              >
-                Sign Out
-              </button>
+              <>
+                {/* 6. Add the Profile button */}
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded"
+                >
+                  Profile
+                </button>
+                <button 
+                  onClick={() => {
+                    auth.signOut();
+                  }}
+                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                >
+                  Sign Out
+                </button>
+                </>
             )}
           </div>
         </div>

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 
 // 1. Accept new props: players and dmId
-export default function AddItem({ onAddItem, onClose, players, dmId }) {
+export default function AddItem({ onAddItem, onClose, players, dmId, playerProfiles }) {
   const [name, setName] = useState('');
   const [w, setW] = useState(1);
   const [h, setH] = useState(1);
@@ -51,10 +51,11 @@ export default function AddItem({ onAddItem, onClose, players, dmId }) {
               onChange={(e) => setTargetPlayerId(e.target.value)} 
               className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             >
-              <option value="">-- Select a Player --</option>
+               <option value="">-- Select a Player --</option>
               {players.map(playerId => (
                 <option key={playerId} value={playerId}>
-                  {playerId === dmId ? `${playerId.substring(0, 8)}... (DM)` : `${playerId.substring(0,8)}...`}
+                  {playerProfiles[playerId]?.displayName || playerId}
+                  {playerId === dmId ? ' (DM)' : ''}
                 </option>
               ))}
             </select>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PlayerInventoryGrid from './PlayerInventoryGrid';
 import AddItem from './AddItem';
 import ContextMenu from './ContextMenu';
-import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove, getDoc, collection } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove, getDoc, collection, query, where, documentId, getDocs } from "firebase/firestore";
 import { db } from '../firebase';
 
 export default function InventoryGrid({ campaignId, user }) {
@@ -16,63 +16,59 @@ export default function InventoryGrid({ campaignId, user }) {
     item: null,
     playerId: null, // We now need to know which player's item was clicked
   });
+  const [playerProfiles, setPlayerProfiles] = useState({});
 
   // Data fetching logic remains the same
   useEffect(() => {
-  if (!campaignId || !user) return;
+    if (!campaignId || !user) return;
 
-  const fetchData = async () => {
-    // First, get the main campaign document
-    const campaignDocRef = doc(db, 'campaigns', campaignId);
-    const campaignSnap = await getDoc(campaignDocRef);
+    const fetchData = async () => {
+      const campaignDocRef = doc(db, 'campaigns', campaignId);
+      const campaignSnap = await getDoc(campaignDocRef);
 
-    if (!campaignSnap.exists()) {
-      console.error("Campaign not found!");
-      return;
-    }
-    
-    const campaignData = campaignSnap.data();
-    setCampaign(campaignData); // Save campaign data
-    const isDM = campaignData.dmId === user.uid;
-
-    // If the user is the Dungeon Master...
-    if (isDM) {
-      // Fetch the entire 'inventories' sub-collection
-      const inventoriesColRef = collection(db, 'campaigns', campaignId, 'inventories');
-      const unsubscribe = onSnapshot(inventoriesColRef, (snapshot) => {
-        const allInventories = {};
-        snapshot.forEach(doc => {
-          allInventories[doc.id] = doc.data().items || [];
-        });
-        setInventories(allInventories);
-      });
-      return unsubscribe; // Return the cleanup function for onSnapshot
-    } 
-    // If the user is a regular player...
-    else {
-      // Fetch only their own inventory document
-      const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', user.uid);
-      const unsubscribe = onSnapshot(inventoryDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          // Set inventories state with only this player's data
-          setInventories({ [user.uid]: docSnap.data().items || [] });
-        }
-      });
-      return unsubscribe; // Return the cleanup function for onSnapshot
-    }
-  };
-
-  const unsubscribePromise = fetchData();
-
-  // Cleanup function to handle unsubscribing from the listener
-  return () => {
-    unsubscribePromise.then(unsubscribe => {
-      if (unsubscribe) {
-        unsubscribe();
+      if (!campaignSnap.exists()) {
+        console.error("Campaign not found!");
+        return;
       }
-    });
-  };
-}, [campaignId, user]);
+      
+      const campaignData = campaignSnap.data();
+      setCampaign(campaignData);
+      
+      // Fetch the profiles for all players in the campaign
+      if (campaignData.players && campaignData.players.length > 0) {
+        const profilesQuery = query(collection(db, "users"), where(documentId(), "in", campaignData.players));
+        const querySnapshot = await getDocs(profilesQuery);
+        const profiles = {};
+        querySnapshot.forEach((doc) => {
+          profiles[doc.id] = doc.data();
+        });
+        setPlayerProfiles(profiles);
+      }
+
+      const isDM = campaignData.dmId === user.uid;
+      if (isDM) {
+        const inventoriesColRef = collection(db, 'campaigns', campaignId, 'inventories');
+        const unsubscribe = onSnapshot(inventoriesColRef, (snapshot) => {
+          const allInventories = {};
+          snapshot.forEach(doc => { allInventories[doc.id] = doc.data().items || []; });
+          setInventories(allInventories);
+        });
+        return unsubscribe;
+      } else {
+        const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', user.uid);
+        const unsubscribe = onSnapshot(inventoryDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setInventories({ [user.uid]: docSnap.data().items || [] });
+          }
+        });
+        return unsubscribe;
+      }
+    };
+
+    const unsubscribePromise = fetchData();
+
+    return () => { unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe()); };
+  }, [campaignId, user]);
 
   const handleUpdateItems = (playerId, newItems) => {
     setInventories(prev => ({
@@ -124,6 +120,7 @@ export default function InventoryGrid({ campaignId, user }) {
           onClose={() => setShowAddItem(false)} 
           players={Object.keys(inventories)}
           dmId={campaign?.dmId}
+          playerProfiles={playerProfiles}
         />
       )}
       {contextMenu.visible && (
@@ -136,14 +133,6 @@ export default function InventoryGrid({ campaignId, user }) {
 
       {/* Header section */}
       <div className="bg-gray-800 p-2 rounded-md mb-4 flex items-center justify-between w-full max-w-4xl">
-        {showAddItem && (
-        <AddItem 
-          onAddItem={handleAddItem} 
-          onClose={() => setShowAddItem(false)} 
-          players={Object.keys(inventories)}
-          dmId={campaign?.dmId}
-        />
-        )}
         <div className="flex items-center space-x-4">
           <span className="text-gray-400 font-mono text-sm">
             Campaign Code: <span className="font-bold text-gray-200">{campaignId}</span>
@@ -161,8 +150,8 @@ export default function InventoryGrid({ campaignId, user }) {
       <div className="w-full flex-grow overflow-auto p-4 space-y-8">
         {Object.entries(inventories).map(([playerId, items]) => (
           <div key={playerId}>
-            <h2 className="text-lg font-bold text-white mb-2">
-              Inventory for: <span className="font-mono text-sm">{user.uid === playerId ? `${campaign?.dmEmail} (You)` : playerId}</span>
+            <h2 className="text-xl font-bold text-white mb-2">
+              Inventory for: {playerProfiles[playerId]?.displayName || playerId}
             </h2>
             
             <PlayerInventoryGrid
