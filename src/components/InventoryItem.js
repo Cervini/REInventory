@@ -62,6 +62,11 @@ export default function InventoryItem({ item, onContextMenu }) {
       >
         {/* Conditional render */}
         {size.width > TEXT_VISIBILITY_THRESHOLD.width && size.height > TEXT_VISIBILITY_THRESHOLD.height && item.name}
+        {item.stackable && item.quantity > 1 && (
+          <span className="absolute bottom-0 right-1 text-lg font-black text-white" style={{ WebkitTextStroke: '1px black' }}>
+            {item.quantity}
+          </span>
+        )}
       </div>
     </div>
   );

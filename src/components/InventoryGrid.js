@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import PlayerInventoryGrid from './PlayerInventoryGrid';
 import AddItem from './AddItem';
 import ContextMenu from './ContextMenu';
-import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove, getDoc, collection, query, where, documentId, getDocs } from "firebase/firestore";
+import SplitStack from './SplitStack';
+import { doc, onSnapshot, updateDoc, arrayRemove, getDoc, collection, query, where, documentId, getDocs } from "firebase/firestore";
 import { db } from '../firebase';
 
 export default function InventoryGrid({ campaignId, user }) {
@@ -18,6 +19,7 @@ export default function InventoryGrid({ campaignId, user }) {
   });
   const [playerProfiles, setPlayerProfiles] = useState({});
   const [itemToEdit, setItemToEdit] = useState(null);
+  const [splittingItem, setSplittingItem] = useState(null);
 
   // Data fetching logic remains the same
   useEffect(() => {
@@ -80,59 +82,93 @@ export default function InventoryGrid({ campaignId, user }) {
 
   const handleContextMenu = (event, item, playerId) => {
     event.preventDefault();
+    
+    // Pass the item and playerId directly when defining the onClick actions
+    const availableActions = [{ label: 'Edit Item', onClick: () => handleStartEdit(item, playerId) }];
+    if (item.stackable && item.quantity > 1) {
+      availableActions.push({ label: 'Split Stack', onClick: () => handleStartSplit(item, playerId) });
+    }
+    availableActions.push({ label: 'Delete Item', onClick: () => handleDeleteItem(item, playerId) });
+
     setContextMenu({
       visible: true,
       position: { x: event.clientX, y: event.clientY },
       item: item,
       playerId: playerId,
+      actions: availableActions,
     });
   };
 
-  const handleDeleteItem = async () => {
-    const { item, playerId } = contextMenu;
+  const handleStartSplit = (item, playerId) => {
+    setSplittingItem({ item, playerId });
+  };
+
+  const handleDeleteItem = async (item, playerId) => {
     if (!item || !playerId) return;
 
     const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', playerId);
     await updateDoc(inventoryDocRef, {
-      items: arrayRemove(item)
+      items: arrayRemove(item) // Use the item passed directly to the function
     });
   };
   
-  const handleStartEdit = () => {
-    if (!contextMenu.item) return;
-    setItemToEdit({ 
-      item: contextMenu.item,
-      playerId: contextMenu.playerId 
-    });
-    setShowAddItem(true); // Open the form
+  const handleStartEdit = (item, playerId) => {
+    if (!item) return;
+    setItemToEdit({ item, playerId });
+    setShowAddItem(true);
   };
 
   const handleAddItem = async (itemData, targetPlayerId) => {
-    // If we are editing, the player ID comes from the `itemToEdit` state.
-    // Otherwise, it comes from the form's dropdown.
+    // Determine the correct player ID to use for both add and edit modes
     const finalPlayerId = itemToEdit ? itemToEdit.playerId : targetPlayerId;
-
     if (!campaignId || !finalPlayerId) return;
-    
-    const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', finalPlayerId);
 
-    // If editing an existing item...
+    const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', finalPlayerId);
+    const currentItems = inventories[finalPlayerId] || [];
+    let newItems;
+
+    // --- EDIT LOGIC ---
     if (itemToEdit) {
-      const currentItems = inventories[finalPlayerId] || [];
-      // Create a new array with the old item replaced by the updated one
-      const newItems = currentItems.map(i => 
-        (i.id === itemToEdit.item.id ? { ...i, ...itemData } : i)
+      newItems = currentItems.map(i =>
+        (i.id === itemToEdit.item.id ? { ...itemToEdit.item, ...itemData } : i)
       );
-      await updateDoc(inventoryDocRef, { items: newItems });
     } 
-    // If adding a new item...
+    // --- ADD LOGIC ---
     else {
-      await updateDoc(inventoryDocRef, {
-        items: arrayUnion(itemData)
-      }, { merge: true });
+      // If the new item is stackable, check for an existing stack to merge with
+      if (itemData.stackable) {
+        const existingItemIndex = currentItems.findIndex(item =>
+          item.stackable && item.name.toLowerCase() === itemData.name.toLowerCase()
+        );
+
+        // If a matching stack exists, update its quantity
+        if (existingItemIndex !== -1) {
+          newItems = [...currentItems]; // Make a mutable copy
+          const existingItem = newItems[existingItemIndex];
+          newItems[existingItemIndex] = {
+            ...existingItem,
+            quantity: existingItem.quantity + itemData.quantity,
+          };
+        }
+      }
+      
+      // If no merge happened (because item wasn't stackable or no match was found),
+      // add the new item to the array.
+      if (!newItems) {
+        newItems = [...currentItems, itemData];
+      }
     }
 
-    // Reset state after submitting
+    // Optimistically update the local state for a snappy UI
+    setInventories(prev => ({
+      ...prev,
+      [finalPlayerId]: newItems,
+    }));
+
+    // Save the final, updated array to Firestore
+    await updateDoc(inventoryDocRef, { items: newItems });
+
+    // Reset editing state after submitting
     setItemToEdit(null);
     setShowAddItem(false);
   };
@@ -145,13 +181,61 @@ export default function InventoryGrid({ campaignId, user }) {
     });
   };
 
-  const contextMenuActions = [
-    { label: 'Edit Item', onClick: handleStartEdit },
-    { label: 'Delete Item', onClick: handleDeleteItem },
-  ];
+  const handleSplitStack = async (splitAmount) => {
+    if (!splittingItem) return;
+
+    const { item: originalItem, playerId } = splittingItem;
+    const amount = parseInt(splitAmount, 10);
+
+    // Double-check for valid split amount
+    if (isNaN(amount) || amount <= 0 || amount >= originalItem.quantity) {
+      return;
+    }
+
+    // 1. The original stack with its quantity reduced
+    const updatedOriginalItem = {
+      ...originalItem,
+      quantity: originalItem.quantity - amount,
+    };
+
+    // 2. The new stack with the split-off quantity
+    const newItem = {
+      ...originalItem,
+      id: crypto.randomUUID(), // Must have a new, unique ID
+      quantity: amount,
+      x: 0, // Place at the top-left corner by default
+      y: 0,
+    };
+
+    // 3. Update the items array
+    const currentItems = inventories[playerId] || [];
+    const newItems = currentItems.map(i => 
+      (i.id === originalItem.id ? updatedOriginalItem : i)
+    );
+    newItems.push(newItem);
+
+    // 4. Update local state and Firestore
+    setInventories(prev => ({
+      ...prev,
+      [playerId]: newItems,
+    }));
+
+    const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', playerId);
+    await updateDoc(inventoryDocRef, { items: newItems });
+  };
 
   return (
     <div className="w-full flex flex-col items-center flex-grow">
+      {splittingItem && (
+        <SplitStack
+          item={splittingItem.item}
+          onClose={() => setSplittingItem(null)}
+         onSplit={(splitAmount) => {
+            handleSplitStack(splitAmount);
+            setSplittingItem(null); // Close modal after splitting
+          }}
+        />
+      )}
       {showAddItem && (
         <AddItem 
           onAddItem={handleAddItem} 
@@ -165,11 +249,12 @@ export default function InventoryGrid({ campaignId, user }) {
           itemToEdit={itemToEdit} // Pass the item to be edited
         />
       )}
+      {/** Context menu visibility */}
       {contextMenu.visible && (
         <ContextMenu
           menuPosition={contextMenu.position}
-          actions={contextMenuActions}
-          onClose={() => setContextMenu({ visible: false, position: null, item: null, playerId: null })}
+          actions={contextMenu.actions}
+          onClose={() => setContextMenu({ ...contextMenu, visible: false })}
         />
       )}
 

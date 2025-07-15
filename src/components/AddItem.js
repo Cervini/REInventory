@@ -12,7 +12,9 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
   const [w, setW] = useState(isEditMode ? itemBeingEdited.w : 1);
   const [h, setH] = useState(isEditMode ? itemBeingEdited.h : 1);
   const [color, setColor] = useState(isEditMode ? itemBeingEdited.color : 'bg-gray-500');
-  
+  const [stackable, setStackable] = useState(isEditMode ? itemBeingEdited.stackable ?? false : false);
+  const [quantity, setQuantity] = useState(isEditMode ? itemBeingEdited.quantity ?? 1 : 1);
+
   // The player ID is known and disabled in edit mode
   const [targetPlayerId, setTargetPlayerId] = useState(
     isEditMode ? itemToEdit.playerId : (dmId || '')
@@ -26,22 +28,21 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
     }
 
     if (isEditMode) {
-      // Pass back only the fields that can change
-      onAddItem({ name, w: parseInt(w, 10), h: parseInt(h, 10), color });
+      onAddItem({ name, w: parseInt(w, 10), h: parseInt(h, 10), color, stackable, quantity: parseInt(quantity, 10) });
     } else {
       if (!targetPlayerId) {
         alert("Please select a player.");
         return;
       }
-      // Pass back a full new item object
       onAddItem({
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         name,
         w: parseInt(w, 10),
         h: parseInt(h, 10),
         color,
-        x: 0,
-        y: 0,
+        x: 0, y: 0,
+        stackable,
+        quantity: parseInt(quantity, 10),
       }, targetPlayerId);
     }
     
@@ -82,15 +83,32 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
               className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             />
           </div>
+          {/* Fields w, h and quantity */}
           <div className="flex space-x-4 mb-4">
-            <div className="w-1/2">
-              <label className="block text-sm font-bold mb-2">Width (w)</label>
+            <div className="w-1/3">
+              <label className="block text-sm font-bold mb-2">Width</label>
               <input type="number" min="1" value={w} onChange={(e) => setW(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
             </div>
-            <div className="w-1/2">
-              <label className="block text-sm font-bold mb-2">Height (h)</label>
+            <div className="w-1/3">
+              <label className="block text-sm font-bold mb-2">Height</label>
               <input type="number" min="1" value={h} onChange={(e) => setH(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
             </div>
+            <div className="w-1/3">
+              <label className="block text-sm font-bold mb-2">Quantity</label>
+              <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} disabled={!stackable && !isEditMode} className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-900" />
+            </div>
+          </div>
+          {/* Stackable Checkbox */}
+          <div className="mb-4 flex items-center">
+            <input 
+              id="stackable"
+              type="checkbox"
+              checked={stackable}
+              onChange={(e) => setStackable(e.target.checked)}
+              disabled={isEditMode}
+              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="stackable" className="ml-2 text-sm font-medium">Item is Stackable</label>
           </div>
           <div className="mb-6">
             <label className="block text-sm font-bold mb-2">Color</label>

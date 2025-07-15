@@ -3,7 +3,6 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import './App.css';
-// Import main components
 import InventoryGrid from './components/InventoryGrid';
 import Auth from './components/Auth';
 import CampaignSelector from './components/CampaignSelector';
@@ -46,16 +45,6 @@ export default function App() {
       return <div>Loading...</div>; // Or a proper spinner component
     }
 
-    // This function will be passed to CampaignSelector
-    const handleCampaignSelect = (id) => {
-      setCampaignId(id);
-    };
-    
-    // This function allows the user to go back to campaign selection
-    const handleBackToCampaigns = () => {
-      setCampaignId(null);
-    }
-
     // If there's no user, show the login form
     if (!user) {
       return <Auth />;
@@ -89,10 +78,9 @@ export default function App() {
           <div className="absolute right-0">
             {user && (
               <>
-                {/* 6. Add the Profile button */}
                 <button
                   onClick={() => setShowSettings(true)}
-                  className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded"
+                  className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded mr-5"
                 >
                   Profile
                 </button>
