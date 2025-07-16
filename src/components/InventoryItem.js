@@ -49,7 +49,7 @@ export default function InventoryItem({ item, onContextMenu, playerId }) {
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
     zIndex: 10,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0 : 1,
   } : undefined;
 
   const wrapperStyle = {

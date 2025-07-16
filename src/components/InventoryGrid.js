@@ -8,7 +8,6 @@ import PlayerInventoryGrid from './PlayerInventoryGrid';
 import AddItem from './AddItem';
 import ContextMenu from './ContextMenu';
 import SplitStack from './SplitStack';
-import InventoryItem from './InventoryItem';
 
 export default function InventoryGrid({ campaignId, user }) {
   const [inventories, setInventories] = useState({});
@@ -244,7 +243,33 @@ export default function InventoryGrid({ campaignId, user }) {
   };
 
   const handleDragStart = (event) => {
-    setActiveItem(event.active.data.current?.item);
+    const { active } = event;
+    const ownerId = active.data.current?.ownerId;
+    const item = active.data.current?.item;
+
+    // Find the specific grid element the drag started in
+    const gridElement = gridRefs.current[ownerId];
+
+    // Guard clause in case something goes wrong
+    if (!item || !gridElement) {
+      setActiveItem(null);
+      return;
+    }
+
+    // Calculate the cell size of that specific grid on the fly
+    const cellSize = {
+      width: gridElement.offsetWidth / getGridWidth(),
+      height: gridElement.offsetHeight / getGridHeight(),
+    };
+
+    // Set the active item for the DragOverlay with our calculated dimensions
+    setActiveItem({
+      item: item,
+      dimensions: {
+        width: item.w * cellSize.width,
+        height: item.h * cellSize.height,
+      },
+    });
   };
 
   const handleDragCancel = () => {
@@ -252,7 +277,7 @@ export default function InventoryGrid({ campaignId, user }) {
   };
 
   const handleDragEnd = async (event) => {
-    setActiveItem(null); // Reset the active item regardless of outcome
+    setActiveItem(null);
     const { active, over, delta } = event;
     const startPlayerId = active.data.current?.ownerId;
     const endPlayerId = over?.id;
@@ -406,10 +431,23 @@ export default function InventoryGrid({ campaignId, user }) {
               ))}
             </div>
             <DragOverlay>
-              {activeItem ? (
-                <InventoryItem item={activeItem} />
-              ) : null}
-            </DragOverlay>
+            {activeItem ? (
+              <div 
+                style={{
+                  width: activeItem.dimensions.width,
+                  height: activeItem.dimensions.height,
+                }} 
+                className={`${activeItem.item.color} rounded-lg text-white font-bold p-1 text-center text-xs sm:text-sm flex items-center justify-center shadow-lg`}
+              >
+                {activeItem.item.name}
+                {activeItem.item.stackable && activeItem.item.quantity > 1 && (
+                  <span className="absolute bottom-0 right-1 text-lg font-black" style={{ WebkitTextStroke: '1px black' }}>
+                    {activeItem.item.quantity}
+                  </span>
+                )}
+              </div>
+            ) : null}
+          </DragOverlay>
           </DndContext>
         );
       })()}
