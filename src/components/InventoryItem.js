@@ -58,15 +58,34 @@ export default function InventoryItem({ item, onContextMenu, playerId }) {
   };
 
   return (
-    // apply combined refs
-    <div ref={setRefs} style={{...wrapperStyle, ...style}} className="relative" onContextMenu={(e) => onContextMenu(e, item)}>
+    <div 
+      ref={setRefs} 
+      style={{...wrapperStyle, ...style}} 
+      className="relative" 
+      onContextMenu={(e) => onContextMenu(e, item)}
+      // 1. Add these data attributes to enable the tooltip
+      data-tooltip-id="item-tooltip"
+      data-tooltip-html={`
+        <div style="text-align: left;">
+          <strong style="font-size: 1.1em;">${item.name}</strong>
+          <div style="font-style: italic; color: #ccc; margin-bottom: 5px;">${item.type || 'Misc'}</div>
+          <div style="font-size: 0.9em;">
+            <strong>Cost:</strong> ${item.cost || 'N/A'}<br/>
+            <strong>Weight:</strong> ${item.weight || 'N/A'}
+          </div>
+          <hr style="margin: 5px 0; border-color: #555;" />
+          <div style="font-size: 0.9em;">${item.description || 'No description.'}</div>
+        </div>
+      `}
+      data-tooltip-place="top"
+    >
       <div
         {...listeners}
         {...attributes}
-        className={`${item.color} absolute inset-0 shadow-[inset_0_0_0_2px_rgba(0,0,0,0.5)] rounded-lg text-white font-bold p-1 text-center text-xs sm:text-sm cursor-grab break-words overflow-hidden`}
+        className={`${item.color} absolute inset-0 shadow-[inset_0_0_0_2px_rgba(0,0,0,0.5)] rounded-lg text-white font-bold p-1 text-center text-xs sm:text-sm cursor-grab break-words overflow-hidden flex items-center justify-center`}
       >
-        {/* Conditional render */}
-        {size.width > TEXT_VISIBILITY_THRESHOLD.width && size.height > TEXT_VISIBILITY_THRESHOLD.height && item.name}
+        {size.width > 50 && size.height > 50 && item.name}
+        
         {item.stackable && item.quantity > 1 && (
           <span className="absolute bottom-0 right-1 text-lg font-black text-white" style={{ WebkitTextStroke: '1px black' }}>
             {item.quantity}

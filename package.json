@@ -13,6 +13,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-scripts": "5.0.1",
+    "react-tooltip": "^5.29.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {

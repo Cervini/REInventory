@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { Tooltip } from 'react-tooltip';
 import './App.css';
 import InventoryGrid from './components/InventoryGrid';
 import Auth from './components/Auth';
@@ -65,6 +66,7 @@ export default function App() {
 
   return (
     <main className="text-white h-screen flex flex-col items-center p-4 font-sans">
+      <Tooltip id="item-tooltip" style={{ zIndex: 99, maxWidth: '300px' }} />
       {showSettings && (
         <ProfileSettings 
           user={user}

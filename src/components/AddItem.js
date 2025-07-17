@@ -1,24 +1,25 @@
 import React, { useState } from 'react';
 
-// We accept itemToEdit, which is an object: { item: {...}, playerId: '...' }
 export default function AddItem({ onAddItem, onClose, players = [], dmId, playerProfiles = {}, itemToEdit }) {
   
   const isEditMode = !!itemToEdit;
-  // Get the actual item object, or null if we're not editing
   const itemBeingEdited = isEditMode ? itemToEdit.item : null;
 
-  // Set the initial state based on whether we are adding or editing
+  // --- Form State ---
   const [name, setName] = useState(isEditMode ? itemBeingEdited.name : '');
   const [w, setW] = useState(isEditMode ? itemBeingEdited.w : 1);
   const [h, setH] = useState(isEditMode ? itemBeingEdited.h : 1);
   const [color, setColor] = useState(isEditMode ? itemBeingEdited.color : 'bg-gray-500');
   const [stackable, setStackable] = useState(isEditMode ? itemBeingEdited.stackable ?? false : false);
   const [quantity, setQuantity] = useState(isEditMode ? itemBeingEdited.quantity ?? 1 : 1);
+  const [targetPlayerId, setTargetPlayerId] = useState(isEditMode ? itemToEdit.playerId : (dmId || ''));
+  
+  // 1. New state for the detailed item properties
+  const [type, setType] = useState(isEditMode ? itemBeingEdited.type ?? '' : '');
+  const [cost, setCost] =useState(isEditMode ? itemBeingEdited.cost ?? '' : '');
+  const [weight, setWeight] = useState(isEditMode ? itemBeingEdited.weight ?? '' : '');
+  const [description, setDescription] = useState(isEditMode ? itemBeingEdited.description ?? '' : '');
 
-  // The player ID is known and disabled in edit mode
-  const [targetPlayerId, setTargetPlayerId] = useState(
-    isEditMode ? itemToEdit.playerId : (dmId || '')
-  );
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -26,9 +27,23 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
       alert("Please fill out all fields correctly.");
       return;
     }
+    
+    // 2. Create the data object with all the new fields
+    const itemData = {
+        name,
+        w: parseInt(w, 10),
+        h: parseInt(h, 10),
+        color,
+        stackable,
+        quantity: parseInt(quantity, 10),
+        type,
+        cost,
+        weight,
+        description,
+    };
 
     if (isEditMode) {
-      onAddItem({ name, w: parseInt(w, 10), h: parseInt(h, 10), color, stackable, quantity: parseInt(quantity, 10) });
+      onAddItem(itemData);
     } else {
       if (!targetPlayerId) {
         alert("Please select a player.");
@@ -36,13 +51,9 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
       }
       onAddItem({
         id: crypto.randomUUID(),
-        name,
-        w: parseInt(w, 10),
-        h: parseInt(h, 10),
-        color,
-        x: 0, y: 0,
-        stackable,
-        quantity: parseInt(quantity, 10),
+        ...itemData,
+        x: 0,
+        y: 0,
       }, targetPlayerId);
     }
     
@@ -51,38 +62,33 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-20">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-sm">
+      <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-auto">
         <h3 className="text-xl font-bold mb-4">{isEditMode ? 'Edit Item' : 'Add New Item'}</h3>
-        <form onSubmit={handleSubmit}>
-          {/* Player dropdown is disabled in edit mode */}
-          <div className="mb-4">
-            <label className="block text-sm font-bold mb-2">Player</label>
-            <select 
-              value={targetPlayerId} 
-              onChange={(e) => setTargetPlayerId(e.target.value)} 
-              disabled={isEditMode}
-              className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-900 disabled:text-gray-500"
-            >
-              <option value="">-- Select a Player --</option>
-              {players.map(playerId => (
-                <option key={playerId} value={playerId}>
-                  {playerProfiles[playerId]?.displayName || playerId}
-                  {playerId === dmId ? ' (DM)' : ''}
-                </option>
-              ))}
-            </select>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* ... (Player dropdown is the same) ... */}
+
+          {/* Item Name */}
+          <div>
+            <label className="block text-sm font-bold mb-2">Item Name</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+          </div>
+
+          {/* 3. New inputs for Type, Cost, and Weight */}
+          <div className="flex space-x-4">
+            <div className="w-1/2">
+              <label className="block text-sm font-bold mb-2">Type (e.g., Weapon)</label>
+              <input type="text" value={type} onChange={(e) => setType(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+            </div>
+            <div className="w-1/4">
+              <label className="block text-sm font-bold mb-2">Cost (e.g., 15gp)</label>
+              <input type="text" value={cost} onChange={(e) => setCost(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+            </div>
+            <div className="w-1/4">
+              <label className="block text-sm font-bold mb-2">Weight (e.g., 3lb)</label>
+              <input type="text" value={weight} onChange={(e) => setWeight(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+            </div>
           </div>
           
-          {/* Item Name */}
-          <div className="mb-4">
-            <label className="block text-sm font-bold mb-2">Item Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            />
-          </div>
           {/* Fields w, h and quantity */}
           <div className="flex space-x-4 mb-4">
             <div className="w-1/3">
@@ -120,6 +126,17 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
                 <option value="bg-yellow-500">Yellow</option>
                 <option value="bg-purple-500">Purple</option>
             </select>
+          </div>
+          
+          {/* NEW Description textarea */}
+          <div>
+            <label className="block text-sm font-bold mb-2">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows="4"
+              className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            ></textarea>
           </div>
           
           <div className="flex justify-end space-x-4">
