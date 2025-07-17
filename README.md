@@ -92,4 +92,4 @@ Found a bug or have a feature request? Please [open an issue](https://github.com
 
 ---
 
-*Made with 🍬🍬 by Simone Cervini*
+**Made with 🍬🍬🍬 by [Simone Cervini](https://github.com/Cervini)**
