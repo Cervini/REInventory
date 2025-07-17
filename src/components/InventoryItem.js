@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import { useLongPress } from 'use-long-press';
 
 const TEXT_VISIBILITY_THRESHOLD = {
   // Text disappears if wrapper's smaller than this
@@ -57,6 +58,10 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM }) {
     gridRow: `${item.y + 1} / span ${item.h}`,
   };
 
+  const bind = useLongPress((event) => {
+    onContextMenu(event, item); 
+  }, { detect: 'touch' });
+
   const tooltipContent = `
     <div style="text-align: left;">
       <strong style="font-size: 1.1em;">${item.name}</strong>
@@ -72,27 +77,43 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM }) {
 
   return (
     <div 
+      // The main container still needs the setNodeRef ref from useDraggable
       ref={setRefs} 
       style={{...wrapperStyle, ...style}} 
-      className="relative" 
+      className="relative flex" // Use flex to help position the handle
       onContextMenu={(e) => onContextMenu(e, item)}
       data-tooltip-id="item-tooltip"
       data-tooltip-html={tooltipContent}
       data-tooltip-place="top"
     >
+      {/* This div now takes up most of the space and is NOT draggable */}
       <div
-        {...listeners}
-        {...attributes}
-        className={`${item.color} absolute inset-0 shadow-[inset_0_0_0_2px_rgba(0,0,0,0.5)] rounded-lg text-white font-bold p-1 text-center text-xs sm:text-sm cursor-grab break-words overflow-hidden flex items-center justify-center`}
+        // We REMOVED the {...listeners} and {...attributes} from this div
+        {...bind()} // The long-press binding can stay here
+        className={`${item.color} flex-grow shadow-[inset_0_0_0_2px_rgba(0,0,0,0.5)] rounded-l-lg text-white font-bold p-1 text-center text-xs sm:text-sm break-words overflow-hidden flex items-center justify-center`}
       >
         {size.width > TEXT_VISIBILITY_THRESHOLD.width && size.height > TEXT_VISIBILITY_THRESHOLD.height && item.name}
-        
         {item.stackable && item.quantity > 1 && (
           <span className="absolute bottom-0 right-1 text-lg font-black text-white" style={{ WebkitTextStroke: '1px black' }}>
             {item.quantity}
           </span>
         )}
       </div>
+
+      {/* This new button is the DRAG HANDLE. 
+        It gets the listeners and a grab cursor.
+      */}
+      <button
+        {...listeners}
+        {...attributes}
+        type="button"
+        className={`${item.color} flex-shrink-0 w-6 flex items-center justify-center rounded-r-lg shadow-[inset_0_0_0_2px_rgba(0,0,0,0.5)] cursor-grab active:cursor-grabbing`}
+      >
+        {/* Simple SVG for the drag handle icon */}
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
     </div>
   );
 }

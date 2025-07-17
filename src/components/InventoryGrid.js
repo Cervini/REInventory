@@ -27,6 +27,7 @@ export default function InventoryGrid({ campaignId, user }) {
   const [splittingItem, setSplittingItem] = useState(null);
   const [activeItem, setActiveItem] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [openInventories, setOpenInventories] = useState({});
 
   const gridRefs = useRef({});
 
@@ -67,6 +68,12 @@ export default function InventoryGrid({ campaignId, user }) {
     }
     return null; // No available spot found
   }
+
+  useEffect(() => {
+    if (user?.uid) {
+      setOpenInventories({ [user.uid]: true });
+    }
+  }, [user?.uid]); // Runs only when the user object is first available
 
   // Data fetching logic remains the same
   useEffect(() => {
@@ -126,15 +133,17 @@ export default function InventoryGrid({ campaignId, user }) {
   }, [campaignId, user]);
 
   const handleContextMenu = (event, item, playerId) => {
-    event.preventDefault();
+    // We can now safely assume 'event' exists, so we remove the '?'
+    event.preventDefault(); 
     
-    // Pass the item and playerId directly when defining the onClick actions
+    // Dynamically build the actions array
     const availableActions = [{ label: 'Edit Item', onClick: () => handleStartEdit(item, playerId) }];
     if (item.stackable && item.quantity > 1) {
       availableActions.push({ label: 'Split Stack', onClick: () => handleStartSplit(item, playerId) });
     }
     availableActions.push({ label: 'Delete Item', onClick: () => handleDeleteItem(item, playerId) });
 
+    // The rest of the function works as intended
     setContextMenu({
       visible: true,
       position: { x: event.clientX, y: event.clientY },
@@ -390,6 +399,15 @@ export default function InventoryGrid({ campaignId, user }) {
     })
   );
 
+  const toggleInventory = (playerId) => {
+    setOpenInventories(prev => ({
+      // To only allow one open at a time, you could clear the state: {}
+      // To allow multiple open, we use the previous state: ...prev
+      ...prev,
+      [playerId]: !prev[playerId],
+    }));
+  };
+
   if (isLoading) {
     return <Spinner />;
   }
@@ -470,22 +488,44 @@ export default function InventoryGrid({ campaignId, user }) {
             collisionDetection={pointerWithin}
           >
             <div className="w-full flex-grow overflow-auto p-4 space-y-8">
-              {Object.entries(inventories).map(([playerId, items]) => (
-                <div key={playerId}>
-                  <h2 className="text-xl font-bold text-white mb-2">
-                    Inventory for: {playerProfiles[playerId]?.displayName || playerId}
-                  </h2>
-                  
-                  <PlayerInventoryGrid
-                    campaignId={campaignId}
-                    playerId={playerId}
-                    items={items}
-                    isDM={campaign?.dmId === user?.uid}
-                    onContextMenu={handleContextMenu}
-                    setGridRef={(node) => (gridRefs.current[playerId] = node)}
-                  />
-                </div>
-              ))}
+              <div className="w-full flex-grow overflow-auto p-4 space-y-4">
+        {Object.entries(inventories).map(([playerId, items]) => (
+          <div key={playerId} className="bg-gray-800 rounded-lg overflow-hidden">
+            {/* This is now a button to toggle the section */}
+            <button 
+              onClick={() => toggleInventory(playerId)}
+              className="w-full p-3 text-left bg-gray-700 hover:bg-gray-600 focus:outline-none flex justify-between items-center"
+            >
+              <h2 className="text-xl font-bold text-white">
+                {playerProfiles[playerId]?.displayName || playerId}
+              </h2>
+              {/* This SVG is a little arrow that will rotate */}
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className={`h-6 w-6 text-white transition-transform duration-200 ${openInventories[playerId] ? 'rotate-180' : ''}`} 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {/* Conditionally render the inventory grid if it's open */}
+            {openInventories[playerId] && (
+              <div className="p-2">
+                <PlayerInventoryGrid
+                  campaignId={campaignId}
+                  playerId={playerId}
+                  items={items}
+                  onContextMenu={handleContextMenu}
+                  setGridRef={(node) => (gridRefs.current[playerId] = node)}
+                />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
             </div>
             <DragOverlay>
             {activeItem ? (
