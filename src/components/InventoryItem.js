@@ -4,8 +4,8 @@ import { useLongPress } from 'use-long-press';
 
 const TEXT_VISIBILITY_THRESHOLD = {
   // Text disappears if wrapper's smaller than this
-  width: 50,
-  height: 50,
+  width: 30,
+  height: 30,
 };
 
 export default function InventoryItem({ item, onContextMenu, playerId, isDM }) {
@@ -76,44 +76,43 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM }) {
   `;
 
   return (
+    // 1. This is the main container that gets placed on the grid.
+    // It now has the border shadow and rounded corners for a seamless look.
     <div 
-      // The main container still needs the setNodeRef ref from useDraggable
       ref={setRefs} 
       style={{...wrapperStyle, ...style}} 
-      className="relative flex" // Use flex to help position the handle
+      className="relative shadow-[inset_0_0_0_2px_rgba(0,0,0,0.5)] rounded-lg"
       onContextMenu={(e) => onContextMenu(e, item)}
       data-tooltip-id="item-tooltip"
       data-tooltip-html={tooltipContent}
       data-tooltip-place="top"
     >
-      {/* This div now takes up most of the space and is NOT draggable */}
+      {/* 2. This is the visible item body. It takes up 100% of the space. */}
+      {/* The long-press for the context menu is attached here. */}
       <div
-        // We REMOVED the {...listeners} and {...attributes} from this div
-        {...bind()} // The long-press binding can stay here
-        className={`${item.color} flex-grow shadow-[inset_0_0_0_2px_rgba(0,0,0,0.5)] rounded-l-lg text-white font-bold p-1 text-center text-xs sm:text-sm break-words overflow-hidden flex items-center justify-center`}
+        {...bind()}
+        className={`${item.color} w-full h-full rounded-lg text-white font-bold p-1 text-center text-xs sm:text-sm cursor-pointer break-words overflow-hidden flex items-center justify-center select-none`}
       >
+        {/* The name is now centered across the full width of the item */}
         {size.width > TEXT_VISIBILITY_THRESHOLD.width && size.height > TEXT_VISIBILITY_THRESHOLD.height && item.name}
-        {item.stackable && item.quantity > 1 && (
+        
+        {/* The quantity display */}
+        {item.stackable && item.quantity > 1 && size.width > TEXT_VISIBILITY_THRESHOLD.width && size.height > TEXT_VISIBILITY_THRESHOLD.height && (
           <span className="absolute bottom-0 right-1 text-lg font-black text-white" style={{ WebkitTextStroke: '1px black' }}>
             {item.quantity}
           </span>
         )}
       </div>
 
-      {/* This new button is the DRAG HANDLE. 
-        It gets the listeners and a grab cursor.
+      {/* 3. This is the invisible drag handle. 
+          It's positioned absolutely on top of the right half of the item.
+          The drag listeners are attached here.
       */}
-      <button
+      <div
         {...listeners}
         {...attributes}
-        type="button"
-        className={`${item.color} flex-shrink-0 w-6 flex items-center justify-center rounded-r-lg shadow-[inset_0_0_0_2px_rgba(0,0,0,0.5)] cursor-grab active:cursor-grabbing`}
-      >
-        {/* Simple SVG for the drag handle icon */}
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+        className="absolute top-0 right-0 h-full w-1/2 cursor-grab rounded-r-lg transition-colors duration-200 hover:bg-white/10"
+      ></div>
     </div>
   );
 }

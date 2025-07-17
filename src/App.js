@@ -17,6 +17,8 @@ export default function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isCodeVisible, setIsCodeVisible] = useState(false);
+  const [isCopied, setIsCopied] = useState(false)
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
@@ -44,26 +46,23 @@ export default function App() {
   }, [user]);
 
   const renderContent = () => {
-    if (loading) {
-      return <div>Loading...</div>; // Or a proper spinner component
+    if (loading && !user) {
+      return <div>Loading...</div>;
     }
-
-    // If there's no user, show the login form
-    if (!user) {
-      return <Auth />;
-    }
-
-    // If there IS a user, but NO campaign is selected, show the selector
+    if (!user) return <Auth />;
     if (user && !campaignId) {
-      // We pass the setCampaignId function down as a prop
       return <CampaignSelector onCampaignSelected={setCampaignId} />;
     }
-
-    // If there IS a user AND a campaign is selected, show the grid
     if (user && campaignId) {
-      // We pass the campaignId and user object to the grid
       return <InventoryGrid campaignId={campaignId} user={user} />;
     }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(campaignId).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000); 
+    });
   };
 
   return (
@@ -86,59 +85,52 @@ export default function App() {
         />
       )}
       <div className="w-full max-w-4xl flex flex-col flex-grow">
-        <div className="relative flex justify-center items-center mb-4">
-          <h1 className="text-4xl font-bold text-center"><span className="text-red-500">RE</span>Inventory</h1>
+        <div className="flex justify-between items-center w-full mb-4">
           
-            {/* This is the new user menu structure */}
-            <div className="absolute right-0">
-              {user && (
-                <div className="relative">
-                  {/* User Icon Button to toggle the menu */}
-                  <button onClick={() => setIsUserMenuOpen(prev => !prev)} className="p-2 rounded-full hover:bg-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </button>
-
-                  {/* The Dropdown Menu panel */}
-                  {isUserMenuOpen && (
-                    <div 
-                      className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-50"
-                      // Optional: close menu when mouse leaves the dropdown area
-                      onMouseLeave={() => setIsUserMenuOpen(false)}
-                    >
-                      <div className="px-4 py-2 text-sm text-gray-400 border-b border-gray-600">
-                        Signed in as<br/>
-                        <strong className="font-medium text-white">{userProfile?.displayName || user.email}</strong>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setShowSettings(true);
-                          setIsUserMenuOpen(false);
-                        }}
-                        className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-blue-500"
-                      >
-                        Profile
-                      </button>
-                      <button 
-                        onClick={() => {
-                          auth.signOut();
-                          setIsUserMenuOpen(false);
-                        }}
-                        className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-blue-500"
-                      >
-                        Sign Out
-                      </button>
+          {/* Left Slot: Campaign Code Popover */}
+          <div className="w-1/3">
+            {campaignId && (
+              <div className="relative">
+                <button onClick={() => setIsCodeVisible(prev => !prev)} onBlur={() => setIsCodeVisible(false)} className="p-2 rounded-full hover:bg-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.368a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" /></svg>
+                </button>
+                {isCodeVisible && (
+                  <div className="absolute left-0 mt-2 w-auto bg-gray-600 rounded-md shadow-lg p-2 z-50">
+                    <div className="flex items-center space-x-4">
+                      <span className="text-gray-300 font-mono text-sm whitespace-nowrap">Code: <span className="font-bold text-white">{campaignId}</span></span>
+                      <button onClick={handleCopy} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded">{isCopied ? 'Copied!' : 'Copy'}</button>
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        <div className="flex flex-col flex-grow">
+
+          {/* Center Slot: Title */}
+          <div className="w-1/3 text-center">
+            <h1 className="text-4xl font-bold"><span className="text-red-500">RE</span>Inventory</h1>
+          </div>
+
+          {/* Right Slot: User Menu */}
+          <div className="w-1/3 flex justify-end">
+            {user && (
+              <div className="relative">
+                <button onClick={() => setIsUserMenuOpen(prev => !prev)} className="p-2 rounded-full hover:bg-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                </button>
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-50" onMouseLeave={() => setIsUserMenuOpen(false)}>
+                    <div className="px-4 py-2 text-sm text-gray-400 border-b border-gray-600">Signed in as<br/><strong className="font-medium text-white">{userProfile?.displayName || user.email}</strong></div>
+                    <button onClick={() => { setShowSettings(true); setIsUserMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-blue-500">Profile</button>
+                    <button onClick={() => { auth.signOut(); setIsUserMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-blue-500">Sign Out</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
             {renderContent()}
         </div>
-      </div>
     </main>
   );
 }

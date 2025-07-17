@@ -14,7 +14,6 @@ import Spinner from './Spinner';
 export default function InventoryGrid({ campaignId, user }) {
   const [inventories, setInventories] = useState({});
   const [campaign, setCampaign] = useState(null);
-  const [isCopied, setIsCopied] = useState(false);
   const [showAddItem, setShowAddItem] = useState(false);
   const [contextMenu, setContextMenu] = useState({
     visible: false,
@@ -51,8 +50,8 @@ export default function InventoryGrid({ campaignId, user }) {
   }
 
   function findFirstAvailableSlot(items, newItem) {
-    const GRID_WIDTH = 20; // Make sure these match your constants
-    const GRID_HEIGHT = 10;
+    const GRID_WIDTH = getGridWidth();
+    const GRID_HEIGHT = getGridHeight();
 
     for (let y = 0; y <= GRID_HEIGHT - newItem.h; y++) {
       for (let x = 0; x <= GRID_WIDTH - newItem.w; x++) {
@@ -222,14 +221,6 @@ export default function InventoryGrid({ campaignId, user }) {
     setShowAddItem(false);
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(campaignId).then(() => {
-      setIsCopied(true);
-      // Reset the button text after 2 seconds
-      setTimeout(() => setIsCopied(false), 2000); 
-    });
-  };
-
   const handleSplitStack = async (splitAmount) => {
     if (!splittingItem) return;
 
@@ -320,8 +311,8 @@ export default function InventoryGrid({ campaignId, user }) {
       const gridElement = gridRefs.current[startPlayerId];
       if (!gridElement) return;
       const cellSize = {
-        width: gridElement.offsetWidth / 20, // Using constants directly
-        height: gridElement.offsetHeight / 10,
+        width: gridElement.offsetWidth / getGridWidth(),
+        height: gridElement.offsetHeight / getGridHeight(),
       };
       const newX = Math.round((item.x * cellSize.width + delta.x) / cellSize.width);
       const newY = Math.round((item.y * cellSize.height + delta.y) / cellSize.height);
@@ -343,8 +334,8 @@ export default function InventoryGrid({ campaignId, user }) {
 
       // Calculate the cell size of the DESTINATION grid
       const endCellSize = {
-        width: endGridElement.offsetWidth / 20,
-        height: endGridElement.offsetHeight / 10,
+        width: endGridElement.offsetWidth / getGridWidth(),
+        height: endGridElement.offsetHeight / getGridHeight(),
       };
       
       // Calculate where the cursor dropped relative to the destination grid
@@ -457,22 +448,8 @@ export default function InventoryGrid({ campaignId, user }) {
         />
       )}
 
-      {/* Header section */}
-      <div className="bg-gray-800 p-2 rounded-md mb-4 flex items-center justify-between w-full max-w-4xl">
-        <div className="flex items-center space-x-4">
-          <span className="text-gray-400 font-mono text-sm">
-            Campaign Code: <span className="font-bold text-gray-200">{campaignId}</span>
-          </span>
-          <button onClick={handleCopy} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded">
-            {isCopied ? 'Copied!' : 'Copy'}
-          </button>
-        </div>
-        <button onClick={() => setShowAddItem(true)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-4 rounded">
-          Add Item
-        </button>
-      </div>
-
       {/* Main content area now renders the new component in a loop */}
+      <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24">
       {(() => {
         // if the current user is the DM
         const isDM = campaign?.dmId === user?.uid;
@@ -488,7 +465,7 @@ export default function InventoryGrid({ campaignId, user }) {
             collisionDetection={pointerWithin}
           >
             <div className="w-full flex-grow overflow-auto p-4 space-y-8">
-              <div className="w-full flex-grow overflow-auto p-4 space-y-4">
+            <div className="w-full flex-grow overflow-auto p-4 space-y-4">
         {Object.entries(inventories).map(([playerId, items]) => (
           <div key={playerId} className="bg-gray-800 rounded-lg overflow-hidden">
             {/* This is now a button to toggle the section */}
@@ -548,6 +525,16 @@ export default function InventoryGrid({ campaignId, user }) {
           </DndContext>
         );
       })()}
+      </div>
+      <button
+        onClick={() => setShowAddItem(true)}
+        className="fixed z-30 bottom-8 right-8 bg-green-600 hover:bg-green-700 text-white rounded-full p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-green-400"
+        aria-label="Add Item"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
     </div>
   );
 }

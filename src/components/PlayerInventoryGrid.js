@@ -3,7 +3,7 @@ import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import InventoryItem from './InventoryItem';
 
-const GRID_WIDTH = 20;
+const GRID_WIDTH = 30;
 const GRID_HEIGHT = 10;
 
 export function getGridHeight() {
