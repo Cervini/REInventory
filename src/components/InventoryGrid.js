@@ -443,7 +443,7 @@ export default function InventoryGrid({ campaignId, user }) {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onDragCancel={handleDragCancel}
-            modifiers={[restrictToWindowEdges]}
+            modifiers={dndModifiers}
             collisionDetection={pointerWithin}
           >
             <div className="w-full flex-grow overflow-auto p-4 space-y-8">
