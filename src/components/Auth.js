@@ -10,9 +10,11 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
     setError(''); // Clear previous errors
+    setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -28,11 +30,14 @@ export default function Auth() {
 
   const handleSignIn = async () => {
     setError('');
+    setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       // The user is now signed in.
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false); // Re-enable buttons
     }
   };
 
@@ -72,6 +77,7 @@ export default function Auth() {
             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
             type="button"
             onClick={handleSignIn}
+            disabled={loading}
           >
             Sign In
           </button>
@@ -79,6 +85,7 @@ export default function Auth() {
             className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
             type="button"
             onClick={handleSignUp}
+            disabled={loading}
           >
             Sign Up
           </button>

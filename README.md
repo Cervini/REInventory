@@ -1,70 +1,95 @@
-# Getting Started with Create React App
+# REInventory
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A shared, visual inventory application for TTRPGs, inspired by the "Tetris-style" systems in classic video games.
 
-## Available Scripts
+## 🎯 About
 
-In the project directory, you can run:
+REInventory brings the intuitive, visual inventory management from classic video games to tabletop RPGs like Dungeons & Dragons. Tired of tracking items on paper or in spreadsheets? REInventory offers a drag-and-drop interface that makes inventory management engaging and visual for both players and Dungeon Masters.
 
-### `npm start`
+## 🚀 Live Demo
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+**[Try REInventory now!](https://reinventory-94505.web.app/)**
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+No installation required - just open in your browser and start organizing your party's loot!
 
-### `npm test`
+## ✨ Features
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **🎲 Multiple Campaign Support** - Manage inventories across different TTRPG campaigns
+- **📦 Visual Item Management** - Create, edit, and delete items with detailed descriptions
+- **🎮 Tetris-Style Interface** - Intuitive drag-and-drop inventory system inspired by classic games
+- **👥 Shared Inventories** - DMs can view and manage all player inventories
+- **🔄 Item Transfer** - Move items between players seamlessly
+- **📚 Stackable Items** - Smart stacking system for consumables and similar items
+- **🖱️ Drag & Drop UI** - Easy-to-use interface that makes inventory management fun
 
-### `npm run build`
+## 🎮 Perfect For
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- **TTRPG Players** who want a visual alternative to paper character sheets
+- **Dungeon Masters** who need to track party inventory and distribute loot
+- **Gaming Groups** looking for a shared, collaborative inventory system
+- **Anyone** frustrated with traditional text-based inventory management
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 🛠️ Built With
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- **React** - Frontend framework for a responsive, interactive experience
+- **Firebase** - Hosting and backend services
 
-### `npm run eject`
+## 🚀 Getting Started
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### For Players
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+1. Visit [reinventory-94505.web.app](https://reinventory-94505.web.app/)
+2. Create or join a campaign
+3. Start adding items to your inventory
+4. Drag and drop items to organize them visually
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### System Requirements
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+- Any modern web browser (Chrome, Firefox, Safari, Edge)
+- Internet connection
+- That's it! No downloads or installations required
 
-## Learn More
+## 🗺️ Roadmap
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+REInventory v1.0.0 is just the beginning! Future updates will include:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- Screenshots and visual documentation
+- Enhanced item customization
+- Better GUI
+- Custom Inventory Size
+- Different shape items
+- Trade between players
+- Advanced options for backpack structure
+- Advanced filtering and search
+- Mobile responsiveness improvements
+- Export/import functionality
+- And much more based on community feedback!
 
-### Code Splitting
+## 🤝 Contributing
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+Contributions are welcome and greatly appreciated! Whether you're fixing bugs, adding features, or improving documentation, your help makes REInventory better for the entire TTRPG community.
 
-### Analyzing the Bundle Size
+### How to Contribute
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-### Making a Progressive Web App
+## 📝 License
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### Advanced Configuration
+## 🔗 Links
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+- **Live Application**: [reinventory-94505.web.app](https://reinventory-94505.web.app/)
+- **GitHub Repository**: [github.com/Cervini/REInventory](https://github.com/Cervini/REInventory)
 
-### Deployment
+## 📞 Support
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+Found a bug or have a feature request? Please [open an issue](https://github.com/Cervini/REInventory/issues) on GitHub.
 
-### `npm run build` fails to minify
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+*Made with 🍬🍬 by Simone Cervini*
