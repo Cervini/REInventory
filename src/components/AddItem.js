@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 
 export default function AddItem({ onAddItem, onClose, players = [], dmId, playerProfiles = {}, itemToEdit, isDM }) {
   
@@ -23,7 +24,7 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim() || w <= 0 || h <= 0) {
-      alert("Please fill out all fields correctly.");
+      toast.error("Please fill out all fields correctly.");
       return;
     }
     
@@ -45,7 +46,7 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
       onAddItem(itemData);
     } else {
       if (!targetPlayerId) {
-        alert("Please select a player.");
+        toast.error("Please select a player.");
         return;
       }
       onAddItem({

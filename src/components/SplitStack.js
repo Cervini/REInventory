@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 
 export default function SplitStack({ item, onClose, onSplit }) {
   // Default split amount is half the stack, rounded down.
@@ -8,7 +9,7 @@ export default function SplitStack({ item, onClose, onSplit }) {
     const amount = parseInt(splitAmount, 10);
     // Validate the amount
     if (isNaN(amount) || amount <= 0 || amount >= item.quantity) {
-      alert(`Please enter a number between 1 and ${item.quantity - 1}.`);
+      toast.error(`Please enter a number between 1 and ${item.quantity - 1}.`);
       return;
     }
     onSplit(amount);

@@ -3,6 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { Tooltip } from 'react-tooltip';
+import { Toaster } from 'react-hot-toast';
 import './App.css';
 import InventoryGrid from './components/InventoryGrid';
 import Auth from './components/Auth';
@@ -66,6 +67,15 @@ export default function App() {
 
   return (
     <main className="text-white h-screen flex flex-col items-center p-4 font-sans">
+      <Toaster 
+        position="bottom-center"
+        toastOptions={{
+          style: {
+            background: '#333',
+            color: '#fff',
+          },
+        }}
+      />
       <Tooltip id="item-tooltip" style={{ zIndex: 99, maxWidth: '300px' }} />
       {showSettings && (
         <ProfileSettings 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { doc, onSnapshot, updateDoc, arrayRemove, getDoc, collection, query, where, documentId, getDocs, writeBatch } from "firebase/firestore";
 import { db } from '../firebase';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin  } from '@dnd-kit/core';
@@ -8,6 +9,7 @@ import PlayerInventoryGrid from './PlayerInventoryGrid';
 import AddItem from './AddItem';
 import ContextMenu from './ContextMenu';
 import SplitStack from './SplitStack';
+import Spinner from './Spinner';
 
 export default function InventoryGrid({ campaignId, user }) {
   const [inventories, setInventories] = useState({});
@@ -24,6 +26,7 @@ export default function InventoryGrid({ campaignId, user }) {
   const [itemToEdit, setItemToEdit] = useState(null);
   const [splittingItem, setSplittingItem] = useState(null);
   const [activeItem, setActiveItem] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const gridRefs = useRef({});
 
@@ -69,6 +72,8 @@ export default function InventoryGrid({ campaignId, user }) {
   useEffect(() => {
     if (!campaignId || !user) return;
 
+    setIsLoading(true); // Set loading to true when fetching starts
+
     const fetchData = async () => {
       const campaignDocRef = doc(db, 'campaigns', campaignId);
       const campaignSnap = await getDoc(campaignDocRef);
@@ -112,7 +117,10 @@ export default function InventoryGrid({ campaignId, user }) {
       }
     };
 
-    const unsubscribePromise = fetchData();
+    const unsubscribePromise = fetchData().finally(() => {
+      setIsLoading(false); // 4. Set loading to false when all fetching is done
+    });
+
 
     return () => { unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe()); };
   }, [campaignId, user]);
@@ -190,7 +198,7 @@ export default function InventoryGrid({ campaignId, user }) {
         const position = findFirstAvailableSlot(currentItems, itemData);
 
         if (position === null) {
-          alert("Inventory is full. Cannot add new item.");
+          toast.error("Inventory is full. Cannot add new item.");
           return; // Exit if no space is found
         }
         
@@ -231,7 +239,7 @@ export default function InventoryGrid({ campaignId, user }) {
     const position = findFirstAvailableSlot(inventories[playerId] || [], tempNewItem);
 
     if (position === null) {
-      alert("No space in inventory to split the stack!");
+      toast.error("No space in inventory to split the stack!");
       return;
     }
 
@@ -349,7 +357,7 @@ export default function InventoryGrid({ campaignId, user }) {
 
       // If there's no room at all, cancel the transfer
       if (finalPosition === null) {
-        alert("Destination inventory is full!");
+        toast.error("Destination inventory is full!");
         return;
       }
 
@@ -382,13 +390,17 @@ export default function InventoryGrid({ campaignId, user }) {
     })
   );
 
+  if (isLoading) {
+    return <Spinner />;
+  }
+
   return (
     <div className="w-full flex flex-col items-center flex-grow">
       {splittingItem && (
         <SplitStack
           item={splittingItem.item}
           onClose={() => setSplittingItem(null)}
-         onSplit={(splitAmount) => {
+          onSplit={(splitAmount) => {
             handleSplitStack(splitAmount);
             setSplittingItem(null); // Close modal after splitting
           }}

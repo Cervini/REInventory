@@ -85,7 +85,7 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM }) {
         {...attributes}
         className={`${item.color} absolute inset-0 shadow-[inset_0_0_0_2px_rgba(0,0,0,0.5)] rounded-lg text-white font-bold p-1 text-center text-xs sm:text-sm cursor-grab break-words overflow-hidden flex items-center justify-center`}
       >
-        {size.width > 50 && size.height > 50 && item.name}
+        {size.width > TEXT_VISIBILITY_THRESHOLD.width && size.height > TEXT_VISIBILITY_THRESHOLD.height && item.name}
         
         {item.stackable && item.quantity > 1 && (
           <span className="absolute bottom-0 right-1 text-lg font-black text-white" style={{ WebkitTextStroke: '1px black' }}>

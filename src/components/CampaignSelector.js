@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 // Import the tools we need from firestore
 import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc, updateDoc, arrayUnion, query, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -29,7 +30,7 @@ export default function CampaignSelector({ onCampaignSelected }) {
       })
       .catch((error) => {
         console.error("Error fetching user campaigns: ", error);
-        alert("Could not fetch your campaigns.");
+        toast.error("Could not fetch your campaigns.");
       })
       .finally(() => {
         setLoading(false);
@@ -39,7 +40,7 @@ export default function CampaignSelector({ onCampaignSelected }) {
   const handleCreateCampaign = async () => {
     // Basic validation
     if (!campaignName.trim()) {
-      alert("Please enter a campaign name.");
+      toast.error("Please enter a campaign name.");
       return;
     }
 
@@ -47,7 +48,7 @@ export default function CampaignSelector({ onCampaignSelected }) {
     const currentUser = auth.currentUser;
 
     if (!currentUser) {
-      alert("You must be logged in to create a campaign.");
+      toast.error("You must be logged in to create a campaign.");
       setLoading(false);
       return;
     }
@@ -80,7 +81,7 @@ export default function CampaignSelector({ onCampaignSelected }) {
 
     } catch (error) {
       console.error("Error creating campaign: ", error);
-      alert("Failed to create campaign.");
+      toast.error("Failed to create campaign.");
       setLoading(false);
     }
   };
@@ -88,7 +89,7 @@ export default function CampaignSelector({ onCampaignSelected }) {
   const handleJoinCampaign = async () => {
     const code = joinCode.trim();
     if (!code) {
-      alert("Please enter a campaign code to join.");
+      toast.error("Please enter a campaign code to join.");
       return;
     }
 
@@ -101,7 +102,7 @@ export default function CampaignSelector({ onCampaignSelected }) {
 
       // If the campaign exists
       if (!campaignSnap.exists()) {
-        alert("Campaign not found. Please check the code and try again.");
+        toast.error("Campaign not found. Please check the code and try again.");
         setLoading(false);
         return;
       }
@@ -124,7 +125,7 @@ export default function CampaignSelector({ onCampaignSelected }) {
 
     } catch (error) {
       console.error("Error joining campaign: ", error);
-      alert("Failed to join campaign.");
+      toast.error("Failed to join campaign.");
       setLoading(false);
     }
   };
