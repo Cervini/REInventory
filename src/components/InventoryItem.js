@@ -7,7 +7,7 @@ const TEXT_VISIBILITY_THRESHOLD = {
   height: 50,
 };
 
-export default function InventoryItem({ item, onContextMenu, playerId }) {
+export default function InventoryItem({ item, onContextMenu, playerId, isDM }) {
   const {attributes, listeners, setNodeRef, transform, isDragging} = useDraggable({
     id: item.id,
     data: {
@@ -57,26 +57,27 @@ export default function InventoryItem({ item, onContextMenu, playerId }) {
     gridRow: `${item.y + 1} / span ${item.h}`,
   };
 
+  const tooltipContent = `
+    <div style="text-align: left;">
+      <strong style="font-size: 1.1em;">${item.name}</strong>
+      <div style="font-style: italic; color: #ccc; margin-bottom: 5px;">${item.type || 'Misc'}</div>
+      <div style="font-size: 0.9em;">
+        ${isDM ? `<strong>Cost:</strong> ${item.cost || 'N/A'}<br/>` : ''}
+        <strong>Weight:</strong> ${item.weight || 'N/A'}
+      </div>
+      <hr style="margin: 5px 0; border-color: #555;" />
+      <div style="font-size: 0.9em;">${item.description || 'No description.'}</div>
+    </div>
+  `;
+
   return (
     <div 
       ref={setRefs} 
       style={{...wrapperStyle, ...style}} 
       className="relative" 
       onContextMenu={(e) => onContextMenu(e, item)}
-      // 1. Add these data attributes to enable the tooltip
       data-tooltip-id="item-tooltip"
-      data-tooltip-html={`
-        <div style="text-align: left;">
-          <strong style="font-size: 1.1em;">${item.name}</strong>
-          <div style="font-style: italic; color: #ccc; margin-bottom: 5px;">${item.type || 'Misc'}</div>
-          <div style="font-size: 0.9em;">
-            <strong>Cost:</strong> ${item.cost || 'N/A'}<br/>
-            <strong>Weight:</strong> ${item.weight || 'N/A'}
-          </div>
-          <hr style="margin: 5px 0; border-color: #555;" />
-          <div style="font-size: 0.9em;">${item.description || 'No description.'}</div>
-        </div>
-      `}
+      data-tooltip-html={tooltipContent}
       data-tooltip-place="top"
     >
       <div

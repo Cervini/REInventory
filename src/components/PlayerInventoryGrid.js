@@ -14,7 +14,7 @@ export function getGridWidth() {
   return GRID_WIDTH;
 }
 
-export default function PlayerInventoryGrid({ campaignId, playerId, items, onContextMenu, setGridRef }) {
+export default function PlayerInventoryGrid({ campaignId, playerId, items, onContextMenu, setGridRef, isDM }) {
   
   // 2. Make this component a droppable zone, identified by the playerId
   const { setNodeRef } = useDroppable({
@@ -52,6 +52,7 @@ export default function PlayerInventoryGrid({ campaignId, playerId, items, onCon
           item={item}
           onContextMenu={(e, item) => onContextMenu(e, item, playerId)}
           playerId={playerId}
+          isDM={isDM}
         />
       ))}
     </div>

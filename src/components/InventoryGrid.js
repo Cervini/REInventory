@@ -403,6 +403,7 @@ export default function InventoryGrid({ campaignId, user }) {
           }} 
           players={Object.keys(inventories)}
           dmId={campaign?.dmId}
+          isDM={campaign?.dmId === user?.uid}
           playerProfiles={playerProfiles}
           itemToEdit={itemToEdit} // Pass the item to be edited
         />
@@ -457,6 +458,7 @@ export default function InventoryGrid({ campaignId, user }) {
                     campaignId={campaignId}
                     playerId={playerId}
                     items={items}
+                    isDM={campaign?.dmId === user?.uid}
                     onContextMenu={handleContextMenu}
                     setGridRef={(node) => (gridRefs.current[playerId] = node)}
                   />

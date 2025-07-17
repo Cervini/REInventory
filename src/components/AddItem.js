@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function AddItem({ onAddItem, onClose, players = [], dmId, playerProfiles = {}, itemToEdit }) {
+export default function AddItem({ onAddItem, onClose, players = [], dmId, playerProfiles = {}, itemToEdit, isDM }) {
   
   const isEditMode = !!itemToEdit;
   const itemBeingEdited = isEditMode ? itemToEdit.item : null;
@@ -19,7 +19,6 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
   const [cost, setCost] =useState(isEditMode ? itemBeingEdited.cost ?? '' : '');
   const [weight, setWeight] = useState(isEditMode ? itemBeingEdited.weight ?? '' : '');
   const [description, setDescription] = useState(isEditMode ? itemBeingEdited.description ?? '' : '');
-
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -65,7 +64,25 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
       <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-auto">
         <h3 className="text-xl font-bold mb-4">{isEditMode ? 'Edit Item' : 'Add New Item'}</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* ... (Player dropdown is the same) ... */}
+          
+          {/* 4. Add the Player Select dropdown */}
+          {/* Player dropdown is disabled in edit mode */}
+
+          <div className="mb-4">
+            <label className="block text-sm font-bold mb-2">Player</label>
+            <select value={targetPlayerId} 
+              onChange={(e) => setTargetPlayerId(e.target.value)} 
+              disabled={isEditMode}
+              className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-900 disabled:text-gray-500"
+            ><option value="">-- Select a Player --</option>
+              {players.map(playerId => (
+                <option key={playerId} value={playerId}>
+                  {playerProfiles[playerId]?.displayName || playerId}
+                  {playerId === dmId ? ' (DM)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Item Name */}
           <div>
@@ -79,11 +96,14 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
               <label className="block text-sm font-bold mb-2">Type (e.g., Weapon)</label>
               <input type="text" value={type} onChange={(e) => setType(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
             </div>
-            <div className="w-1/4">
-              <label className="block text-sm font-bold mb-2">Cost (e.g., 15gp)</label>
-              <input type="text" value={cost} onChange={(e) => setCost(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
-            </div>
-            <div className="w-1/4">
+             {isDM && (
+              <div className="w-1/4">
+                <label className="block text-sm font-bold mb-2">Cost (e.g., 15gp)</label>
+                <input type="text" value={cost} onChange={(e) => setCost(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+              </div>
+            )}
+
+            <div className={isDM ? "w-1/4" : "w-1/2"}> {/* Adjust width based on whether Cost is present */}
               <label className="block text-sm font-bold mb-2">Weight (e.g., 3lb)</label>
               <input type="text" value={weight} onChange={(e) => setWeight(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
             </div>
