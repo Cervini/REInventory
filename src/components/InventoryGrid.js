@@ -46,6 +46,25 @@ export default function InventoryGrid({ campaignId, user }) {
       return false;
   }
 
+  function findFirstAvailableSlot(items, newItem) {
+    const GRID_WIDTH = 20; // Make sure these match your constants
+    const GRID_HEIGHT = 10;
+
+    for (let y = 0; y <= GRID_HEIGHT - newItem.h; y++) {
+      for (let x = 0; x <= GRID_WIDTH - newItem.w; x++) {
+        // Check for collisions at this (x,y) spot
+        const isColliding = items.some(existingItem => 
+          onOtherItem(x, y, newItem, existingItem)
+        );
+        if (!isColliding) {
+          // Found a free spot
+          return { x, y };
+        }
+      }
+    }
+    return null; // No available spot found
+  }
+
   // Data fetching logic remains the same
   useEffect(() => {
     if (!campaignId || !user) return;
@@ -283,60 +302,80 @@ export default function InventoryGrid({ campaignId, user }) {
     const endPlayerId = over?.id;
     const item = active.data.current?.item;
 
-    // Do nothing if the drop is outside a valid grid or data is missing
     if (!endPlayerId || !startPlayerId || !item) return;
 
-    // --- Scenario 1: Repositioning item within the same grid ---
+    // --- Scenario 1: Repositioning item (No changes here) ---
     if (startPlayerId === endPlayerId) {
       const gridElement = gridRefs.current[startPlayerId];
       if (!gridElement) return;
-
       const cellSize = {
-        width: gridElement.offsetWidth / getGridWidth(),
-        height: gridElement.offsetHeight / getGridHeight(),
+        width: gridElement.offsetWidth / 20, // Using constants directly
+        height: gridElement.offsetHeight / 10,
       };
-
       const newX = Math.round((item.x * cellSize.width + delta.x) / cellSize.width);
       const newY = Math.round((item.y * cellSize.height + delta.y) / cellSize.height);
-
       const currentItems = inventories[startPlayerId] || [];
       if (outOfBounds(newX, newY, item)) return;
       const isColliding = currentItems.some(other => (other.id !== item.id) && onOtherItem(newX, newY, item, other));
       if (isColliding) return;
-      
       const newItems = currentItems.map(i => (i.id === item.id ? { ...i, x: newX, y: newY } : i));
-      
       setInventories(prev => ({ ...prev, [startPlayerId]: newItems }));
       const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', startPlayerId);
       await updateDoc(inventoryDocRef, { items: newItems });
     }
-    // --- Scenario 2: Transferring item to a different grid ---
+    // --- Scenario 2: Transferring item (All new logic) ---
     else {
-      // Find the first available open slot in the destination grid (simple version)
-      // A more complex version could check for collisions.
-      const newItem = { ...item, x: 0, y: 0 }; 
-
       const startItems = inventories[startPlayerId] || [];
       const endItems = inventories[endPlayerId] || [];
+      const endGridElement = gridRefs.current[endPlayerId];
+      if (!endGridElement) return;
+
+      // Calculate the cell size of the DESTINATION grid
+      const endCellSize = {
+        width: endGridElement.offsetWidth / 20,
+        height: endGridElement.offsetHeight / 10,
+      };
+      
+      // Calculate where the cursor dropped relative to the destination grid
+      const endGridRect = endGridElement.getBoundingClientRect();
+      const dropX = active.rect.current.translated.left - endGridRect.left;
+      const dropY = active.rect.current.translated.top - endGridRect.top;
+      
+      // Convert pixel drop position to grid coordinates
+      let newX = Math.round(dropX / endCellSize.width);
+      let newY = Math.round(dropY / endCellSize.height);
+      
+      let finalPosition = { x: newX, y: newY };
+      
+      // Check if this drop position is valid
+      if (outOfBounds(newX, newY, item) || endItems.some(other => onOtherItem(newX, newY, item, other))) {
+        // If not, find the first available slot
+        finalPosition = findFirstAvailableSlot(endItems, item);
+      }
+
+      // If there's no room at all, cancel the transfer
+      if (finalPosition === null) {
+        alert("Destination inventory is full!");
+        return;
+      }
+
+      // Create the new item with its final position
+      const newItem = { ...item, x: finalPosition.x, y: finalPosition.y };
       
       const newStartItems = startItems.filter(i => i.id !== item.id);
       const newEndItems = [...endItems, newItem];
 
-      // Update local state first for a snappy UI
       setInventories(prev => ({
         ...prev,
         [startPlayerId]: newStartItems,
         [endPlayerId]: newEndItems,
       }));
 
-      // Use a batched write to update both documents atomically
       const batch = writeBatch(db);
       const startInventoryRef = doc(db, 'campaigns', campaignId, 'inventories', startPlayerId);
       const endInventoryRef = doc(db, 'campaigns', campaignId, 'inventories', endPlayerId);
-
       batch.update(startInventoryRef, { items: newStartItems });
       batch.update(endInventoryRef, { items: newEndItems });
-      
       await batch.commit();
     }
   };
