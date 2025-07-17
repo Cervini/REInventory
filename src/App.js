@@ -88,14 +88,15 @@ export default function App() {
         <div className="flex justify-between items-center w-full mb-4">
           
           {/* Left Slot: Campaign Code Popover */}
-          <div className="w-1/3">
+          <div>
             {campaignId && (
               <div className="relative">
-                <button onClick={() => setIsCodeVisible(prev => !prev)} onBlur={() => setIsCodeVisible(false)} className="p-2 rounded-full hover:bg-gray-700">
+                <button onClick={() => setIsCodeVisible(prev => !prev)} className="p-2 rounded-full hover:bg-gray-700">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.368a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" /></svg>
                 </button>
                 {isCodeVisible && (
-                  <div className="absolute left-0 mt-2 w-auto bg-gray-600 rounded-md shadow-lg p-2 z-50">
+                  <div className="absolute left-0 mt-2 w-auto bg-gray-600 rounded-md shadow-lg p-2 z-50"
+                    onMouseLeave={() => setIsCodeVisible(false)}>
                     <div className="flex items-center space-x-4">
                       <span className="text-gray-300 font-mono text-sm whitespace-nowrap">Code: <span className="font-bold text-white">{campaignId}</span></span>
                       <button onClick={handleCopy} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded">{isCopied ? 'Copied!' : 'Copy'}</button>
@@ -107,12 +108,12 @@ export default function App() {
           </div>
 
           {/* Center Slot: Title */}
-          <div className="w-1/3 text-center">
+          <div className="flex-grow text-center">
             <h1 className="text-4xl font-bold"><span className="text-red-500">RE</span>Inventory</h1>
           </div>
 
           {/* Right Slot: User Menu */}
-          <div className="w-1/3 flex justify-end">
+          <div>
             {user && (
               <div className="relative">
                 <button onClick={() => setIsUserMenuOpen(prev => !prev)} className="p-2 rounded-full hover:bg-gray-700">

@@ -4,12 +4,44 @@ import { doc, onSnapshot, updateDoc, arrayRemove, getDoc, collection, query, whe
 import { db } from '../firebase';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin  } from '@dnd-kit/core';
 import { restrictToParentElement, restrictToWindowEdges } from '@dnd-kit/modifiers';
-import { getGridHeight, getGridWidth } from './PlayerInventoryGrid';
+import { GRID_HEIGHT, GRID_WIDTH } from './PlayerInventoryGrid';
 import PlayerInventoryGrid from './PlayerInventoryGrid';
 import AddItem from './AddItem';
 import ContextMenu from './ContextMenu';
 import SplitStack from './SplitStack';
 import Spinner from './Spinner';
+
+function outOfBounds(X, Y, item) {
+    if (X < 0 || X > GRID_WIDTH - item.w || Y < 0 || Y > GRID_HEIGHT - item.h) return true;
+    return false;
+}
+
+function occupiedTiles(X, Y, W, H) {
+    let set = new Set();
+    for (let i = 0; i < W; i++) for (let j = 0; j < H; j++) set.add(`${X + i},${Y + j}`);
+    return set;
+}
+
+function onOtherItem(X, Y, activeItem, passiveItem) {
+    let set1 = occupiedTiles(X, Y, activeItem.w, activeItem.h);
+    let set2 = occupiedTiles(passiveItem.x, passiveItem.y, passiveItem.w, passiveItem.h);
+    for (const tile of set1) { if (set2.has(tile)) return true; }
+    return false;
+}
+
+function findFirstAvailableSlot(items, newItem) {
+    for (let y = 0; y <= GRID_HEIGHT - newItem.h; y++) {
+        for (let x = 0; x <= GRID_WIDTH - newItem.w; x++) {
+            const isColliding = items.some(existingItem =>
+                onOtherItem(x, y, newItem, existingItem)
+            );
+            if (!isColliding) {
+                return { x, y };
+            }
+        }
+    }
+    return null;
+}
 
 export default function InventoryGrid({ campaignId, user }) {
   const [inventories, setInventories] = useState({});
@@ -29,44 +61,6 @@ export default function InventoryGrid({ campaignId, user }) {
   const [openInventories, setOpenInventories] = useState({});
 
   const gridRefs = useRef({});
-
-  function outOfBounds(X, Y, item) {
-      if (X<0 || X>getGridWidth() || Y<0 || Y>getGridHeight()) return true;
-      if(X+item.w>getGridWidth() || Y+item.h>getGridHeight()) return true;
-      return false;
-  }
-  
-  function occupiedTiles(X, Y, W, H) {
-      let set = new Set();
-      for(let i=0; i<W; i++) for(let j=0; j<H; j++) set.add(`${X + i},${Y + j}`);
-      return set;
-  }
-  
-  function onOtherItem(X, Y, activeItem, passiveItem) {
-      let set1 = occupiedTiles(X, Y, activeItem.w, activeItem.h);
-      let set2 = occupiedTiles(passiveItem.x, passiveItem.y, passiveItem.w, passiveItem.h);
-      for (const tile of set1) { if (set2.has(tile)) return true; }
-      return false;
-  }
-
-  function findFirstAvailableSlot(items, newItem) {
-    const GRID_WIDTH = getGridWidth();
-    const GRID_HEIGHT = getGridHeight();
-
-    for (let y = 0; y <= GRID_HEIGHT - newItem.h; y++) {
-      for (let x = 0; x <= GRID_WIDTH - newItem.w; x++) {
-        // Check for collisions at this (x,y) spot
-        const isColliding = items.some(existingItem => 
-          onOtherItem(x, y, newItem, existingItem)
-        );
-        if (!isColliding) {
-          // Found a free spot
-          return { x, y };
-        }
-      }
-    }
-    return null; // No available spot found
-  }
 
   useEffect(() => {
     if (user?.uid) {
@@ -279,8 +273,8 @@ export default function InventoryGrid({ campaignId, user }) {
 
     // Calculate the cell size of that specific grid on the fly
     const cellSize = {
-      width: gridElement.offsetWidth / getGridWidth(),
-      height: gridElement.offsetHeight / getGridHeight(),
+      width: gridElement.offsetWidth / GRID_WIDTH,
+      height: gridElement.offsetHeight / GRID_HEIGHT,
     };
 
     // Set the active item for the DragOverlay with our calculated dimensions
@@ -311,8 +305,8 @@ export default function InventoryGrid({ campaignId, user }) {
       const gridElement = gridRefs.current[startPlayerId];
       if (!gridElement) return;
       const cellSize = {
-        width: gridElement.offsetWidth / getGridWidth(),
-        height: gridElement.offsetHeight / getGridHeight(),
+        width: gridElement.offsetWidth / GRID_WIDTH,
+        height: gridElement.offsetHeight / GRID_HEIGHT,
       };
       const newX = Math.round((item.x * cellSize.width + delta.x) / cellSize.width);
       const newY = Math.round((item.y * cellSize.height + delta.y) / cellSize.height);
@@ -334,8 +328,8 @@ export default function InventoryGrid({ campaignId, user }) {
 
       // Calculate the cell size of the DESTINATION grid
       const endCellSize = {
-        width: endGridElement.offsetWidth / getGridWidth(),
-        height: endGridElement.offsetHeight / getGridHeight(),
+        width: endGridElement.offsetWidth / GRID_WIDTH,
+        height: endGridElement.offsetHeight / GRID_HEIGHT,
       };
       
       // Calculate where the cursor dropped relative to the destination grid
@@ -448,93 +442,35 @@ export default function InventoryGrid({ campaignId, user }) {
         />
       )}
 
-      {/* Main content area now renders the new component in a loop */}
-      <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24">
-      {(() => {
-        // if the current user is the DM
-        const isDM = campaign?.dmId === user?.uid;
-        const dndModifiers = isDM ? [restrictToWindowEdges] : [restrictToParentElement];
-
-        return (
-          <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragCancel={handleDragCancel}
-            modifiers={dndModifiers}
-            collisionDetection={pointerWithin}
-          >
-            <div className="w-full flex-grow overflow-auto p-4 space-y-8">
-            <div className="w-full flex-grow overflow-auto p-4 space-y-4">
-        {Object.entries(inventories).map(([playerId, items]) => (
-          <div key={playerId} className="bg-gray-800 rounded-lg overflow-hidden">
-            {/* This is now a button to toggle the section */}
-            <button 
-              onClick={() => toggleInventory(playerId)}
-              className="w-full p-3 text-left bg-gray-700 hover:bg-gray-600 focus:outline-none flex justify-between items-center"
-            >
-              <h2 className="text-xl font-bold text-white">
-                {playerProfiles[playerId]?.displayName || playerId}
-              </h2>
-              {/* This SVG is a little arrow that will rotate */}
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className={`h-6 w-6 text-white transition-transform duration-200 ${openInventories[playerId] ? 'rotate-180' : ''}`} 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            
-            {/* Conditionally render the inventory grid if it's open */}
-            {openInventories[playerId] && (
-              <div className="p-2">
-                <PlayerInventoryGrid
-                  campaignId={campaignId}
-                  playerId={playerId}
-                  items={items}
-                  onContextMenu={handleContextMenu}
-                  setGridRef={(node) => (gridRefs.current[playerId] = node)}
-                />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      <div className="w-full flex-grow overflow-auto p-4 pb-24">
+                {(() => {
+                    const isDM = campaign?.dmId === user?.uid;
+                    const dndModifiers = isDM ? [restrictToWindowEdges] : [restrictToParentElement];
+                    return (
+                        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} modifiers={dndModifiers} collisionDetection={pointerWithin}>
+                            <div className="space-y-8">
+                                {Object.entries(inventories).map(([playerId, items]) => (
+                                    <div key={playerId} className="bg-gray-800 rounded-lg overflow-hidden">
+                                        <button onClick={() => toggleInventory(playerId)} className="w-full p-3 text-left bg-gray-700 hover:bg-gray-600 focus:outline-none flex justify-between items-center">
+                                            <h2 className="text-xl font-bold text-white">{playerProfiles[playerId]?.displayName || playerId}</h2>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-white transition-transform duration-200 ${openInventories[playerId] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                        </button>
+                                        {openInventories[playerId] && (
+                                            <div className="p-2">
+                                                <PlayerInventoryGrid campaignId={campaignId} playerId={playerId} items={items} onContextMenu={handleContextMenu} setGridRef={(node) => (gridRefs.current[playerId] = node)} isDM={isDM} />
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                            <DragOverlay>{activeItem ? <div style={{ width: activeItem.dimensions.width, height: activeItem.dimensions.height }} className={`${activeItem.item.color} rounded-lg text-white font-bold p-1 text-center text-xs sm:text-sm flex items-center justify-center shadow-lg`}>{activeItem.item.name}{activeItem.item.stackable && activeItem.item.quantity > 1 && (<span className="absolute bottom-0 right-1 text-lg font-black" style={{ WebkitTextStroke: '1px black' }}>{activeItem.item.quantity}</span>)}</div> : null}</DragOverlay>
+                        </DndContext>
+                    );
+                })()}
             </div>
-            <DragOverlay>
-            {activeItem ? (
-              <div 
-                style={{
-                  width: activeItem.dimensions.width,
-                  height: activeItem.dimensions.height,
-                }} 
-                className={`${activeItem.item.color} rounded-lg text-white font-bold p-1 text-center text-xs sm:text-sm flex items-center justify-center shadow-lg`}
-              >
-                {activeItem.item.name}
-                {activeItem.item.stackable && activeItem.item.quantity > 1 && (
-                  <span className="absolute bottom-0 right-1 text-lg font-black" style={{ WebkitTextStroke: '1px black' }}>
-                    {activeItem.item.quantity}
-                  </span>
-                )}
-              </div>
-            ) : null}
-          </DragOverlay>
-          </DndContext>
-        );
-      })()}
-      </div>
-      <button
-        onClick={() => setShowAddItem(true)}
-        className="fixed z-30 bottom-8 right-8 bg-green-600 hover:bg-green-700 text-white rounded-full p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-green-400"
-        aria-label="Add Item"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
-      </button>
-    </div>
+            <button onClick={() => setShowAddItem(true)} className="fixed z-30 bottom-8 right-8 bg-green-600 hover:bg-green-700 text-white rounded-full p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-green-400" aria-label="Add Item">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+            </button>
+        </div>
   );
 }

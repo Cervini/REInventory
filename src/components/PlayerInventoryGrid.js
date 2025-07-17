@@ -3,16 +3,8 @@ import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import InventoryItem from './InventoryItem';
 
-const GRID_WIDTH = 30;
-const GRID_HEIGHT = 10;
-
-export function getGridHeight() {
-  return GRID_HEIGHT;
-}
-
-export function getGridWidth() {
-  return GRID_WIDTH;
-}
+export const GRID_WIDTH = 30;
+export const GRID_HEIGHT = 10;
 
 export default function PlayerInventoryGrid({ campaignId, playerId, items, onContextMenu, setGridRef, isDM }) {
   
