@@ -40,8 +40,14 @@ export default function PlayerInventoryGrid({ campaignId, playerId, items, onCon
     <div
       ref={combinedRef}
       style={gridStyle}
-      className="w-full h-auto grid bg-gray-700 rounded-lg"
+      className="w-full h-auto grid bg-gray-700 rounded-lg relative"
     >
+      {items.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center text-gray-500 pointer-events-none">
+          <p>Inventory is empty.</p>
+        </div>
+      )}
+
       {Array.from({ length: GRID_WIDTH * GRID_HEIGHT }).map((_, index) => (
         <div key={index} className="bg-gray-800/50 rounded-sm"></div>
       ))}

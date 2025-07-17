@@ -394,6 +394,16 @@ export default function InventoryGrid({ campaignId, user }) {
     return <Spinner />;
   }
 
+  if (!isLoading && Object.keys(inventories).length === 0) {
+    return (
+      <div className="text-center text-gray-400 mt-16 p-4">
+        <h2 className="text-2xl font-bold text-white">This Campaign Is Empty</h2>
+        <p className="mt-2">No player inventories have been created here yet.</p>
+        <p>As the DM, use the "Add Item" button to create an inventory for yourself to get started.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full flex flex-col items-center flex-grow">
       {splittingItem && (

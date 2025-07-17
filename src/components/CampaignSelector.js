@@ -132,6 +132,14 @@ export default function CampaignSelector({ onCampaignSelected }) {
 
   return (
     <div className="w-full max-w-md mx-auto bg-gray-800 shadow-md rounded-lg p-8">
+
+      {!loading && myCampaigns.length === 0 && (
+        <div className="text-center text-gray-400 mb-8 p-4 border border-dashed border-gray-600 rounded-lg">
+          <p>You haven't joined any campaigns yet.</p>
+          <p>Create a new one or join one below to get started!</p>
+        </div>
+      )}
+
       {/* 3. Display the list of existing campaigns */}
       {myCampaigns.length > 0 && (
         <div className="mb-8">
