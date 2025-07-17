@@ -156,7 +156,6 @@ export default function InventoryGrid({ campaignId, user }) {
   };
 
   const handleAddItem = async (itemData, targetPlayerId) => {
-    // Determine the correct player ID to use for both add and edit modes
     const finalPlayerId = itemToEdit ? itemToEdit.playerId : targetPlayerId;
     if (!campaignId || !finalPlayerId) return;
 
@@ -164,48 +163,44 @@ export default function InventoryGrid({ campaignId, user }) {
     const currentItems = inventories[finalPlayerId] || [];
     let newItems;
 
-    // --- EDIT LOGIC ---
     if (itemToEdit) {
       newItems = currentItems.map(i =>
         (i.id === itemToEdit.item.id ? { ...itemToEdit.item, ...itemData } : i)
       );
-    } 
-    // --- ADD LOGIC ---
-    else {
-      // If the new item is stackable, check for an existing stack to merge with
+    } else {
+      let merged = false;
       if (itemData.stackable) {
         const existingItemIndex = currentItems.findIndex(item =>
           item.stackable && item.name.toLowerCase() === itemData.name.toLowerCase()
         );
-
-        // If a matching stack exists, update its quantity
+        
         if (existingItemIndex !== -1) {
-          newItems = [...currentItems]; // Make a mutable copy
+          newItems = [...currentItems];
           const existingItem = newItems[existingItemIndex];
           newItems[existingItemIndex] = {
             ...existingItem,
             quantity: existingItem.quantity + itemData.quantity,
           };
+          merged = true; // Mark that we merged with an existing stack
         }
       }
       
-      // If no merge happened (because item wasn't stackable or no match was found),
-      // add the new item to the array.
-      if (!newItems) {
-        newItems = [...currentItems, itemData];
+      // If no merge happened, we need to find a spot for the new item
+      if (!merged) {
+        const position = findFirstAvailableSlot(currentItems, itemData);
+
+        if (position === null) {
+          alert("Inventory is full. Cannot add new item.");
+          return; // Exit if no space is found
+        }
+        
+        const finalNewItem = { ...itemData, x: position.x, y: position.y };
+        newItems = [...currentItems, finalNewItem];
       }
     }
 
-    // Optimistically update the local state for a snappy UI
-    setInventories(prev => ({
-      ...prev,
-      [finalPlayerId]: newItems,
-    }));
-
-    // Save the final, updated array to Firestore
+    setInventories(prev => ({ ...prev, [finalPlayerId]: newItems }));
     await updateDoc(inventoryDocRef, { items: newItems });
-
-    // Reset editing state after submitting
     setItemToEdit(null);
     setShowAddItem(false);
   };
@@ -224,39 +219,38 @@ export default function InventoryGrid({ campaignId, user }) {
     const { item: originalItem, playerId } = splittingItem;
     const amount = parseInt(splitAmount, 10);
 
-    // Double-check for valid split amount
-    if (isNaN(amount) || amount <= 0 || amount >= originalItem.quantity) {
-      return;
-    }
+    if (isNaN(amount) || amount <= 0 || amount >= originalItem.quantity) return;
 
-    // 1. The original stack with its quantity reduced
     const updatedOriginalItem = {
       ...originalItem,
       quantity: originalItem.quantity - amount,
     };
 
-    // 2. The new stack with the split-off quantity
+    // Before creating the new item, check if there's space for it
+    const tempNewItem = { ...originalItem, w: originalItem.w, h: originalItem.h };
+    const position = findFirstAvailableSlot(inventories[playerId] || [], tempNewItem);
+
+    if (position === null) {
+      alert("No space in inventory to split the stack!");
+      return;
+    }
+
+    // Now create the new item with the found position
     const newItem = {
       ...originalItem,
-      id: crypto.randomUUID(), // Must have a new, unique ID
+      id: crypto.randomUUID(),
       quantity: amount,
-      x: 0, // Place at the top-left corner by default
-      y: 0,
+      x: position.x,
+      y: position.y,
     };
 
-    // 3. Update the items array
     const currentItems = inventories[playerId] || [];
     const newItems = currentItems.map(i => 
       (i.id === originalItem.id ? updatedOriginalItem : i)
     );
     newItems.push(newItem);
 
-    // 4. Update local state and Firestore
-    setInventories(prev => ({
-      ...prev,
-      [playerId]: newItems,
-    }));
-
+    setInventories(prev => ({ ...prev, [playerId]: newItems }));
     const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', playerId);
     await updateDoc(inventoryDocRef, { items: newItems });
   };
