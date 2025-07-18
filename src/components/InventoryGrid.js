@@ -604,21 +604,8 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
                     {playerProfiles[playerId]?.displayName || playerId}
                   </h2>
                   {/* Icon size reduced from h-6 w-6 to h-5 w-5 */}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className={`h-5 w-5 text-white transition-transform duration-200 ${
-                      openInventories[playerId] ? "rotate-180" : ""
-                    }`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-white transition-transform duration-200 ${ openInventories[playerId] ? "rotate-180" : "" }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
                   </svg>
                 </button>
 
@@ -674,10 +661,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
             >
               {activeItem.item.name}
               {activeItem.item.stackable && activeItem.item.quantity > 1 && (
-                <span
-                  className="absolute bottom-0 right-1 text-lg font-black"
-                  style={{ WebkitTextStroke: "1px black" }}
-                >
+                <span className="absolute bottom-0 right-1 text-lg font-black" style={{ WebkitTextStroke: "1px black" }}>
                   {activeItem.item.quantity}
                 </span>
               )}
@@ -687,8 +671,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
       </DndContext>
       <button
         onClick={() => setShowAddItem(true)}
-        className="fixed z-30 bottom-8 right-8 bg-green-600 hover:bg-green-700 text-white rounded-full p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-green-400"
-        aria-label="Add Item"
+        className="fixed z-30 bottom-8 right-8 bg-green-600 hover:bg-green-700 text-white rounded-full p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-green-400" aria-label="Add Item"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>

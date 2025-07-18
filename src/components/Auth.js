@@ -1,19 +1,15 @@
 import React, { useState } from 'react';
 import { db, auth } from '../firebase';
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword 
-} from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import toast from 'react-hot-toast';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
-    setError(''); // Clear previous errors
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -22,22 +18,24 @@ export default function Auth() {
         email: user.email,
         displayName: user.email.split('@')[0], // Use email prefix as default name
         createdAt: serverTimestamp(),
-        gridWidth: 20,
-        gridHeight: 20,
+        gridWidth: 30,
+        gridHeight: 10,
       });
     } catch (err) {
-      setError(err.message); // Display any errors from Firebase
+      toast.error(err.message);
+    } finally {
+      // This block runs whether the signup succeeds or fails
+      setLoading(false);
     }
   };
 
   const handleSignIn = async () => {
-    setError('');
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       // The user is now signed in.
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false); // Re-enable buttons
     }
@@ -73,23 +71,22 @@ export default function Auth() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
-        {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
         <div className="flex items-center justify-between">
           <button
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-            type="button"
-            onClick={handleSignIn}
-            disabled={loading}
-          >
-            Sign In
-          </button>
-          <button
-            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed"
             type="button"
             onClick={handleSignUp}
             disabled={loading}
           >
-            Sign Up
+            {loading ? '...' : 'Sign Up'}
+          </button>
+          <button
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+            onClick={handleSignIn}
+            disabled={loading}
+          >
+            {loading ? '...' : 'Sign In'}
           </button>
         </div>
       </div>
