@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { doc, updateDoc, arrayRemove, writeBatch } from "firebase/firestore";
 import { db } from '../firebase';
@@ -26,6 +26,67 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
   const [openInventories, setOpenInventories] = useState({});
   
   const gridRefs = useRef({});
+
+  // This new effect handles moving out-of-bounds items after a grid resize
+  useEffect(() => {
+    // We only want this to run when the profile has loaded and isn't the initial default
+    if (!userProfile || !user || isLoading || !campaignId) {
+      return;
+    }
+
+    // Use a functional update to safely access the latest inventories state
+    setInventories(prevInventories => {
+      const myCurrentInventory = prevInventories[user.uid];
+
+      // If there's no inventory for this user yet, do nothing.
+      if (!myCurrentInventory) {
+        return prevInventories;
+      }
+
+      const newGridWidth = userProfile.gridWidth;
+      const newGridHeight = userProfile.gridHeight;
+
+      const itemsToMove = [];
+      const itemsToKeep = [];
+
+      (myCurrentInventory.gridItems || []).forEach(item => {
+        if (outOfBounds(item.x, item.y, item, newGridWidth, newGridHeight)) {
+          const { x, y, ...trayItem } = item;
+          itemsToMove.push(trayItem);
+        } else {
+          itemsToKeep.push(item);
+        }
+      });
+
+      // If we found items to move, calculate the new state and update Firestore
+      if (itemsToMove.length > 0) {
+        const newTrayItems = [...(myCurrentInventory.trayItems || []), ...itemsToMove];
+        const newGridItems = itemsToKeep;
+
+        const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', user.uid);
+        updateDoc(inventoryDocRef, {
+          gridItems: newGridItems,
+          trayItems: newTrayItems,
+        }).then(() => {
+          toast.success(`${itemsToMove.length} item(s) moved to your tray due to the grid resize.`);
+        });
+
+        // Return the new state for inventories
+        return {
+          ...prevInventories,
+          [user.uid]: {
+            ...myCurrentInventory,
+            gridItems: newGridItems,
+            trayItems: newTrayItems,
+          }
+        };
+      }
+      
+      // If no items were moved, return the state unchanged
+      return prevInventories;
+    });
+
+  }, [userProfile, user, campaignId, isLoading, setInventories]);
 
   const handleContextMenu = (event, item, playerId) => {
     // We can now safely assume 'event' exists, so we remove the '?'
