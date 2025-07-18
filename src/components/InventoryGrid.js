@@ -1,164 +1,31 @@
-import React, { useState, useEffect, useRef } from "react";
-import toast from "react-hot-toast";
-import { doc, onSnapshot, updateDoc, arrayRemove, getDoc, collection, query, where, documentId, getDocs, writeBatch } from "firebase/firestore";
-import { db } from "../firebase";
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin } from "@dnd-kit/core";
-import { restrictToParentElement, restrictToWindowEdges } from "@dnd-kit/modifiers";
-import PlayerInventoryGrid from "./PlayerInventoryGrid";
-import AddItem from "./AddItem";
-import ContextMenu from "./ContextMenu";
-import SplitStack from "./SplitStack";
-import Spinner from "./Spinner";
-import ItemTray from "./ItemTray";
-
-function outOfBounds(X, Y, item, gridWidth, gridHeight) {
-  if (X < 0 || X > gridWidth - item.w || Y < 0 || Y > gridHeight - item.h)
-    return true;
-  return false;
-}
-
-function occupiedTiles(X, Y, W, H) {
-  let set = new Set();
-  for (let i = 0; i < W; i++)
-    for (let j = 0; j < H; j++) set.add(`${X + i},${Y + j}`);
-  return set;
-}
-
-function onOtherItem(X, Y, activeItem, passiveItem) {
-  let set1 = occupiedTiles(X, Y, activeItem.w, activeItem.h);
-  let set2 = occupiedTiles(passiveItem.x, passiveItem.y, passiveItem.w, passiveItem.h);
-  for (const tile of set1) {
-    if (set2.has(tile)) return true;
-  }
-  return false;
-}
-
-function findFirstAvailableSlot(items, newItem, gridWidth, gridHeight) {
-  for (let y = 0; y <= gridHeight - newItem.h; y++) {
-    for (let x = 0; x <= gridWidth - newItem.w; x++) {
-      const isColliding = items.some((existingItem) =>
-        onOtherItem(x, y, newItem, existingItem)
-      );
-      if (!isColliding) {
-        return { x, y };
-      }
-    }
-  }
-  return null;
-}
+import React, { useState, useRef } from 'react';
+import toast from 'react-hot-toast';
+import { doc, updateDoc, arrayRemove, writeBatch } from "firebase/firestore";
+import { db } from '../firebase';
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
+import { restrictToParentElement, restrictToWindowEdges } from '@dnd-kit/modifiers';
+import PlayerInventoryGrid from './PlayerInventoryGrid';
+import { findFirstAvailableSlot, onOtherItem, outOfBounds } from '../utils/gridUtils'; // Import from utils
+import { useCampaignData } from '../hooks/useCampaignData'; // Import the custom hook
+import AddItem from './AddItem';
+import ContextMenu from './ContextMenu';
+import SplitStack from './SplitStack';
+import Spinner from './Spinner';
+import ItemTray from './ItemTray';
 
 export default function InventoryGrid({ campaignId, user, userProfile }) {
-  const [inventories, setInventories] = useState({});
-  const [campaign, setCampaign] = useState(null);
+  
+  const { inventories, setInventories, campaign, playerProfiles, isLoading } = useCampaignData(campaignId, user, userProfile);
+
+  // State for UI interactions remains here
   const [showAddItem, setShowAddItem] = useState(false);
-  const [contextMenu, setContextMenu] = useState({
-    visible: false,
-    position: null,
-    item: null,
-    playerId: null, // We now need to know which player's item was clicked
-  });
-  const [playerProfiles, setPlayerProfiles] = useState({});
+  const [contextMenu, setContextMenu] = useState({ visible: false, position: null, item: null, playerId: null, actions: [] });
   const [itemToEdit, setItemToEdit] = useState(null);
   const [splittingItem, setSplittingItem] = useState(null);
   const [activeItem, setActiveItem] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [openInventories, setOpenInventories] = useState({});
-
+  
   const gridRefs = useRef({});
-
-  useEffect(() => {
-    // This effect now opens the current user's inventory by default
-    if (user?.uid) {
-      setOpenInventories({ [user.uid]: true });
-    }
-  }, [user?.uid]);
-
-  // Data fetching logic remains the same
-  useEffect(() => {
-    if (!campaignId || !user) return;
-
-    setIsLoading(true); // Set loading to true when fetching starts
-
-    const fetchData = async () => {
-      const campaignDocRef = doc(db, "campaigns", campaignId);
-      const campaignSnap = await getDoc(campaignDocRef);
-
-      if (!campaignSnap.exists()) {
-        console.error("Campaign not found!");
-        return;
-      }
-
-      const campaignData = campaignSnap.data();
-      setCampaign(campaignData);
-
-      // Fetch the profiles for all players in the campaign
-      if (campaignData.players && campaignData.players.length > 0) {
-        const profilesQuery = query(
-          collection(db, "users"),
-          where(documentId(), "in", campaignData.players)
-        );
-        const querySnapshot = await getDocs(profilesQuery);
-        const profiles = {};
-        querySnapshot.forEach((doc) => {
-          profiles[doc.id] = doc.data();
-        });
-        setPlayerProfiles(profiles);
-      }
-
-      const isDM = campaignData.dmId === user.uid;
-      if (isDM) {
-        const inventoriesColRef = collection(
-          db,
-          "campaigns",
-          campaignId,
-          "inventories"
-        );
-        const unsubscribe = onSnapshot(inventoriesColRef, (snapshot) => {
-          const allInventories = {};
-          snapshot.forEach((doc) => {
-            allInventories[doc.id] = {
-              gridItems: doc.data().gridItems || [],
-              trayItems: doc.data().trayItems || [],
-            };
-          });
-          setInventories(allInventories);
-        });
-        return unsubscribe;
-      } else {
-        const inventoryDocRef = doc(
-          db,
-          "campaigns",
-          campaignId,
-          "inventories",
-          user.uid
-        );
-        const unsubscribe = onSnapshot(inventoryDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setInventories({
-              [user.uid]: {
-                gridItems: docSnap.data().gridItems || [],
-                trayItems: docSnap.data().trayItems || [],
-              },
-            });
-          }
-        });
-        return unsubscribe;
-      }
-    };
-    const unsubscribePromise = fetchData().finally(() => setIsLoading(false));
-    return () => {
-      unsubscribePromise.then((unsubscribe) => unsubscribe && unsubscribe());
-    };
-  }, [campaignId, user]);
-
-  useEffect(() => {
-    if (userProfile && user) {
-      setPlayerProfiles((prevProfiles) => ({
-        ...prevProfiles,
-        [user.uid]: userProfile,
-      }));
-    }
-  }, [userProfile, user]); // Re-runs whenever your profile changes
 
   const handleContextMenu = (event, item, playerId) => {
     // We can now safely assume 'event' exists, so we remove the '?'
@@ -417,7 +284,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
           (i) => i.id !== item.id
         );
         const {x, y, ...trayItem} = item;
-        const newEndTrayItems = [...endInventory.trayItems, item];
+        const newEndTrayItems = [...endInventory.trayItems, trayItem];
 
         setInventories((prev) => ({
           ...prev,
@@ -823,19 +690,8 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
         className="fixed z-30 bottom-8 right-8 bg-green-600 hover:bg-green-700 text-white rounded-full p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-green-400"
         aria-label="Add Item"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 4v16m8-8H4"
-          />
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
       </button>
     </div>
