@@ -3,10 +3,7 @@ import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import InventoryItem from './InventoryItem';
 
-export const GRID_WIDTH = 30;
-export const GRID_HEIGHT = 10;
-
-export default function PlayerInventoryGrid({ campaignId, playerId, items, onContextMenu, setGridRef, isDM }) {
+export default function PlayerInventoryGrid({ campaignId, playerId, items, onContextMenu, setGridRef, isDM, gridWidth, gridHeight }) {
   
   // 2. Make this component a droppable zone, identified by the playerId
   const { setNodeRef } = useDroppable({
@@ -19,9 +16,9 @@ export default function PlayerInventoryGrid({ campaignId, playerId, items, onCon
     };
 
   const gridStyle = {
-    gridTemplateColumns: `repeat(${GRID_WIDTH}, 1fr)`,
-    gridTemplateRows: `repeat(${GRID_HEIGHT}, 1fr)`,
-    aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}`,
+    gridTemplateColumns: `repeat(${gridWidth}, 1fr)`,
+    gridTemplateRows: `repeat(${gridHeight}, 1fr)`,
+    aspectRatio: `${gridWidth} / ${gridHeight}`,
     gap: '1px',
   };
 
@@ -40,7 +37,7 @@ export default function PlayerInventoryGrid({ campaignId, playerId, items, onCon
         </div>
       )}
 
-      {Array.from({ length: GRID_WIDTH * GRID_HEIGHT }).map((_, index) => (
+      {Array.from({ length: gridWidth * gridHeight }).map((_, index) => (
         <div key={index} className="bg-gray-800/50 rounded-sm"></div>
       ))}
       

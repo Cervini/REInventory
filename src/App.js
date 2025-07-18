@@ -54,7 +54,7 @@ export default function App() {
       return <CampaignSelector onCampaignSelected={setCampaignId} />;
     }
     if (user && campaignId) {
-      return <InventoryGrid campaignId={campaignId} user={user} />;
+      return <InventoryGrid campaignId={campaignId} user={user} userProfile={userProfile} />;
     }
   };
 
@@ -63,6 +63,10 @@ export default function App() {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000); 
     });
+  };
+
+  const handleBackToCampaigns = () => {
+    setCampaignId(null);
   };
 
   return (
@@ -80,7 +84,7 @@ export default function App() {
       {showSettings && (
         <ProfileSettings 
           user={user}
-          currentDisplayName={userProfile?.displayName}
+          userProfile={userProfile}
           onClose={() => setShowSettings(false)}
         />
       )}
@@ -88,7 +92,14 @@ export default function App() {
         <div className="flex justify-between items-center w-full mb-4">
           
           {/* Left Slot: Campaign Code Popover */}
-          <div>
+          <div className="flex items-center space-x-2">
+            {campaignId && (
+              <button onClick={handleBackToCampaigns} className="p-2 rounded-full hover:bg-gray-700" aria-label="Back to campaigns">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+              </button>
+            )}
             {campaignId && (
               <div className="relative">
                 <button onClick={() => setIsCodeVisible(prev => !prev)} className="p-2 rounded-full hover:bg-gray-700">

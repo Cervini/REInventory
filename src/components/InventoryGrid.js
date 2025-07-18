@@ -4,15 +4,14 @@ import { doc, onSnapshot, updateDoc, arrayRemove, getDoc, collection, query, whe
 import { db } from '../firebase';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin  } from '@dnd-kit/core';
 import { restrictToParentElement, restrictToWindowEdges } from '@dnd-kit/modifiers';
-import { GRID_HEIGHT, GRID_WIDTH } from './PlayerInventoryGrid';
 import PlayerInventoryGrid from './PlayerInventoryGrid';
 import AddItem from './AddItem';
 import ContextMenu from './ContextMenu';
 import SplitStack from './SplitStack';
 import Spinner from './Spinner';
 
-function outOfBounds(X, Y, item) {
-    if (X < 0 || X > GRID_WIDTH - item.w || Y < 0 || Y > GRID_HEIGHT - item.h) return true;
+function outOfBounds(X, Y, item, gridWidth, gridHeight) {
+    if (X < 0 || X > gridWidth - item.w || Y < 0 || Y > gridHeight - item.h) return true;
     return false;
 }
 
@@ -29,9 +28,9 @@ function onOtherItem(X, Y, activeItem, passiveItem) {
     return false;
 }
 
-function findFirstAvailableSlot(items, newItem) {
-    for (let y = 0; y <= GRID_HEIGHT - newItem.h; y++) {
-        for (let x = 0; x <= GRID_WIDTH - newItem.w; x++) {
+function findFirstAvailableSlot(items, newItem, gridWidth, gridHeight) {
+    for (let y = 0; y <= gridHeight - newItem.h; y++) {
+        for (let x = 0; x <= gridWidth - newItem.w; x++) {
             const isColliding = items.some(existingItem =>
                 onOtherItem(x, y, newItem, existingItem)
             );
@@ -43,7 +42,7 @@ function findFirstAvailableSlot(items, newItem) {
     return null;
 }
 
-export default function InventoryGrid({ campaignId, user }) {
+export default function InventoryGrid({ campaignId, user, userProfile }) {
   const [inventories, setInventories] = useState({});
   const [campaign, setCampaign] = useState(null);
   const [showAddItem, setShowAddItem] = useState(false);
@@ -124,6 +123,15 @@ export default function InventoryGrid({ campaignId, user }) {
 
     return () => { unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe()); };
   }, [campaignId, user]);
+
+   useEffect(() => {
+    if (userProfile && user) {
+      setPlayerProfiles(prevProfiles => ({
+        ...prevProfiles,
+        [user.uid]: userProfile
+      }));
+    }
+  }, [userProfile, user]); // Re-runs whenever your profile changes
 
   const handleContextMenu = (event, item, playerId) => {
     // We can now safely assume 'event' exists, so we remove the '?'
@@ -261,20 +269,22 @@ export default function InventoryGrid({ campaignId, user }) {
     const { active } = event;
     const ownerId = active.data.current?.ownerId;
     const item = active.data.current?.item;
-
-    // Find the specific grid element the drag started in
     const gridElement = gridRefs.current[ownerId];
 
-    // Guard clause in case something goes wrong
     if (!item || !gridElement) {
       setActiveItem(null);
       return;
     }
 
-    // Calculate the cell size of that specific grid on the fly
+    // Get the specific grid dimensions for this player
+    const playerProfile = playerProfiles[ownerId];
+    const gridWidth = playerProfile?.gridWidth || 30;
+    const gridHeight = playerProfile?.gridHeight || 10;
+
+    // Calculate the cell size using the correct dimensions
     const cellSize = {
-      width: gridElement.offsetWidth / GRID_WIDTH,
-      height: gridElement.offsetHeight / GRID_HEIGHT,
+      width: gridElement.offsetWidth / gridWidth,
+      height: gridElement.offsetHeight / gridHeight,
     };
 
     // Set the active item for the DragOverlay with our calculated dimensions
@@ -294,78 +304,82 @@ export default function InventoryGrid({ campaignId, user }) {
   const handleDragEnd = async (event) => {
     setActiveItem(null);
     const { active, over, delta } = event;
+
     const startPlayerId = active.data.current?.ownerId;
     const endPlayerId = over?.id;
     const item = active.data.current?.item;
 
     if (!endPlayerId || !startPlayerId || !item) return;
 
-    // --- Scenario 1: Repositioning item (No changes here) ---
+    // Get the grid dimensions for the source and destination inventories
+    const startPlayerProfile = playerProfiles[startPlayerId];
+    const startGridWidth = startPlayerProfile?.gridWidth || 30;
+    const startGridHeight = startPlayerProfile?.gridHeight || 10;
+    
+    // --- Scenario 1: Repositioning item within the same grid ---
     if (startPlayerId === endPlayerId) {
       const gridElement = gridRefs.current[startPlayerId];
       if (!gridElement) return;
+
       const cellSize = {
-        width: gridElement.offsetWidth / GRID_WIDTH,
-        height: gridElement.offsetHeight / GRID_HEIGHT,
+        width: gridElement.offsetWidth / startGridWidth,
+        height: gridElement.offsetHeight / startGridHeight,
       };
+
       const newX = Math.round((item.x * cellSize.width + delta.x) / cellSize.width);
       const newY = Math.round((item.y * cellSize.height + delta.y) / cellSize.height);
+
       const currentItems = inventories[startPlayerId] || [];
-      if (outOfBounds(newX, newY, item)) return;
+      if (outOfBounds(newX, newY, item, startGridWidth, startGridHeight)) return;
+      
       const isColliding = currentItems.some(other => (other.id !== item.id) && onOtherItem(newX, newY, item, other));
       if (isColliding) return;
+      
       const newItems = currentItems.map(i => (i.id === item.id ? { ...i, x: newX, y: newY } : i));
+      
       setInventories(prev => ({ ...prev, [startPlayerId]: newItems }));
       const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', startPlayerId);
       await updateDoc(inventoryDocRef, { items: newItems });
     }
-    // --- Scenario 2: Transferring item (All new logic) ---
+    // --- Scenario 2: Transferring item to a different grid ---
     else {
+      const endPlayerProfile = playerProfiles[endPlayerId];
+      const endGridWidth = endPlayerProfile?.gridWidth || 30;
+      const endGridHeight = endPlayerProfile?.gridHeight || 10;
+
       const startItems = inventories[startPlayerId] || [];
       const endItems = inventories[endPlayerId] || [];
       const endGridElement = gridRefs.current[endPlayerId];
       if (!endGridElement) return;
 
-      // Calculate the cell size of the DESTINATION grid
       const endCellSize = {
-        width: endGridElement.offsetWidth / GRID_WIDTH,
-        height: endGridElement.offsetHeight / GRID_HEIGHT,
+        width: endGridElement.offsetWidth / endGridWidth,
+        height: endGridElement.offsetHeight / endGridHeight,
       };
       
-      // Calculate where the cursor dropped relative to the destination grid
       const endGridRect = endGridElement.getBoundingClientRect();
       const dropX = active.rect.current.translated.left - endGridRect.left;
       const dropY = active.rect.current.translated.top - endGridRect.top;
       
-      // Convert pixel drop position to grid coordinates
       let newX = Math.round(dropX / endCellSize.width);
       let newY = Math.round(dropY / endCellSize.height);
       
       let finalPosition = { x: newX, y: newY };
       
-      // Check if this drop position is valid
-      if (outOfBounds(newX, newY, item) || endItems.some(other => onOtherItem(newX, newY, item, other))) {
-        // If not, find the first available slot
-        finalPosition = findFirstAvailableSlot(endItems, item);
+      if (outOfBounds(newX, newY, item, endGridWidth, endGridHeight) || endItems.some(other => onOtherItem(newX, newY, item, other))) {
+        finalPosition = findFirstAvailableSlot(endItems, item, endGridWidth, endGridHeight);
       }
 
-      // If there's no room at all, cancel the transfer
       if (finalPosition === null) {
         toast.error("Destination inventory is full!");
         return;
       }
 
-      // Create the new item with its final position
       const newItem = { ...item, x: finalPosition.x, y: finalPosition.y };
-      
       const newStartItems = startItems.filter(i => i.id !== item.id);
       const newEndItems = [...endItems, newItem];
 
-      setInventories(prev => ({
-        ...prev,
-        [startPlayerId]: newStartItems,
-        [endPlayerId]: newEndItems,
-      }));
+      setInventories(prev => ({ ...prev, [startPlayerId]: newStartItems, [endPlayerId]: newEndItems }));
 
       const batch = writeBatch(db);
       const startInventoryRef = doc(db, 'campaigns', campaignId, 'inventories', startPlayerId);
@@ -448,8 +462,13 @@ export default function InventoryGrid({ campaignId, user }) {
                     const dndModifiers = isDM ? [restrictToWindowEdges] : [restrictToParentElement];
                     return (
                         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} modifiers={dndModifiers} collisionDetection={pointerWithin}>
-                            <div className="space-y-8">
-                                {Object.entries(inventories).map(([playerId, items]) => (
+                            <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24">
+                                {Object.entries(inventories).map(([playerId, items]) => {
+                                  const profile = playerProfiles[playerId];
+                                  const gridWidth = profile?.gridWidth || 30; // Use profile grid width or default
+                                  const gridHeight = profile?.gridHeight || 10; // Use profile grid height or default
+
+                                  return (
                                     <div key={playerId} className="bg-gray-800 rounded-lg overflow-hidden">
                                         <button onClick={() => toggleInventory(playerId)} className="w-full p-3 text-left bg-gray-700 hover:bg-gray-600 focus:outline-none flex justify-between items-center">
                                             <h2 className="text-xl font-bold text-white">{playerProfiles[playerId]?.displayName || playerId}</h2>
@@ -457,11 +476,20 @@ export default function InventoryGrid({ campaignId, user }) {
                                         </button>
                                         {openInventories[playerId] && (
                                             <div className="p-2">
-                                                <PlayerInventoryGrid campaignId={campaignId} playerId={playerId} items={items} onContextMenu={handleContextMenu} setGridRef={(node) => (gridRefs.current[playerId] = node)} isDM={isDM} />
+                                                <PlayerInventoryGrid 
+                                                campaignId={campaignId} 
+                                                playerId={playerId} 
+                                                items={items} 
+                                                onContextMenu={handleContextMenu} 
+                                                setGridRef={(node) => (gridRefs.current[playerId] = node)} 
+                                                isDM={isDM} 
+                                                gridWidth={gridWidth}
+                                                gridHeight={gridHeight}
+                                                />
                                             </div>
                                         )}
                                     </div>
-                                ))}
+                                )})}
                             </div>
                             <DragOverlay>{activeItem ? <div style={{ width: activeItem.dimensions.width, height: activeItem.dimensions.height }} className={`${activeItem.item.color} rounded-lg text-white font-bold p-1 text-center text-xs sm:text-sm flex items-center justify-center shadow-lg`}>{activeItem.item.name}{activeItem.item.stackable && activeItem.item.quantity > 1 && (<span className="absolute bottom-0 right-1 text-lg font-black" style={{ WebkitTextStroke: '1px black' }}>{activeItem.item.quantity}</span>)}</div> : null}</DragOverlay>
                         </DndContext>

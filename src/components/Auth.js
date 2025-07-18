@@ -22,6 +22,8 @@ export default function Auth() {
         email: user.email,
         displayName: user.email.split('@')[0], // Use email prefix as default name
         createdAt: serverTimestamp(),
+        gridWidth: 20,
+        gridHeight: 20,
       });
     } catch (err) {
       setError(err.message); // Display any errors from Firebase

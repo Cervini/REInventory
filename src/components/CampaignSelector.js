@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 // Import the tools we need from firestore
-import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc, updateDoc, arrayUnion, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc, updateDoc, arrayUnion, query, where, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 
 // This component receives a function from App.js to set the active campaign
@@ -130,6 +130,39 @@ export default function CampaignSelector({ onCampaignSelected }) {
     }
   };
 
+  const handleDeleteCampaign = async (campaignId, campaignName) => {
+    // Show a confirmation dialog before proceeding
+    if (!window.confirm(`Are you sure you want to permanently delete the campaign "${campaignName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const inventoriesRef = collection(db, 'campaigns', campaignId, 'inventories');
+      const inventorySnapshot = await getDocs(inventoriesRef);
+      
+      // Use a batched write to delete all sub-collection documents first
+      const batch = writeBatch(db);
+      inventorySnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+
+      // Now delete the main campaign document
+      await deleteDoc(doc(db, 'campaigns', campaignId));
+
+      // Update the UI locally to remove the campaign from the list
+      setMyCampaigns(prev => prev.filter(c => c.id !== campaignId));
+      toast.success(`Campaign "${campaignName}" deleted.`);
+
+    } catch (error) {
+      console.error("Error deleting campaign: ", error);
+      toast.error("Failed to delete campaign.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-md mx-auto bg-gray-800 shadow-md rounded-lg p-8">
 
@@ -146,13 +179,28 @@ export default function CampaignSelector({ onCampaignSelected }) {
           <h2 className="text-xl text-center font-bold mb-4 text-white">Your Campaigns</h2>
           <div className="space-y-2">
             {myCampaigns.map((campaign) => (
-              <button
-                key={campaign.id}
-                onClick={() => onCampaignSelected(campaign.id)}
-                className="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline"
-              >
-                {campaign.name}
-              </button>
+              // 3. Update the campaign list to include the delete button
+              <div key={campaign.id} className="flex items-center space-x-2">
+                <button
+                  onClick={() => onCampaignSelected(campaign.id)}
+                  className="flex-grow bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline"
+                >
+                  {campaign.name}
+                </button>
+                {/* Only show delete button if the user is the DM */}
+                {auth.currentUser?.uid === campaign.dmId && (
+                  <button
+                    onClick={() => handleDeleteCampaign(campaign.id, campaign.name)}
+                    disabled={loading}
+                    className="p-3 bg-red-800 hover:bg-red-700 text-white rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
+                    aria-label={`Delete campaign ${campaign.name}`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             ))}
           </div>
           <div className="text-gray-500 w-full text-center pt-6">--- OR ---</div>

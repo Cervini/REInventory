@@ -53,17 +53,15 @@ No installation required - just open in your browser and start organizing your p
 
 REInventory v1.0.0 is just the beginning! Future updates will include:
 
-- Screenshots and visual documentation
-- Enhanced item customization
-- Better GUI
-- Custom Inventory Size
-- Different shape items
-- Trade between players
-- Advanced options for backpack structure
-- Advanced filtering and search
-- Mobile responsiveness improvements
-- Export/import functionality
-- And much more based on community feedback!
+1. Trade between players
+2. Enhanced item manipolation
+3. Better GUI
+4. Advanced filtering and search
+5. Advanced options for backpack structure
+6. Different shape items
+7. Export/import functionality
+8. Screenshots and visual documentation
+9. And much more based on community feedback!
 
 ## 🤝 Contributing
 
