@@ -18,7 +18,7 @@ export default function SplitStack({ item, onClose, onSplit }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-20">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-xs text-white">
+      <div className="bg-surface p-6 rounded-lg shadow-xl w-full max-w-xs text-text-base">
         <h3 className="text-xl font-bold mb-4">Split Stack</h3>
         <p className="text-sm mb-2">
           Item: <span className="font-semibold">{item.name}</span>
@@ -35,13 +35,13 @@ export default function SplitStack({ item, onClose, onSplit }) {
               max={item.quantity - 1}
               value={splitAmount}
               onChange={(e) => setSplitAmount(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              className="shadow appearance-none border rounded w-full py-2 px-3 bg-background leading-tight focus:outline-none focus:shadow-outline"
             />
         </div>
 
         <div className="flex justify-end space-x-4">
-            <button type="button" onClick={onClose} className="bg-gray-600 hover:bg-gray-700 font-bold py-2 px-4 rounded">Cancel</button>
-            <button type="button" onClick={handleSplit} className="bg-blue-500 hover:bg-blue-700 font-bold py-2 px-4 rounded">Split</button>
+            <button type="button" onClick={onClose} className="bg-gray-600 hover:bg-background font-bold py-2 px-4 rounded">Cancel</button>
+            <button type="button" onClick={handleSplit} className="bg-primary hover:bg-primary/80 font-bold py-2 px-4 rounded">Split</button>
         </div>
       </div>
     </div>

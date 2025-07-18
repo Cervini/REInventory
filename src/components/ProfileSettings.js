@@ -37,7 +37,7 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-20">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-sm">
+      <div className="bg-surface p-6 rounded-lg shadow-xl w-full max-w-sm">
         <h3 className="text-xl font-bold mb-4">Profile Settings</h3>
         <form onSubmit={handleSave}>
           <div className="mb-4">
@@ -46,24 +46,24 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              className="shadow appearance-none border rounded w-full py-2 px-3 bg-background leading-tight focus:outline-none focus:shadow-outline"
             />
           </div>
           <div className="flex space-x-4 mb-4">
             <div className="w-1/2">
               <label className="block text-sm font-bold mb-2">Grid Width</label>
-              <input type="number" min="10" value={gridWidth} onChange={(e) => setGridWidth(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight" />
+              <input type="number" min="10" value={gridWidth} onChange={(e) => setGridWidth(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-background leading-tight" />
             </div>
             <div className="w-1/2">
               <label className="block text-sm font-bold mb-2">Grid Height</label>
-              <input type="number" min="5" value={gridHeight} onChange={(e) => setGridHeight(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 leading-tight" />
+              <input type="number" min="5" value={gridHeight} onChange={(e) => setGridHeight(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-background leading-tight" />
             </div>
           </div>
-          <p className="text-xs text-gray-400 mb-4">Warning: Changing grid size may cause items to be out of bounds.</p>
-          {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
+          <p className="text-xs text-text-muted mb-4">Warning: Changing grid size may cause items to be out of bounds.</p>
+          {error && <p className="text-destructive text-xs italic mb-4">{error}</p>}
           <div className="flex justify-end space-x-4">
-            <button type="button" onClick={onClose} disabled={loading} className="bg-gray-600 hover:bg-gray-700 font-bold py-2 px-4 rounded">Cancel</button>
-            <button type="submit" disabled={loading} className="bg-blue-500 hover:bg-blue-700 font-bold py-2 px-4 rounded">
+            <button type="button" onClick={onClose} disabled={loading} className="bg-gray-600 hover:bg-background font-bold py-2 px-4 rounded">Cancel</button>
+            <button type="submit" disabled={loading} className="bg-primary hover:bg-primary/80 font-bold py-2 px-4 rounded">
               {loading ? 'Saving...' : 'Save'}
             </button>
           </div>

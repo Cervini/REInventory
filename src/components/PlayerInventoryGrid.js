@@ -29,16 +29,16 @@ export default function PlayerInventoryGrid({ campaignId, playerId, items, onCon
     <div
       ref={combinedRef}
       style={gridStyle}
-      className="w-full h-auto grid bg-gray-700 rounded-lg relative"
+      className="w-full h-auto grid bg-background rounded-lg relative"
     >
       {items.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center text-gray-500 pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center text-text-muted pointer-events-none">
           <p>Inventory is empty.</p>
         </div>
       )}
 
       {Array.from({ length: gridWidth * gridHeight }).map((_, index) => (
-        <div key={index} className="bg-gray-800/50 rounded-sm"></div>
+        <div key={index} className="bg-surface/50 rounded-sm"></div>
       ))}
       
       {items.map(item => (

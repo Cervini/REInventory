@@ -95,14 +95,14 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM, sou
       {/* The long-press for the context menu is attached here. */}
       <div
         {...bind()}
-        className={`${item.color} w-full h-full rounded-lg text-white font-bold p-1 text-center text-xs sm:text-sm cursor-pointer break-words overflow-hidden flex items-center justify-center select-none`}
+        className={`${item.color} w-full h-full rounded-lg text-text-base font-bold p-1 text-center text-xs sm:text-sm cursor-pointer break-words overflow-hidden flex items-center justify-center select-none`}
       >
         {/* The name is now centered across the full width of the item */}
         {size.width > TEXT_VISIBILITY_THRESHOLD.width && size.height > TEXT_VISIBILITY_THRESHOLD.height && item.name}
         
         {/* The quantity display */}
         {item.stackable && item.quantity > 1 && size.width > TEXT_VISIBILITY_THRESHOLD.width && size.height > TEXT_VISIBILITY_THRESHOLD.height && (
-          <span className="absolute bottom-0 right-1 text-lg font-black text-white" style={{ WebkitTextStroke: '1px black' }}>
+          <span className="absolute bottom-0 right-1 text-lg font-black text-text-base" style={{ WebkitTextStroke: '1px black' }}>
             {item.quantity}
           </span>
         )}

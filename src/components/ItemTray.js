@@ -11,10 +11,10 @@ export default function ItemTray({ campaignId, playerId, items, onContextMenu, i
     });
 
     return (
-        <div className="bg-gray-900/70 rounded-lg p-2 mt-2">
+        <div className="bg-background/70 rounded-lg p-2 mt-2">
             <div ref={setNodeRef} className="flex space-x-2 overflow-x-auto h-24 items-center">
                 {items.length === 0 && (
-                <p className="text-gray-500 text-sm px-4">Tray is empty.</p>
+                <p className="text-text-muted text-sm px-4">Tray is empty.</p>
                 )}
                 {items.map(item => (
                 <div key={item.id} className="w-20 h-20 flex-shrink-0">

@@ -43,14 +43,14 @@ export default function Auth() {
 
   return (
     <div className="w-full max-w-xs mx-auto">
-      <div className="bg-gray-800 shadow-md rounded-lg px-8 pt-6 pb-8 mb-4">
-        <h2 className="text-2xl text-center font-bold mb-6 text-white">Login / Sign Up</h2>
+      <div className="bg-surface shadow-lg rounded-lg px-8 pt-6 pb-8 mb-4 border-2 border-accent/50">
+        <h2 className="text-3xl text-center font-bold mb-6 text-text-base font-fantasy">Login / Sign Up</h2>
         <div className="mb-4">
-          <label className="block text-gray-400 text-sm font-bold mb-2" htmlFor="email">
+          <label className="block text-text-muted text-sm font-bold mb-2" htmlFor="email">
             Email
           </label>
           <input
-            className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:shadow-outline"
+            className="shadow appearance-none border border-surface/50 rounded w-full py-2 px-3 bg-background text-text-base leading-tight focus:outline-none focus:ring-2 focus:ring-accent"
             id="email"
             type="email"
             placeholder="Email"
@@ -59,11 +59,11 @@ export default function Auth() {
           />
         </div>
         <div className="mb-6">
-          <label className="block text-gray-400 text-sm font-bold mb-2" htmlFor="password">
+          <label className="block text-text-muted text-sm font-bold mb-2" htmlFor="password">
             Password
           </label>
           <input
-            className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 text-white mb-3 leading-tight focus:outline-none focus:shadow-outline"
+            className="shadow appearance-none border border-surface/50 rounded w-full py-2 px-3 bg-background text-text-base leading-tight focus:outline-none focus:ring-2 focus:ring-accent"
             id="password"
             type="password"
             placeholder="******************"
@@ -73,7 +73,7 @@ export default function Auth() {
         </div>
         <div className="flex items-center justify-between">
           <button
-            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
             type="button"
             onClick={handleSignUp}
             disabled={loading}
@@ -81,7 +81,7 @@ export default function Auth() {
             {loading ? '...' : 'Sign Up'}
           </button>
           <button
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
             type="button"
             onClick={handleSignIn}
             disabled={loading}

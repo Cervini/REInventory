@@ -1,5 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&display=swap');
+
+:root {
+  --color-background: 220 15% 10%;   /* Deep Charcoal */
+  --color-surface: 220 15% 18%;      /* Lighter Slate/Stone for cards */
+  --color-text-base: 210 15% 90%;   /* Bone White / Soft Silver */
+  --color-text-muted: 210 10% 60%;  /* Muted Gray for secondary text */
+  --color-accent: 45 50% 60%;       /* Old Gold for highlights */
+  --color-primary: 45 50% 60%;      /* Using Old Gold for primary actions */
+  --color-destructive: 0 30% 35%;  /* Deep, desaturated Burgundy/Red */
+  --color-confirm: 45 50% 60%;       /* Using Old Gold for confirm actions */
+}
+
 body {
-  background-color: #111827; /* Tailwind's gray-900 */
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  background-color: theme('colors.background');
+  color: theme('colors.text-base');
 }
 
 @tailwind base;

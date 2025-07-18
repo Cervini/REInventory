@@ -520,8 +520,8 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
 
   if (!isLoading && Object.keys(inventories).length === 0) {
     return (
-      <div className="text-center text-gray-400 mt-16 p-4">
-        <h2 className="text-2xl font-bold text-white">
+      <div className="text-center text-text-muted mt-16 p-4">
+        <h2 className="text-2xl font-bold text-text-base">
           This Campaign Is Empty
         </h2>
         <p className="mt-2">
@@ -592,19 +592,19 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
             return (
               <div
                 key={playerId}
-                className="bg-gray-800 rounded-lg overflow-hidden"
+                className="bg-surface rounded-lg overflow-hidden"
               >
                 <button
                   onClick={() => toggleInventory(playerId)}
                   // Padding reduced from p-3 to p-2
-                  className="w-full p-2 text-left bg-gray-700 hover:bg-gray-600 focus:outline-none flex justify-between items-center"
+                  className="w-full p-2 text-left bg-surface hover:bg-surface/80 focus:outline-none flex justify-between items-center"
                 >
                   {/* Font size reduced from text-xl to text-lg */}
-                  <h2 className="text-lg font-bold text-white">
+                  <h2 className="text-lg font-bold text-text-base">
                     {playerProfiles[playerId]?.displayName || playerId}
                   </h2>
                   {/* Icon size reduced from h-6 w-6 to h-5 w-5 */}
-                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-white transition-transform duration-200 ${ openInventories[playerId] ? "rotate-180" : "" }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-text-base transition-transform duration-200 ${ openInventories[playerId] ? "rotate-180" : "" }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
                   </svg>
                 </button>
@@ -657,7 +657,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
                 width: activeItem.dimensions.width,
                 height: activeItem.dimensions.height,
               }}
-              className={`${activeItem.item.color} rounded-lg text-white font-bold p-1 text-center text-xs sm:text-sm flex items-center justify-center shadow-lg`}
+              className={`${activeItem.item.color} rounded-lg text-text-base font-bold p-1 text-center text-xs sm:text-sm flex items-center justify-center shadow-lg`}
             >
               {activeItem.item.name}
               {activeItem.item.stackable && activeItem.item.quantity > 1 && (
@@ -671,7 +671,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
       </DndContext>
       <button
         onClick={() => setShowAddItem(true)}
-        className="fixed z-30 bottom-8 right-8 bg-green-600 hover:bg-green-700 text-white rounded-full p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-green-400" aria-label="Add Item"
+        className="fixed z-30 bottom-8 right-8 bg-primary hover:bg-accent hover:text-background text-text-base rounded-full p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-accent" aria-label="Add Item"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
