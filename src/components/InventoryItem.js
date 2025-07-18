@@ -8,12 +8,13 @@ const TEXT_VISIBILITY_THRESHOLD = {
   height: 30,
 };
 
-export default function InventoryItem({ item, onContextMenu, playerId, isDM }) {
+export default function InventoryItem({ item, onContextMenu, playerId, isDM, source }) {
   const {attributes, listeners, setNodeRef, transform, isDragging} = useDraggable({
     id: item.id,
     data: {
       ownerId: playerId,
       item: item,
+      source: source,
     },
   });
 
@@ -53,10 +54,13 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM }) {
     opacity: isDragging ? 0 : 1,
   } : undefined;
 
-  const wrapperStyle = {
-    gridColumn: `${item.x + 1} / span ${item.w}`,
-    gridRow: `${item.y + 1} / span ${item.h}`,
-  };
+  let wrapperStyle = {};
+  if (source === 'grid') {
+    wrapperStyle = {
+      gridColumn: `${item.x + 1} / span ${item.w}`,
+      gridRow: `${item.y + 1} / span ${item.h}`,
+    };
+  }
 
   const bind = useLongPress((event) => {
     onContextMenu(event, item); 
@@ -81,7 +85,7 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM }) {
     <div 
       ref={setRefs} 
       style={{...wrapperStyle, ...style}} 
-      className="relative shadow-[inset_0_0_0_2px_rgba(0,0,0,0.5)] rounded-lg"
+      className={`relative shadow-[inset_0_0_0_2px_rgba(0,0,0,0.5)] rounded-lg ${source === 'tray' ? 'w-full h-full' : ''}`}
       onContextMenu={(e) => onContextMenu(e, item)}
       data-tooltip-id="item-tooltip"
       data-tooltip-html={tooltipContent}

@@ -71,7 +71,8 @@ export default function CampaignSelector({ onCampaignSelected }) {
       
       // We use setDoc to create the document with our specific ID (the user's ID)
       await setDoc(inventoryDocRef, {
-        items: [], // Start with an empty items array
+        gridItems: [], // Formerly "items"
+        trayItems: [], // Add the new tray items array
         ownerId: currentUser.uid
       });
 
@@ -115,7 +116,8 @@ export default function CampaignSelector({ onCampaignSelected }) {
       // New inventory document for the joining player
       const inventoryDocRef = doc(db, "campaigns", code, "inventories", currentUser.uid);
       await setDoc(inventoryDocRef, {
-        items: [],
+        gridItems: [],
+        trayItems: [],
         ownerId: currentUser.uid
       }, { merge: true }); // Use {merge: true} to avoid overwriting if they rejoin
 

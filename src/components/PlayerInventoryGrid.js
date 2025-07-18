@@ -48,6 +48,7 @@ export default function PlayerInventoryGrid({ campaignId, playerId, items, onCon
           onContextMenu={(e, item) => onContextMenu(e, item, playerId)}
           playerId={playerId}
           isDM={isDM}
+          source="grid"
         />
       ))}
     </div>
