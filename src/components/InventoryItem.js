@@ -93,9 +93,11 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM, sou
         onClick={handleClick}
         className={`${item.color} w-full h-full rounded-lg text-text-base font-bold p-1 text-center text-xs sm:text-sm cursor-grab active:cursor-grabbing select-none flex items-center justify-center transition-all duration-200 min-w-0`}
       >
-        <span className="truncate">{item.name}</span>
+        {size.width > TEXT_VISIBILITY_THRESHOLD.width && size.height > TEXT_VISIBILITY_THRESHOLD.height && (
+          <span className="truncate">{item.name}</span>
+        )}
         
-        {item.stackable && item.quantity > 1 && (
+        {item.stackable && item.quantity > 1 && size.width > TEXT_VISIBILITY_THRESHOLD.width && size.height > TEXT_VISIBILITY_THRESHOLD.height && (
           <span className="absolute bottom-0 right-1 text-lg font-black text-text-base" style={{ WebkitTextStroke: '1px hsl(var(--color-background))' }}>
             {item.quantity}
           </span>
