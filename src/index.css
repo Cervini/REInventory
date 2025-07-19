@@ -1,14 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Lato:wght@400;700&display=swap');
 
 :root {
-  --color-background: 220 15% 10%;   /* Deep Charcoal */
-  --color-surface: 220 15% 18%;      /* Lighter Slate/Stone for cards */
-  --color-text-base: 210 15% 90%;   /* Bone White / Soft Silver */
-  --color-text-muted: 210 10% 60%;  /* Muted Gray for secondary text */
-  --color-accent: 45 50% 60%;       /* Old Gold for highlights */
-  --color-primary: 45 50% 60%;      /* Using Old Gold for primary actions */
-  --color-destructive: 0 30% 35%;  /* Deep, desaturated Burgundy/Red */
-  --color-confirm: 45 50% 60%;       /* Using Old Gold for confirm actions */
+  --color-background: 25 10% 12%;   /* Very Dark, Warm Brown/Gray */
+  --color-surface: 25 10% 20%;      /* Dusty Dark Brown for cards/modals */
+  --color-text-base: 40 25% 92%;   /* Desaturated Beige (Off-White) */
+  --color-text-muted: 40 15% 65%;  /* Muted Beige for secondary text */
+  --color-accent: 40 30% 75%;       /* Brighter Beige for highlights */
+  --color-primary: 40 30% 75%;      /* Using the accent beige for primary actions */
+  --color-destructive: 10 30% 40%;  /* Desaturated, Rusty Red for danger */
 }
 
 body {

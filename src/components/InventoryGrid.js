@@ -598,13 +598,14 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
 
   return (
     <div className="w-full flex flex-col items-center flex-grow">
+      {/* --- Modals (Styling has been updated in their own files) --- */}
       {splittingItem && (
         <SplitStack
           item={splittingItem.item}
           onClose={() => setSplittingItem(null)}
           onSplit={(splitAmount) => {
             handleSplitStack(splitAmount);
-            setSplittingItem(null); // Close modal after splitting
+            setSplittingItem(null);
           }}
         />
       )}
@@ -613,16 +614,15 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
           onAddItem={handleAddItem}
           onClose={() => {
             setShowAddItem(false);
-            setItemToEdit(null); // Reset edit state on close
+            setItemToEdit(null);
           }}
           players={Object.keys(inventories)}
           dmId={campaign?.dmId}
           isDM={campaign?.dmId === user?.uid}
           playerProfiles={playerProfiles}
-          itemToEdit={itemToEdit} // Pass the item to be edited
+          itemToEdit={itemToEdit}
         />
       )}
-      {/** Context menu visibility */}
       {contextMenu.visible && (
         <ContextMenu
           menuPosition={contextMenu.position}
@@ -631,6 +631,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
         />
       )}
 
+      {/* --- Main Content --- */}
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
@@ -642,48 +643,42 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
         })()}
         collisionDetection={pointerWithin}
       >
-        {/* Main content area */}
-        <div className={`w-full flex-grow p-4 space-y-8 pb-24 ${!activeItem ? "overflow-y-hidden" : "overflow-y-auto"}`}>
+        <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24">
           {Object.entries(inventories).map(([playerId, inventoryData]) => {
             const profile = playerProfiles[playerId];
             const gridWidth = profile?.gridWidth || 30;
             const gridHeight = profile?.gridHeight || 10;
-            const isDM = campaign?.dmId === playerId;
+            const isPlayerDM = campaign?.dmId === playerId;
 
             return (
               <div
                 key={playerId}
-                className="bg-surface rounded-lg overflow-hidden"
+                className="bg-surface rounded-lg shadow-lg shadow-accent/10 border border-accent/20 overflow-hidden"
               >
                 <button
                   onClick={() => toggleInventory(playerId)}
-                  // Padding reduced from p-3 to p-2
-                  className="w-full p-2 text-left bg-surface hover:bg-surface/80 focus:outline-none flex justify-between items-center"
+                  className="w-full p-2 text-left bg-surface/80 hover:bg-surface/50 focus:outline-none flex justify-between items-center transition-colors duration-200"
                 >
-                  {/* Font size reduced from text-xl to text-lg */}
-                  <h2 className="text-lg font-bold text-text-base">
+                  <h2 className="text-xl font-bold text-accent font-fantasy tracking-wider">
                     {playerProfiles[playerId]?.displayName || playerId}
                   </h2>
-                  {/* Icon size reduced from h-6 w-6 to h-5 w-5 */}
                   <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-text-base transition-transform duration-200 ${ openInventories[playerId] ? "rotate-180" : "" }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
                   </svg>
                 </button>
 
                 {openInventories[playerId] && (
-                  <div className="p-2">
-                    {/* If the user is a DM, ONLY show their tray */}
-                    {isDM ? (
+                  <div className="p-2 bg-background/50">
+                    {isPlayerDM ? (
                       <ItemTray
                         campaignId={campaignId}
                         playerId={playerId}
                         items={inventoryData.trayItems}
                         onContextMenu={handleContextMenu}
-                        isDM={isDM}
+                        isDM={isPlayerDM}
                       />
                     ) : (
                       <>
-                        {/* Players see both their grid and their tray */}
                         <PlayerInventoryGrid
                           campaignId={campaignId}
                           playerId={playerId}
@@ -730,9 +725,11 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
           ) : null}
         </DragOverlay>
       </DndContext>
+      
+      {/* --- Floating Action Button --- */}
       <button
         onClick={() => setShowAddItem(true)}
-        className="fixed z-30 bottom-8 right-8 bg-primary hover:bg-accent hover:text-background text-text-base rounded-full p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-accent" aria-label="Add Item"
+        className="fixed z-30 bottom-8 right-8 bg-primary hover:bg-accent hover:text-background text-text-base rounded-full p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200" aria-label="Add Item"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>

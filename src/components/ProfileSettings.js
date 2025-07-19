@@ -36,34 +36,36 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-20">
-      <div className="bg-surface p-6 rounded-lg shadow-xl w-full max-w-sm">
-        <h3 className="text-xl font-bold mb-4">Profile Settings</h3>
-        <form onSubmit={handleSave}>
-          <div className="mb-4">
-            <label className="block text-sm font-bold mb-2">Display Name</label>
+    <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-20 backdrop-blur-sm">
+      <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-6 rounded-lg shadow-xl w-full max-w-sm">
+        <h3 className="text-2xl font-bold mb-6 font-fantasy text-accent text-center">
+          Profile Settings
+        </h3>
+        <form onSubmit={handleSave} className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold mb-2 text-text-muted">Display Name</label>
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 bg-background leading-tight focus:outline-none focus:shadow-outline"
+              className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"
             />
           </div>
-          <div className="flex space-x-4 mb-4">
+          <div className="flex space-x-4">
             <div className="w-1/2">
-              <label className="block text-sm font-bold mb-2">Grid Width</label>
-              <input type="number" min="10" value={gridWidth} onChange={(e) => setGridWidth(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-background leading-tight" />
+              <label className="block text-sm font-bold mb-2 text-text-muted">Grid Width</label>
+              <input type="number" min="10" value={gridWidth} onChange={(e) => setGridWidth(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200" />
             </div>
             <div className="w-1/2">
-              <label className="block text-sm font-bold mb-2">Grid Height</label>
-              <input type="number" min="5" value={gridHeight} onChange={(e) => setGridHeight(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 bg-background leading-tight" />
+              <label className="block text-sm font-bold mb-2 text-text-muted">Grid Height</label>
+              <input type="number" min="5" value={gridHeight} onChange={(e) => setGridHeight(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200" />
             </div>
           </div>
-          <p className="text-xs text-text-muted mb-4">Warning: Changing grid size may cause items to be out of bounds.</p>
-          {error && <p className="text-destructive text-xs italic mb-4">{error}</p>}
-          <div className="flex justify-end space-x-4">
-            <button type="button" onClick={onClose} disabled={loading} className="bg-gray-600 hover:bg-background font-bold py-2 px-4 rounded">Cancel</button>
-            <button type="submit" disabled={loading} className="bg-primary hover:bg-primary/80 font-bold py-2 px-4 rounded">
+          <p className="text-xs text-text-muted/80 pt-2">Warning: Changing grid size may cause items to be out of bounds.</p>
+          {error && <p className="text-destructive text-sm italic">{error}</p>}
+          <div className="flex justify-end space-x-4 pt-4">
+            <button type="button" onClick={onClose} disabled={loading} className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors duration-200">Cancel</button>
+            <button type="submit" disabled={loading} className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded transition-colors duration-200">
               {loading ? 'Saving...' : 'Save'}
             </button>
           </div>

@@ -14,6 +14,7 @@ module.exports = {
     extend: {
       fontFamily: {
         fantasy: ['Cinzel', 'serif'],
+        sans: ['Lato', 'sans-serif'], // Add this line
       },
       colors: {
         'background': 'hsl(var(--color-background) / <alpha-value>)',

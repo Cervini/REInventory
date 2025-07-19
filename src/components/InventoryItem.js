@@ -4,8 +4,8 @@ import { useLongPress } from 'use-long-press';
 
 const TEXT_VISIBILITY_THRESHOLD = {
   // Text disappears if wrapper's smaller than this
-  width: 30,
-  height: 30,
+  width: 50,
+  height: 50,
 };
 
 export default function InventoryItem({ item, onContextMenu, playerId, isDM, source }) {
@@ -80,42 +80,35 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM, sou
   `;
 
   return (
-    // 1. This is the main container that gets placed on the grid.
-    // It now has the border shadow and rounded corners for a seamless look.
     <div 
       ref={setRefs} 
       style={{...wrapperStyle, ...style}} 
-      className={`relative shadow-[inset_0_0_0_2px_rgba(0,0,0,0.5)] rounded-lg ${source === 'tray' ? 'w-full h-full' : ''}`}
+      className={`relative border border-surface/50 rounded-lg ${source === 'tray' ? 'w-full h-full' : ''}`}
       onContextMenu={(e) => onContextMenu(e, item)}
       data-tooltip-id="item-tooltip"
       data-tooltip-html={tooltipContent}
       data-tooltip-place="top"
     >
-      {/* 2. This is the visible item body. It takes up 100% of the space. */}
-      {/* The long-press for the context menu is attached here. */}
+      {/* Visible item body */}
       <div
         {...bind()}
-        className={`${item.color} w-full h-full rounded-lg text-text-base font-bold p-1 text-center text-xs sm:text-sm cursor-pointer break-words overflow-hidden flex items-center justify-center select-none`}
+        className={`${item.color} w-full h-full rounded-lg text-text-base font-bold p-1 text-center text-xs sm:text-sm cursor-pointer break-words overflow-hidden flex items-center justify-center select-none transition-all duration-200`}
       >
-        {/* The name is now centered across the full width of the item */}
         {size.width > TEXT_VISIBILITY_THRESHOLD.width && size.height > TEXT_VISIBILITY_THRESHOLD.height && item.name}
         
-        {/* The quantity display */}
+        {/* Quantity display */}
         {item.stackable && item.quantity > 1 && size.width > TEXT_VISIBILITY_THRESHOLD.width && size.height > TEXT_VISIBILITY_THRESHOLD.height && (
-          <span className="absolute bottom-0 right-1 text-lg font-black text-text-base" style={{ WebkitTextStroke: '1px black' }}>
+          <span className="absolute bottom-0 right-1 text-lg font-black text-text-base" style={{ WebkitTextStroke: '1px hsl(var(--color-background))' }}>
             {item.quantity}
           </span>
         )}
       </div>
 
-      {/* 3. This is the invisible drag handle. 
-          It's positioned absolutely on top of the right half of the item.
-          The drag listeners are attached here.
-      */}
+      {/* Invisible drag handle */}
       <div
         {...listeners}
         {...attributes}
-        className="absolute top-0 right-0 h-full w-1/2 cursor-grab rounded-r-lg transition-colors duration-200 hover:bg-white/10"
+        className="absolute top-0 right-0 h-full w-1/2 cursor-grab rounded-r-lg transition-colors duration-200 hover:bg-accent/10"
       ></div>
     </div>
   );

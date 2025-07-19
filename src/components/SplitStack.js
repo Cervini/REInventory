@@ -17,31 +17,33 @@ export default function SplitStack({ item, onClose, onSplit }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-20">
-      <div className="bg-surface p-6 rounded-lg shadow-xl w-full max-w-xs text-text-base">
-        <h3 className="text-xl font-bold mb-4">Split Stack</h3>
-        <p className="text-sm mb-2">
-          Item: <span className="font-semibold">{item.name}</span>
-        </p>
-        <p className="text-sm mb-4">
-          Current Quantity: <span className="font-semibold">{item.quantity}</span>
-        </p>
+    <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-20 backdrop-blur-sm">
+      <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-6 rounded-lg shadow-xl w-full max-w-xs text-text-base">
+        <h3 className="text-2xl font-bold mb-4 font-fantasy text-accent text-center">Split Stack</h3>
+        <div className="space-y-2 text-center mb-4">
+            <p className="text-sm text-text-muted">
+              Item: <span className="font-semibold text-text-base">{item.name}</span>
+            </p>
+            <p className="text-sm text-text-muted">
+              Current Quantity: <span className="font-semibold text-text-base">{item.quantity}</span>
+            </p>
+        </div>
         
         <div className="mb-4">
-            <label className="block text-sm font-bold mb-2">Amount for NEW stack:</label>
+            <label className="block text-sm font-bold mb-2 text-text-muted">Amount for NEW stack:</label>
             <input
               type="number"
               min="1"
               max={item.quantity - 1}
               value={splitAmount}
               onChange={(e) => setSplitAmount(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 bg-background leading-tight focus:outline-none focus:shadow-outline"
+              className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"
             />
         </div>
 
-        <div className="flex justify-end space-x-4">
-            <button type="button" onClick={onClose} className="bg-gray-600 hover:bg-background font-bold py-2 px-4 rounded">Cancel</button>
-            <button type="button" onClick={handleSplit} className="bg-primary hover:bg-primary/80 font-bold py-2 px-4 rounded">Split</button>
+        <div className="flex justify-end space-x-4 pt-4">
+            <button type="button" onClick={onClose} className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors duration-200">Cancel</button>
+            <button type="button" onClick={handleSplit} className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded transition-colors duration-200">Split</button>
         </div>
       </div>
     </div>

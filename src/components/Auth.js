@@ -43,17 +43,18 @@ export default function Auth() {
 
   return (
     <div className="w-full max-w-xs mx-auto">
-      <div className="bg-surface shadow-lg rounded-lg px-8 pt-6 pb-8 mb-4 border-2 border-accent/50">
-        <h2 className="text-3xl text-center font-bold mb-6 text-text-base font-fantasy">Login / Sign Up</h2>
+      <div className="bg-surface shadow-lg shadow-accent/10 rounded-lg px-8 pt-6 pb-8 mb-4 border border-accent/20">
+        <h2 className="text-3xl text-center font-bold mb-6 text-accent font-fantasy">
+          Join the Guild
+        </h2>
         <div className="mb-4">
           <label className="block text-text-muted text-sm font-bold mb-2" htmlFor="email">
             Email
           </label>
           <input
-            className="shadow appearance-none border border-surface/50 rounded w-full py-2 px-3 bg-background text-text-base leading-tight focus:outline-none focus:ring-2 focus:ring-accent"
+            className="shadow-inner appearance-none border border-background/50 rounded w-full py-2 px-3 bg-background text-text-base leading-tight focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"
             id="email"
             type="email"
-            placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -63,7 +64,7 @@ export default function Auth() {
             Password
           </label>
           <input
-            className="shadow appearance-none border border-surface/50 rounded w-full py-2 px-3 bg-background text-text-base leading-tight focus:outline-none focus:ring-2 focus:ring-accent"
+            className="shadow-inner appearance-none border border-background/50 rounded w-full py-2 px-3 bg-background text-text-base leading-tight focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"
             id="password"
             type="password"
             placeholder="******************"
@@ -73,7 +74,7 @@ export default function Auth() {
         </div>
         <div className="flex items-center justify-between">
           <button
-            className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
+            className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 transition-colors duration-200"
             type="button"
             onClick={handleSignUp}
             disabled={loading}
@@ -81,7 +82,7 @@ export default function Auth() {
             {loading ? '...' : 'Sign Up'}
           </button>
           <button
-            className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
+            className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 transition-colors duration-200"
             type="button"
             onClick={handleSignIn}
             disabled={loading}

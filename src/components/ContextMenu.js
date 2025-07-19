@@ -20,7 +20,7 @@ export default function ContextMenu({ menuPosition, actions, onClose }) {
       {/* The actual menu */}
       <div
         style={menuStyle}
-        className="fixed bg-background text-text-base rounded-md shadow-lg py-1 z-50"
+        className="fixed bg-gradient-to-b from-surface to-background text-text-base rounded-md shadow-lg py-1 z-50 border border-accent/20"
       >
         <ul>
           {actions.map((action, index) => (
@@ -30,7 +30,7 @@ export default function ContextMenu({ menuPosition, actions, onClose }) {
                   action.onClick();
                   onClose(); // Automatically close menu after action
                 }}
-                className="w-full text-left px-4 py-2 text-sm hover:bg-primary"
+                className="w-full text-left px-4 py-2 text-sm hover:bg-accent hover:text-background transition-colors duration-200"
               >
                 {action.label}
               </button>

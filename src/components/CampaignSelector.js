@@ -166,35 +166,34 @@ export default function CampaignSelector({ onCampaignSelected }) {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto bg-surface shadow-md rounded-lg p-8">
+    <div className="w-full max-w-md mx-auto bg-surface shadow-lg shadow-accent/10 rounded-lg p-8 border border-accent/20">
 
+      {/* --- Empty State --- */}
       {!loading && myCampaigns.length === 0 && (
-        <div className="text-center text-text-muted mb-8 p-4 border border-dashed border-surface rounded-lg">
-          <p>You haven't joined any campaigns yet.</p>
-          <p>Create a new one or join one below to get started!</p>
+        <div className="text-center text-text-muted mb-8 p-4 border border-dashed border-surface/50 rounded-lg">
+          <p>You have no campaigns yet.</p>
+          <p>Create a new one or join one below to begin your adventure!</p>
         </div>
       )}
 
-      {/* 3. Display the list of existing campaigns */}
+      {/* --- Existing Campaigns List --- */}
       {myCampaigns.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-xl text-center font-bold mb-4 text-text-base">Your Campaigns</h2>
+          <h2 className="text-2xl text-center font-bold mb-4 text-accent font-fantasy">Your Campaigns</h2>
           <div className="space-y-2">
             {myCampaigns.map((campaign) => (
-              // 3. Update the campaign list to include the delete button
               <div key={campaign.id} className="flex items-center space-x-2">
                 <button
                   onClick={() => onCampaignSelected(campaign.id)}
-                  className="flex-grow bg-gray-600 hover:bg-gray-500 text-text-base font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline"
+                  className="flex-grow bg-background hover:bg-surface/80 text-text-base font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200"
                 >
                   {campaign.name}
                 </button>
-                {/* Only show delete button if the user is the DM */}
                 {auth.currentUser?.uid === campaign.dmId && (
                   <button
                     onClick={() => handleDeleteCampaign(campaign.id, campaign.name)}
                     disabled={loading}
-                    className="p-3 bg-destructive hover:bg-destructive/80 text-text-base rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
+                    className="p-3 bg-destructive hover:bg-destructive/80 text-text-base rounded focus:outline-none focus:shadow-outline disabled:opacity-50 transition-colors duration-200"
                     aria-label={`Delete campaign ${campaign.name}`}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -205,40 +204,41 @@ export default function CampaignSelector({ onCampaignSelected }) {
               </div>
             ))}
           </div>
-          <div className="text-text-muted w-full text-center pt-6">--- OR ---</div>
+          <div className="text-text-muted w-full text-center pt-6 font-fantasy tracking-widest">... OR ...</div>
         </div>
       )}
 
-      <h2 className="text-xl text-center font-bold mb-4 text-text-base">Create or Join a Campaign</h2>
+      {/* --- Create/Join Section --- */}
+      <h2 className="text-2xl text-center font-bold mb-4 text-accent font-fantasy">New Chapter</h2>
       <div className="flex flex-col items-center space-y-4">
-        {/* --- Create Campaign Section --- */}
+        {/* Create Campaign */}
         <input
           type="text"
           placeholder="Enter New Campaign Name"
           value={campaignName}
           onChange={(e) => setCampaignName(e.target.value)}
-          className="shadow appearance-none border rounded w-full py-2 px-3 bg-background text-text-base leading-tight focus:outline-none focus:shadow-outline"
+          className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"
         />
         <button
           onClick={handleCreateCampaign}
           disabled={loading}
-          className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-6 rounded w-full disabled:bg-surface/50"
+          className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-6 rounded w-full disabled:opacity-50 transition-colors duration-200"
         >
           {loading ? 'Creating...' : 'Create New Campaign'}
         </button>
         
-        {/* --- Join Campaign Section --- */}
+        {/* Join Campaign */}
         <input
           type="text"
           placeholder="Enter Join Code"
           value={joinCode}
           onChange={(e) => setJoinCode(e.target.value)}
-          className="shadow appearance-none border rounded w-full py-2 px-3 bg-background text-text-base leading-tight focus:outline-none focus:shadow-outline"
+          className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"
         />
         <button
           onClick={handleJoinCampaign}
           disabled={loading}
-          className="bg-primary hover:bg-primary/80 text-text-base font-bold py-2 px-4 rounded w-full disabled:bg-gray-500"
+          className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded w-full disabled:opacity-50 transition-colors duration-200"
         >
           {loading ? 'Joining...' : 'Join Campaign'}
         </button>
