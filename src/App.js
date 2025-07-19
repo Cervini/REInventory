@@ -10,6 +10,7 @@ import Auth from './components/Auth';
 import CampaignSelector from './components/CampaignSelector';
 import ProfileSettings from './components/ProfileSettings';
 import CookieBanner from './components/CookieBanner';
+import CookiePolicy from './components/CookiePolicy';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -19,7 +20,8 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isCodeVisible, setIsCodeVisible] = useState(false);
-  const [isCopied, setIsCopied] = useState(false)
+  const [isCopied, setIsCopied] = useState(false);
+  const [viewingPolicy, setViewingPolicy] = useState(false);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
@@ -47,6 +49,9 @@ export default function App() {
   }, [user]);
 
   const renderContent = () => {
+    if (viewingPolicy) {
+      return <CookiePolicy onClose={() => setViewingPolicy(false)} />;
+    }
     if (loading && !user) {
       return <div>Loading...</div>;
     }
@@ -145,7 +150,7 @@ export default function App() {
         </div>
         {renderContent()}
       </div>
-      <CookieBanner />
+      <CookieBanner onShowPolicy={() => setViewingPolicy(true)} />
     </main>
   );
 }
