@@ -566,8 +566,10 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
+      // Activate a drag after a 250ms delay, or if the cursor moves 5px
       activationConstraint: {
-        distance: 8, // Require mouse to move 8px before a drag starts
+        delay: 250,
+        tolerance: 8,
       },
     })
   );
