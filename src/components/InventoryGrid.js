@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { doc, updateDoc, arrayRemove, writeBatch } from "firebase/firestore";
+import { doc, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from '../firebase';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
 import { restrictToParentElement, restrictToWindowEdges } from '@dnd-kit/modifiers';
@@ -88,26 +88,24 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
 
   }, [userProfile, user, campaignId, isLoading, setInventories]);
 
-  const handleContextMenu = (event, item, playerId) => {
-    // We can now safely assume 'event' exists, so we remove the '?'
+  const handleContextMenu = (event, item, playerId, source) => {
     event.preventDefault();
-
-    // Dynamically build the actions array
+    
+    // Define the actions. We pass the item, playerId, and source directly
+    // to the handler functions when the action is defined.
     const availableActions = [
-      { label: "Edit Item", onClick: () => handleStartEdit(item, playerId) },
+      { label: 'Edit Item', onClick: () => handleStartEdit(item, playerId) },
     ];
     if (item.stackable && item.quantity > 1) {
-      availableActions.push({
-        label: "Split Stack",
-        onClick: () => handleStartSplit(item, playerId),
-      });
+      availableActions.push({ label: 'Split Stack', onClick: () => handleStartSplit(item, playerId) });
     }
     availableActions.push({
-      label: "Delete Item",
-      onClick: () => handleDeleteItem(item, playerId),
+      label: 'Delete Item',
+      onClick: () => handleDeleteItem(item, playerId, source),
     });
 
-    // The rest of the function works as intended
+    // We no longer need to store the source in the contextMenu state itself,
+    // as the action handlers now receive it directly.
     setContextMenu({
       visible: true,
       position: { x: event.clientX, y: event.clientY },
@@ -121,18 +119,32 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
     setSplittingItem({ item, playerId });
   };
 
-  const handleDeleteItem = async (item, playerId) => {
-    if (!item || !playerId) return;
+  const handleDeleteItem = async (item, playerId, source) => {
+    if (!item || !playerId || !source) return;
 
-    const inventoryDocRef = doc(
-      db,
-      "campaigns",
-      campaignId,
-      "inventories",
-      playerId
-    );
+    const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", playerId);
+    const currentInventory = inventories[playerId] || { gridItems: [], trayItems: [] };
+    
+    let newGridItems = currentInventory.gridItems;
+    let newTrayItems = currentInventory.trayItems;
+
+    if (source === 'grid') {
+      newGridItems = currentInventory.gridItems.filter(i => i.id !== item.id);
+    } else if (source === 'tray') {
+      newTrayItems = currentInventory.trayItems.filter(i => i.id !== item.id);
+    }
+
+    setInventories(prev => ({
+      ...prev,
+      [playerId]: {
+        gridItems: newGridItems,
+        trayItems: newTrayItems,
+      }
+    }));
+
     await updateDoc(inventoryDocRef, {
-      items: arrayRemove(item), // Use the item passed directly to the function
+      gridItems: newGridItems,
+      trayItems: newTrayItems,
     });
   };
 
@@ -142,8 +154,8 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
     setShowAddItem(true);
   };
 
-  const handleAddItem = async (itemData, targetPlayerId) => {
-    const finalPlayerId = itemToEdit ? itemToEdit.playerId : targetPlayerId;
+  const handleAddItem = async (itemData) => {
+    const finalPlayerId = itemToEdit ? itemToEdit.playerId : user.uid;
     if (!campaignId || !finalPlayerId) return;
 
     const inventoryDocRef = doc(
@@ -202,14 +214,8 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
       }
 
       // If not merging, add the new item to the trayItems array
-      // We no longer need x and y for new items
-      const { x, y, ...newItemData } = itemData;
-      const newTrayItems = [...currentInventory.trayItems, newItemData];
-
-      setInventories((prev) => ({
-        ...prev,
-        [finalPlayerId]: { ...prev[finalPlayerId], trayItems: newTrayItems },
-      }));
+      const newTrayItems = [...currentInventory.trayItems, itemData];
+      setInventories(prev => ({ ...prev, [finalPlayerId]: { ...prev[finalPlayerId], trayItems: newTrayItems } }));
       await updateDoc(inventoryDocRef, { trayItems: newTrayItems });
     }
 
@@ -610,16 +616,13 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
         />
       )}
       {showAddItem && (
-        <AddItem
-          onAddItem={handleAddItem}
+        <AddItem 
+          onAddItem={handleAddItem} 
           onClose={() => {
             setShowAddItem(false);
             setItemToEdit(null);
           }}
-          players={Object.keys(inventories)}
-          dmId={campaign?.dmId}
           isDM={campaign?.dmId === user?.uid}
-          playerProfiles={playerProfiles}
           itemToEdit={itemToEdit}
         />
       )}
@@ -679,6 +682,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
                       />
                     ) : (
                       <>
+                        <div className="relative">
                         <PlayerInventoryGrid
                           campaignId={campaignId}
                           playerId={playerId}
@@ -698,6 +702,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
                           onContextMenu={handleContextMenu}
                           isDM={campaign?.dmId === user?.uid}
                         />
+                        </div>
                       </>
                     )}
                   </div>

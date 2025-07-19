@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 
-export default function AddItem({ onAddItem, onClose, players = [], dmId, playerProfiles = {}, itemToEdit, isDM }) {
+const colorOptions = [
+  { name: 'Gear', value: 'bg-stone-700' },
+  { name: 'Weapon', value: 'bg-red-900' },
+  { name: 'Armor', value: 'bg-sky-800' },
+  { name: 'Potion', value: 'bg-teal-800' },
+  { name: 'Magic', value: 'bg-purple-900' },
+  { name: 'Treasure', value: 'bg-amber-700' },
+];
+
+export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
   
   const isEditMode = !!itemToEdit;
   const itemBeingEdited = isEditMode ? itemToEdit.item : null;
@@ -10,13 +19,9 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
   const [name, setName] = useState(isEditMode ? itemBeingEdited.name : '');
   const [w, setW] = useState(isEditMode ? itemBeingEdited.w : 1);
   const [h, setH] = useState(isEditMode ? itemBeingEdited.h : 1);
-  const [color, setColor] = useState(isEditMode ? itemBeingEdited.color : 'bg-gray-500');
+  const [color, setColor] = useState(isEditMode ? itemBeingEdited.color : colorOptions[0].value);
   const [stackable, setStackable] = useState(isEditMode ? itemBeingEdited.stackable ?? false : false);
   const [quantity, setQuantity] = useState(isEditMode ? itemBeingEdited.quantity ?? 1 : 1);
-  const [targetPlayerId, setTargetPlayerId] = useState(isEditMode ? itemToEdit.playerId : (dmId || ''));
-  
-  // 1. New state for the detailed item properties
-  const [type, setType] = useState(isEditMode ? itemBeingEdited.type ?? '' : '');
   const [cost, setCost] =useState(isEditMode ? itemBeingEdited.cost ?? '' : '');
   const [weight, setWeight] = useState(isEditMode ? itemBeingEdited.weight ?? '' : '');
   const [description, setDescription] = useState(isEditMode ? itemBeingEdited.description ?? '' : '');
@@ -36,7 +41,6 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
         color,
         stackable,
         quantity: parseInt(quantity, 10),
-        type,
         cost,
         weight,
         description,
@@ -45,48 +49,26 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
     if (isEditMode) {
       onAddItem(itemData);
     } else {
-      if (!targetPlayerId) {
-        toast.error("Please select a player.");
-        return;
-      }
       onAddItem({
         id: crypto.randomUUID(),
         ...itemData,
         x: 0,
         y: 0,
-      }, targetPlayerId);
+      });
     }
     
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-20 backdrop-blur-sm">
-      <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-auto">
-        <h3 className="text-2xl font-bold mb-6 font-fantasy text-accent text-center">
+    <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-20 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>        <h3 className="text-2xl font-bold mb-6 font-fantasy text-accent text-center">
           {isEditMode ? 'Edit Item' : 'Add New Item'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-6">
           
           {/* Player & Item Name Section */}
           <fieldset className="space-y-4">
-            <div>
-              <label className="block text-sm font-bold mb-2 text-text-muted">Player</label>
-              <select 
-                value={targetPlayerId} 
-                onChange={(e) => setTargetPlayerId(e.target.value)} 
-                disabled={isEditMode}
-                className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200 disabled:opacity-50"
-              >
-                <option value="">-- Select a Player --</option>
-                {players.map(playerId => (
-                  <option key={playerId} value={playerId}>
-                    {playerProfiles[playerId]?.displayName || playerId}
-                    {playerId === dmId ? ' (DM)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
             <div>
               <label className="block text-sm font-bold mb-2 text-text-muted">Item Name</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200" />
@@ -95,10 +77,6 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
 
           {/* Item Details Section */}
           <fieldset className="flex space-x-4">
-            <div className="w-1/2">
-              <label className="block text-sm font-bold mb-2 text-text-muted">Type</label>
-              <input type="text" placeholder="e.g., Weapon" value={type} onChange={(e) => setType(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200" />
-            </div>
             {isDM && (
               <div className="w-1/4">
                 <label className="block text-sm font-bold mb-2 text-text-muted">Cost</label>
@@ -136,10 +114,20 @@ export default function AddItem({ onAddItem, onClose, players = [], dmId, player
           {/* Color & Stackable Section */}
           <fieldset className="flex justify-between items-center pt-2">
             <div>
-              <label className="block text-sm font-bold mb-2 text-text-muted">Color</label>
-              <div className="flex space-x-2">
-                {['bg-gray-500', 'bg-blue-500', 'bg-red-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500'].map(c => (
-                  <button type="button" key={c} onClick={() => setColor(c)} className={`w-8 h-8 rounded-full ${c} border-2 ${color === c ? 'border-accent' : 'border-surface/20'} transition-all duration-200`}></button>
+              <label className="block text-sm font-bold mb-2 text-text-muted">Category / Color</label>
+              <div className="flex flex-wrap gap-2">
+                {colorOptions.map(option => (
+                  <button 
+                    type="button" 
+                    key={option.name} 
+                    onClick={() => setColor(option.value)}
+                    className={`px-3 py-1 rounded-full text-sm border-2 ${color === option.value ? 'border-accent text-accent' : 'border-surface/50 text-text-muted'} transition-all duration-200`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded-full ${option.value}`}></div>
+                      <span>{option.name}</span>
+                    </div>
+                  </button>
                 ))}
               </div>
             </div>

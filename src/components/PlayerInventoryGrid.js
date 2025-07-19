@@ -5,10 +5,8 @@ import InventoryItem from './InventoryItem';
 
 export default function PlayerInventoryGrid({ campaignId, playerId, items, onContextMenu, setGridRef, isDM, gridWidth, gridHeight }) {
   
-  // 2. Make this component a droppable zone, identified by the playerId
-  const { setNodeRef } = useDroppable({
-    id: playerId,
-  });
+  // Droppable zone, identified by the playerId
+  const { setNodeRef, isOver } = useDroppable({ id: playerId });
 
   const combinedRef = (node) => {
       setNodeRef(node);
@@ -28,7 +26,7 @@ export default function PlayerInventoryGrid({ campaignId, playerId, items, onCon
     <div
       ref={combinedRef}
       style={gridStyle}
-      className="w-full h-auto grid bg-background/50 rounded-lg relative border border-accent/10 shadow-inner"
+      className={`w-full h-auto grid bg-background/50 rounded-lg relative border border-accent/10 shadow-inner transition-colors duration-200 ${isOver ? 'bg-accent/10' : ''}`}
     >
       {items.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center text-text-muted pointer-events-none">
@@ -44,7 +42,7 @@ export default function PlayerInventoryGrid({ campaignId, playerId, items, onCon
         <InventoryItem
           key={item.id}
           item={item}
-          onContextMenu={(e, item) => onContextMenu(e, item, playerId)}
+          onContextMenu={(e, item, source) => onContextMenu(e, item, playerId, source)}
           playerId={playerId}
           isDM={isDM}
           source="grid"
