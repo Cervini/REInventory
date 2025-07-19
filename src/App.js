@@ -9,6 +9,7 @@ import InventoryGrid from './components/InventoryGrid';
 import Auth from './components/Auth';
 import CampaignSelector from './components/CampaignSelector';
 import ProfileSettings from './components/ProfileSettings';
+import CookieBanner from './components/CookieBanner';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -142,8 +143,9 @@ export default function App() {
             )}
           </div>
         </div>
-            {renderContent()}
-        </div>
+        {renderContent()}
+      </div>
+      <CookieBanner />
     </main>
   );
 }
