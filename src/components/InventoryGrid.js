@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { doc, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from '../firebase';
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
+import { DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
 import { restrictToParentElement, restrictToWindowEdges } from '@dnd-kit/modifiers';
 import PlayerInventoryGrid from './PlayerInventoryGrid';
 import { findFirstAvailableSlot, onOtherItem, outOfBounds } from '../utils/gridUtils'; // Import from utils
@@ -566,10 +566,15 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      // Activate a drag after a 250ms delay, or if the cursor moves 5px
+      activationConstraint: {
+        distance: 8, // For mouse
+      },
+    }),
+    useSensor(TouchSensor, {
+      // Require a 250ms press delay before a drag starts on touch
       activationConstraint: {
         delay: 250,
-        tolerance: 8,
+        tolerance: 5,
       },
     })
   );

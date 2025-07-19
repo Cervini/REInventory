@@ -1,5 +1,3 @@
-// src/components/InventoryItem.js
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 
@@ -58,7 +56,7 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM, sou
     
     if (now - lastTap.current < DOUBLE_TAP_DELAY) {
       event.preventDefault();
-      onContextMenu(event, item); // Trigger context menu on double tap
+      onContextMenu(event, item);
     }
     // A single tap will be handled by the tooltip library's openOnClick
     lastTap.current = now;

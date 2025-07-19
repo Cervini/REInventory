@@ -81,7 +81,7 @@ export default function App() {
           },
         }}
       />
-      <Tooltip id="item-tooltip" style={{ zIndex: 99, maxWidth: '300px' }} openOnClick={true} />
+      <Tooltip id="item-tooltip" style={{ zIndex: 99, maxWidth: '300px' }} openOnClick={true} delayShow={150} />
       {showSettings && (
         <ProfileSettings 
           user={user}
