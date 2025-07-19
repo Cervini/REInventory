@@ -653,7 +653,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
         })()}
         collisionDetection={pointerWithin}
       >
-        <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24">
+        <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24 overscroll-contain">
           {Object.entries(inventories).map(([playerId, inventoryData]) => {
             const profile = playerProfiles[playerId];
             const gridWidth = profile?.gridWidth || 30;
