@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { app, db } from '../firebase';
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { db, auth } from '../firebase';
 import { doc, setDoc } from "firebase/firestore";
 import toast from 'react-hot-toast';
 
@@ -38,34 +37,44 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
   };
 
   const handleDeleteAccount = async () => {
-    if (!window.confirm("Are you ABSOLUTELY sure you want to delete your account?")) return;
-    if (!window.confirm("This action is permanent and cannot be undone. All your campaigns and inventories will be deleted. Proceed?")) return;
+    if (!window.confirm("Are you ABSOLUTELY sure?") || !window.confirm("This cannot be undone. Proceed?")) return;
     
     setLoading(true);
     try {
-      const functions = getFunctions(app);
-      const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error("You must be logged in.");
+      }
       
-      const result = await deleteUserAccount();
+      const token = await currentUser.getIdToken();
       
-      toast.success(result.data.message);
+      const FIREBASE_REGION = 'us-central1'; // Make sure this region is correct
+      const functionUrl = `https://${FIREBASE_REGION}-re-inventory-v2.cloudfunctions.net/deleteUserAccount`;
+
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        // THIS IS THE FIX: Wrap the body in a `data` object
+        body: JSON.stringify({ data: { token: token } })
+      });
+      
+      const result = await response.json();
+
+      if (!response.ok) {
+        // The error message from the backend is now in result.error.message
+        throw new Error(result.error.message || 'Failed to delete account.');
+      }
+      
+      // The success message is now in result.result.message
+      toast.success(result.result.message);
       onClose();
 
     } catch (err) {
       toast.error(err.message);
       setLoading(false);
-    }
-  };
-
-  const handleTestFunction = async () => {
-    toast('Calling test function...');
-    try {
-      const functions = getFunctions(app);
-      const helloWorld = httpsCallable(functions, 'helloWorld');
-      const result = await helloWorld();
-      toast.success(`Success! Backend says: "${result.data.message}"`);
-    } catch (err) {
-      toast.error(`Test function failed: ${err.message}`);
     }
   };
 
@@ -113,13 +122,6 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
               Delete My Account
             </button>
         </div>
-        
-        <div className="border-t border-accent/20 mt-6 pt-4">
-          <button onClick={handleTestFunction} className="w-full bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors duration-200">
-            Run Backend Test
-          </button>
-        </div>
-      
       </div>
     </div>
   );

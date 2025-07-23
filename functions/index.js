@@ -8,29 +8,29 @@ admin.initializeApp();
 const db = admin.firestore();
 
 exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
-  // NEW: Log the entire authentication context from the request
-  console.log("Function triggered. Auth context:", context.auth);
+  // We will now get the token from the 'data' object passed from the client
+  const idToken = data.token;
 
-  if (!context.auth) {
-    // This is the line that is causing your error
+  if (!idToken) {
     throw new functions.https.HttpsError(
         "unauthenticated",
-        "You must be logged in to delete your account.",
+        "Authentication token was not provided.",
     );
   }
 
-  const uid = context.auth.uid;
-
   try {
+    // Manually verify the token using the Admin SDK
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+
+    // --- The rest of the deletion logic is exactly the same ---
     await admin.auth().deleteUser(uid);
     console.log(`Successfully deleted auth user: ${uid}`);
 
     const batch = db.batch();
-
     const userDocRef = db.collection("users").doc(uid);
     batch.delete(userDocRef);
 
-    // This query is now on multiple lines to satisfy the linter
     const campaignsQuery = await db.collection("campaigns")
         .where("players", "array-contains", uid)
         .get();
@@ -38,7 +38,6 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
     campaignsQuery.forEach((campaignDoc) => {
       const inventoryDocRef = campaignDoc.ref.collection("inventories").doc(uid);
       batch.delete(inventoryDocRef);
-
       batch.update(campaignDoc.ref, {
         players: admin.firestore.FieldValue.arrayRemove(uid),
       });
@@ -49,7 +48,8 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
     console.log(`Successfully deleted all Firestore data for user: ${uid}`);
     return { success: true, message: "Account deleted successfully." };
   } catch (error) {
-    console.error(`Error deleting user ${uid}:`, error);
+    console.error(`Error deleting user:`, error);
+    // If the token was invalid, this will throw an auth error
     throw new functions.https.HttpsError(
         "internal",
         "An error occurred while deleting the account.",
