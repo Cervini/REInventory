@@ -4,6 +4,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { Tooltip } from 'react-tooltip';
 import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import './App.css';
 import InventoryGrid from './components/InventoryGrid';
 import Auth from './components/Auth';
