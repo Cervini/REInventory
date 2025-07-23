@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "reinventory-94505"
-  }
+    "default": "reinventory-94505",
+    "production": "re-inventory-v2"
+  },
+  "targets": {},
+  "etags": {}
 }

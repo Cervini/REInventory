@@ -164,3 +164,6 @@ yarn-error.log*
 
 # Firebase
 functions/node_modules
+
+# Key
+re-inventory-v2-010a3773be19.json

@@ -43,7 +43,7 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
     
     setLoading(true);
     try {
-      const functions = getFunctions(app, 'us-central1');
+      const functions = getFunctions(app);
       const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
       
       const result = await deleteUserAccount();
@@ -57,6 +57,18 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
     }
   };
 
+  // Add this new test function
+  const handleTestFunction = async () => {
+    toast('Calling test function...');
+    try {
+      const functions = getFunctions(app);
+      const helloWorld = httpsCallable(functions, 'helloWorld');
+      const result = await helloWorld();
+      toast.success(`Success! Backend says: "${result.data.message}"`);
+    } catch (err) {
+      toast.error(`Test function failed: ${err.message}`);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-20 backdrop-blur-sm">
@@ -102,6 +114,13 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
               Delete My Account
             </button>
         </div>
+        
+        <div className="border-t border-accent/20 mt-6 pt-4">
+          <button onClick={handleTestFunction} className="w-full bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors duration-200">
+            Run Backend Test
+          </button>
+        </div>
+      
       </div>
     </div>
   );

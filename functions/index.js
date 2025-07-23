@@ -8,7 +8,11 @@ admin.initializeApp();
 const db = admin.firestore();
 
 exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
+  // NEW: Log the entire authentication context from the request
+  console.log("Function triggered. Auth context:", context.auth);
+
   if (!context.auth) {
+    // This is the line that is causing your error
     throw new functions.https.HttpsError(
         "unauthenticated",
         "You must be logged in to delete your account.",
@@ -51,4 +55,9 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
         "An error occurred while deleting the account.",
     );
   }
+});
+
+exports.helloWorld = functions.https.onCall((data, context) => {
+  console.log("Hello world function was called!");
+  return { message: "Hello from the backend!" };
 });

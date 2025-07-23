@@ -38,7 +38,7 @@ No installation required - just open in your browser and start organizing your p
 
 ### For Players
 
-1. Visit [reinventory-94505.web.app](https://reinventory-94505.web.app/)
+1. Visit [re-inventory-v2.web.app](https://re-inventory-v2.web.app/)
 2. Create or join a campaign
 3. Start adding items to your inventory
 4. Drag and drop items to organize them visually
@@ -79,7 +79,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔗 Links
 
-- **Live Application**: [reinventory-94505.web.app](https://reinventory-94505.web.app/)
+- **Live Application**: [re-inventory-v2.web.app](https://re-inventory-v2.web.app/)
 - **GitHub Repository**: [github.com/Cervini/REInventory](https://github.com/Cervini/REInventory)
 
 ## 📞 Support
