@@ -47,6 +47,8 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
       }
       
       const token = await currentUser.getIdToken();
+
+      sessionStorage.setItem('accountJustDeleted', 'true');
       
       const FIREBASE_REGION = 'us-central1'; // Make sure this region is correct
       const functionUrl = `https://${FIREBASE_REGION}-re-inventory-v2.cloudfunctions.net/deleteUserAccount`;
@@ -65,12 +67,12 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
         throw new Error(result.error || 'Failed to delete account.');
       }
       
-      toast.success(result.data.message);
       onClose();
 
     } catch (err) {
       toast.error(err.message);
       setLoading(false);
+      sessionStorage.removeItem('accountJustDeleted');
     }
   };
 

@@ -27,6 +27,11 @@ export default function App() {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
+        if (sessionStorage.getItem('accountJustDeleted') === 'true') {
+          // Show the toast and then remove the flag
+          toast.success("Your account has been successfully deleted.");
+          sessionStorage.removeItem('accountJustDeleted');
+        }
         setUserProfile(null);
         setCampaignId(null);
         setLoading(false);
