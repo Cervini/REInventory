@@ -54,22 +54,18 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
+          // Send the token in the Authorization header
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
         },
-        // THIS IS THE FIX: Wrap the body in a `data` object
-        body: JSON.stringify({ data: { token: token } })
       });
       
       const result = await response.json();
 
       if (!response.ok) {
-        // The error message from the backend is now in result.error.message
-        throw new Error(result.error.message || 'Failed to delete account.');
+        throw new Error(result.error || 'Failed to delete account.');
       }
       
-      // The success message is now in result.result.message
-      toast.success(result.result.message);
+      toast.success(result.data.message);
       onClose();
 
     } catch (err) {
