@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { db, auth } from '../firebase';
+import { db, auth} from '../firebase';
 import { doc, setDoc } from "firebase/firestore";
 import toast from 'react-hot-toast';
 
@@ -47,11 +47,12 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
       }
       
       const token = await currentUser.getIdToken();
-
       sessionStorage.setItem('accountJustDeleted', 'true');
       
       const FIREBASE_REGION = 'us-central1'; // Make sure this region is correct
+      // This is now the name of our new onRequest function
       const functionUrl = `https://${FIREBASE_REGION}-re-inventory-v2.cloudfunctions.net/deleteUserAccount`;
+      
 
       const response = await fetch(functionUrl, {
         method: 'POST',
@@ -64,11 +65,11 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete account.');
+        sessionStorage.removeItem('accountJustDeleted');
+        throw new Error(result.error.message || 'Failed to delete account.');
       }
-
-      await auth.signOut();
       
+      // We no longer need to manually sign out. The auth state change will be detected.
       onClose();
 
     } catch (err) {

@@ -1,3 +1,5 @@
+// functions/index.js
+
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const cors = require("cors")({ origin: true });
@@ -10,8 +12,8 @@ exports.deleteUserAccount = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
     // Check for an authentication token in the request headers
     if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
-      console.error('No Firebase ID token was passed.');
-      res.status(401).send({ error: 'Unauthorized' });
+      console.error('No Firebase ID token was passed in the Authorization header.');
+      res.status(401).send({ error: { message: 'Unauthorized: No token provided.' } });
       return;
     }
 
@@ -36,12 +38,24 @@ exports.deleteUserAccount = functions.https.onRequest((req, res) => {
           players: admin.firestore.FieldValue.arrayRemove(uid),
         });
       });
+       const ownedCampaignsQuery = await db.collection("campaigns")
+        .where("dmId", "==", uid).get();
+      const deleteSubcollectionsPromises = [];
+      ownedCampaignsQuery.forEach((campaignDoc) => {
+          const inventoriesRef = campaignDoc.ref.collection("inventories");
+          const deletePromise = inventoriesRef.get().then(invSnapshot => {
+              invSnapshot.forEach(doc => batch.delete(doc.ref));
+          });
+          deleteSubcollectionsPromises.push(deletePromise);
+          batch.delete(campaignDoc.ref);
+      });
+      await Promise.all(deleteSubcollectionsPromises);
       await batch.commit();
 
       res.status(200).send({ data: { success: true, message: "Account deleted successfully." } });
     } catch (error) {
       console.error("Error during account deletion:", error);
-      res.status(500).send({ error: "An internal error occurred." });
+      res.status(500).send({ error: { message: "An internal error occurred." } });
     }
   });
 });
