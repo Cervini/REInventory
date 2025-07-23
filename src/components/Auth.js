@@ -4,7 +4,7 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import toast from 'react-hot-toast';
 
-export default function Auth() {
+export default function Auth({ onShowPolicy }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -91,6 +91,12 @@ export default function Auth() {
           </button>
         </div>
       </div>
+      <p className="text-center text-text-muted text-xs mt-4">
+        By signing up, you agree to our 
+        <button onClick={onShowPolicy} className="font-bold text-accent hover:underline ml-1">
+          Privacy Policy
+        </button>.
+      </p>
     </div>
   );
 }
