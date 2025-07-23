@@ -66,6 +66,8 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
       if (!response.ok) {
         throw new Error(result.error || 'Failed to delete account.');
       }
+
+      await auth.signOut();
       
       onClose();
 
