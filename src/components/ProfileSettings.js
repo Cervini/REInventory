@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { db } from '../firebase';
+import { app, db } from '../firebase';
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { doc, setDoc } from "firebase/firestore";
+import toast from 'react-hot-toast';
 
 export default function ProfileSettings({ user, userProfile, onClose }) {
   const [displayName, setDisplayName] = useState(userProfile?.displayName || '');
@@ -34,6 +36,27 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
       setLoading(false);
     }
   };
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm("Are you ABSOLUTELY sure you want to delete your account?")) return;
+    if (!window.confirm("This action is permanent and cannot be undone. All your campaigns and inventories will be deleted. Proceed?")) return;
+    
+    setLoading(true);
+    try {
+      const functions = getFunctions(app, 'us-central1');
+      const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
+      
+      const result = await deleteUserAccount();
+      
+      toast.success(result.data.message);
+      onClose();
+
+    } catch (err) {
+      toast.error(err.message);
+      setLoading(false);
+    }
+  };
+
 
   return (
     <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-20 backdrop-blur-sm">
@@ -70,6 +93,15 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
             </button>
           </div>
         </form>
+        <div className="border-t border-destructive/20 mt-6 pt-4">
+            <h4 className="text-destructive font-bold text-lg mb-2">Danger Zone</h4>
+            <p className="text-sm text-text-muted mb-4">
+              Deleting your account is permanent. All of your personal data, campaigns, and inventories will be removed.
+            </p>
+            <button onClick={handleDeleteAccount} disabled={loading} className="w-full bg-destructive hover:bg-destructive/80 text-text-base font-bold py-2 px-4 rounded transition-colors duration-200">
+              Delete My Account
+            </button>
+        </div>
       </div>
     </div>
   );
