@@ -57,7 +57,6 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
     }
   };
 
-  // Add this new test function
   const handleTestFunction = async () => {
     toast('Calling test function...');
     try {
