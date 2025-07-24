@@ -12,6 +12,7 @@ import ContextMenu from './ContextMenu';
 import SplitStack from './SplitStack';
 import Spinner from './Spinner';
 import ItemTray from './ItemTray';
+import InventorySettings from './InventorySettings';
 
 export default function InventoryGrid({ campaignId, user, userProfile }) {
   
@@ -24,6 +25,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
   const [splittingItem, setSplittingItem] = useState(null);
   const [activeItem, setActiveItem] = useState(null);
   const [openInventories, setOpenInventories] = useState({});
+  const [editingInventory, setEditingInventory] = useState(null);
   
   const gridRefs = useRef({});
 
@@ -612,6 +614,17 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
   return (
     <div className="w-full flex flex-col items-center flex-grow">
       {/* --- Modals (Styling has been updated in their own files) --- */}
+      
+      {editingInventory && (
+        <InventorySettings
+          onClose={() => setEditingInventory(null)}
+          campaignId={campaignId}
+          userId={editingInventory}
+          currentWidth={inventories[editingInventory]?.gridWidth}
+          currentHeight={inventories[editingInventory]?.gridHeight}
+        />
+      )}
+
       {splittingItem && (
         <SplitStack
           item={splittingItem.item}
@@ -665,10 +678,8 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
                 key={playerId}
                 className="bg-surface rounded-lg shadow-lg shadow-accent/10 border border-accent/20 overflow-hidden"
               >
-                <button
-                  onClick={() => toggleInventory(playerId)}
-                  className="w-full p-2 text-left bg-surface/80 hover:bg-surface/50 focus:outline-none flex justify-between items-center transition-colors duration-200"
-                >
+                <div className="w-full p-2 text-left bg-surface/80 hover:bg-surface/50 focus:outline-none flex justify-between items-center transition-colors duration-200">
+                <button onClick={() => toggleInventory(playerId)} className="flex-grow flex items-center space-x-2">
                   <h2 className="text-xl font-bold text-accent font-fantasy tracking-wider">
                     {playerProfiles[playerId]?.displayName || playerId}
                   </h2>
@@ -676,6 +687,15 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
                   </svg>
                 </button>
+
+                {user.uid === playerId && (
+                  <button onClick={() => setEditingInventory(playerId)} className="p-2 rounded-full hover:bg-background transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                    </svg>
+                  </button>
+                )}
+                </div>
 
                 {openInventories[playerId] && (
                   <div className="p-2 bg-background/50">

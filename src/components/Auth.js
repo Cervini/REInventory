@@ -18,8 +18,6 @@ export default function Auth({ onShowPolicy }) {
         email: user.email,
         displayName: user.email.split('@')[0], // Use email prefix as default name
         createdAt: serverTimestamp(),
-        gridWidth: 30,
-        gridHeight: 10,
       });
     } catch (err) {
       toast.error(err.message);

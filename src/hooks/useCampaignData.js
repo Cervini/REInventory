@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, onSnapshot, getDoc, collection, query, where, documentId, getDocs } from "firebase/firestore";
 import { db } from '../firebase';
 
-export function useCampaignData(campaignId, user, userProfile) {
+export function useCampaignData(campaignId, user) {
     const [inventories, setInventories] = useState({});
     const [campaign, setCampaign] = useState(null);
     const [playerProfiles, setPlayerProfiles] = useState({});
@@ -12,6 +12,7 @@ export function useCampaignData(campaignId, user, userProfile) {
         if (!campaignId || !user) return;
 
         setIsLoading(true);
+        let unsubscribeInventories = () => {};
 
         const fetchData = async () => {
             const campaignDocRef = doc(db, 'campaigns', campaignId);
@@ -19,7 +20,7 @@ export function useCampaignData(campaignId, user, userProfile) {
 
             if (!campaignSnap.exists()) {
                 console.error("Campaign not found!");
-                return () => {}; // Return an empty unsubscribe function
+                return;
             }
 
             const campaignData = campaignSnap.data();
@@ -36,26 +37,33 @@ export function useCampaignData(campaignId, user, userProfile) {
             }
 
             const isDM = campaignData.dmId === user.uid;
+            const inventoriesColRef = collection(db, 'campaigns', campaignId, 'inventories');
+
             if (isDM) {
-                const inventoriesColRef = collection(db, 'campaigns', campaignId, 'inventories');
-                return onSnapshot(inventoriesColRef, (snapshot) => {
+                unsubscribeInventories = onSnapshot(inventoriesColRef, (snapshot) => {
                     const allInventories = {};
                     snapshot.forEach(doc => {
                         allInventories[doc.id] = {
                             gridItems: doc.data().gridItems || [],
                             trayItems: doc.data().trayItems || [],
+                            // Fetch grid dimensions for each player
+                            gridWidth: doc.data().gridWidth || 30,
+                            gridHeight: doc.data().gridHeight || 10,
                         };
                     });
                     setInventories(allInventories);
                 });
             } else {
-                const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', user.uid);
-                return onSnapshot(inventoryDocRef, (docSnap) => {
+                const inventoryDocRef = doc(inventoriesColRef, user.uid);
+                unsubscribeInventories = onSnapshot(inventoryDocRef, (docSnap) => {
                     if (docSnap.exists()) {
                         setInventories({
                             [user.uid]: {
                                 gridItems: docSnap.data().gridItems || [],
                                 trayItems: docSnap.data().trayItems || [],
+                                // Fetch grid dimensions for the current player
+                                gridWidth: docSnap.data().gridWidth || 30,
+                                gridHeight: docSnap.data().gridHeight || 10,
                             }
                         });
                     }
@@ -63,25 +71,12 @@ export function useCampaignData(campaignId, user, userProfile) {
             }
         };
 
-        const unsubscribePromise = fetchData().finally(() => setIsLoading(false));
+        fetchData().finally(() => setIsLoading(false));
 
         return () => {
-            unsubscribePromise.then(unsubscribe => {
-                if (unsubscribe) {
-                    unsubscribe();
-                }
-            });
+            unsubscribeInventories();
         };
     }, [campaignId, user]);
-
-    useEffect(() => {
-        if (userProfile && user) {
-            setPlayerProfiles(prevProfiles => ({
-                ...prevProfiles,
-                [user.uid]: userProfile
-            }));
-        }
-    }, [userProfile, user]);
 
     return { inventories, setInventories, campaign, playerProfiles, isLoading };
 }

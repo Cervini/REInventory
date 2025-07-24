@@ -73,7 +73,9 @@ export default function CampaignSelector({ onCampaignSelected }) {
       await setDoc(inventoryDocRef, {
         gridItems: [], // Formerly "items"
         trayItems: [], // Add the new tray items array
-        ownerId: currentUser.uid
+        ownerId: currentUser.uid,
+        gridWidth: 30,
+        gridHeight: 10,
       });
 
       console.log("Initial inventory created for DM.");
@@ -118,7 +120,9 @@ export default function CampaignSelector({ onCampaignSelected }) {
       await setDoc(inventoryDocRef, {
         gridItems: [],
         trayItems: [],
-        ownerId: currentUser.uid
+        ownerId: currentUser.uid,
+        gridWidth: 30,
+        gridHeight: 10,
       }, { merge: true }); // Use {merge: true} to avoid overwriting if they rejoin
 
       console.log(`Successfully joined campaign: ${code}`);
