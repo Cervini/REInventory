@@ -84,26 +84,39 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
   const handleContextMenu = (event, item, playerId, source) => {
     event.preventDefault();
     
-    // Define the actions. We pass the item, playerId, and source directly
-    // to the handler functions when the action is defined.
-    const availableActions = [
-      { label: 'Edit Item', onClick: () => handleStartEdit(item, playerId) },
-    ];
+    const isDM = campaign?.dmId === user?.uid;
+    const availableActions = [];
+
+    // --- Build the "Send to Player" submenu if the user is the DM ---
+    if (isDM) {
+      const otherPlayers = Object.keys(playerProfiles).filter(id => id !== playerId);
+      if (otherPlayers.length > 0) {
+        availableActions.push({
+          label: 'Send to Player...',
+          submenu: otherPlayers.map(targetId => ({
+            label: playerProfiles[targetId]?.displayName || targetId,
+            // Pass the item's source to the send function
+            onClick: () => handleSendItem(item, source, playerId, targetId),
+          })),
+        });
+      }
+    }
+
     if (item.stackable && item.quantity > 1) {
       availableActions.push({ label: 'Split Stack', onClick: () => handleStartSplit(item, playerId) });
     }
+    availableActions.push({ 
+      label: 'Edit Item', 
+      onClick: () => handleStartEdit(item, playerId),
+    });
     availableActions.push({
       label: 'Delete Item',
       onClick: () => handleDeleteItem(item, playerId, source),
     });
 
-    // We no longer need to store the source in the contextMenu state itself,
-    // as the action handlers now receive it directly.
     setContextMenu({
       visible: true,
       position: { x: event.clientX, y: event.clientY },
-      item: item,
-      playerId: playerId,
       actions: availableActions,
     });
   };
@@ -474,6 +487,50 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
     }
   };
 
+  const handleSendItem = async (item, source, sourcePlayerId, targetPlayerId) => {
+
+    if (!item || !source || !sourcePlayerId || !targetPlayerId) {
+      return;
+    }
+
+    const sourceInventory = inventories[sourcePlayerId];
+    const targetInventory = inventories[targetPlayerId];
+
+    if (!sourceInventory || !targetInventory) {
+      return;
+    }
+
+    let newSourceGridItems = sourceInventory.gridItems || [];
+    let newSourceTrayItems = sourceInventory.trayItems || [];
+
+    if (source === 'grid') {
+      newSourceGridItems = newSourceGridItems.filter(i => i.id !== item.id);
+    } else {
+      newSourceTrayItems = newSourceTrayItems.filter(i => i.id !== item.id);
+    }
+
+    const { x, y, ...itemForTray } = item;
+    const newTargetTrayItems = [...(targetInventory.trayItems || []), itemForTray];
+    
+    // Update local state
+    setInventories(prev => ({ ...prev, 
+      [sourcePlayerId]: { ...prev[sourcePlayerId], gridItems: newSourceGridItems, trayItems: newSourceTrayItems },
+      [targetPlayerId]: { ...prev[targetPlayerId], trayItems: newTargetTrayItems }
+    }));
+
+    // Update Firestore
+    try {
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'campaigns', campaignId, 'inventories', sourcePlayerId), { gridItems: newSourceGridItems, trayItems: newSourceTrayItems });
+      batch.update(doc(db, 'campaigns', campaignId, 'inventories', targetPlayerId), { trayItems: newTargetTrayItems });
+      await batch.commit();
+      
+      toast.success(`Sent ${item.name} to ${playerProfiles[targetPlayerId]?.displayName}.`);
+    } catch (error) {
+      toast.error("Failed to send item.");
+    }
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -575,7 +632,18 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
         collisionDetection={pointerWithin}
       >
         <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24 overscroll-contain">
-          {Object.entries(inventories).map(([playerId, inventoryData]) => {
+          {Object.entries(inventories)
+          .sort(([playerIdA], [playerIdB]) => {
+            // If playerIdA is the DM, it should come first (-1).
+            if (playerIdA === user.uid) return -1;
+            // If playerIdB is the DM, it should come first.
+            if (playerIdB === user.uid) return 1;
+            // Otherwise, sort alphabetically by display name.
+            const nameA = playerProfiles[playerIdA]?.displayName || '';
+            const nameB = playerProfiles[playerIdB]?.displayName || '';
+            return nameA.localeCompare(nameB);
+          })
+          .map(([playerId, inventoryData]) => {
             const gridWidth = inventoryData.gridWidth;
             const gridHeight = inventoryData.gridHeight;
             const isPlayerDM = campaign?.dmId === playerId;

@@ -79,7 +79,7 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM, sou
       ref={setRefs} 
       style={{...wrapperStyle, ...style}} 
       className={`relative border border-surface/50 rounded-lg ${source === 'tray' ? 'w-full h-full' : ''}`}
-      onContextMenu={(e) => onContextMenu(e, item)} // For desktop right-click
+      onContextMenu={(e) => onContextMenu(e, item, source)}
       data-tooltip-id="item-tooltip"
       data-tooltip-html={tooltipContent}
       data-tooltip-place="top"
