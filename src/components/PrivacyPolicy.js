@@ -3,9 +3,20 @@ import React from 'react';
 export default function PrivacyPolicy({ onClose }) {
   return (
     <div className="w-full max-w-2xl mx-auto bg-surface p-8 rounded-lg shadow-lg border border-accent/20 text-text-muted">
+      {/* The header div is now a flex container */}
       <div className="flex justify-between items-center mb-4">
+        
+        {/* The new back button */}
+        <button onClick={onClose} className="p-2 rounded-full hover:bg-background transition-colors duration-200" aria-label="Back to main page">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-text-base" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+        </button>
+
         <h1 className="text-3xl font-fantasy text-accent">Privacy Policy</h1>
-        <button onClick={onClose} className="text-2xl hover:text-text-base transition-colors duration-200">&times;</button>
+
+        {/* This empty div helps keep the title centered */}
+        <div className="w-10"></div> 
       </div>
       <p className="text-sm mb-4">Last updated: July 24, 2025</p>
 
@@ -40,12 +51,6 @@ export default function PrivacyPolicy({ onClose }) {
 
         <h2 className="text-xl font-fantasy text-accent pt-2">5. Contact Us</h2>
         <p>If you have any questions about this Privacy Policy, please contact us at simonecervini99+reinventory@gmail.com .</p>
-      </div>
-
-      <div className="text-center mt-8">
-        <button onClick={onClose} className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-6 rounded transition-colors duration-200">
-          Close
-        </button>
       </div>
     </div>
   );

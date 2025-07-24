@@ -80,11 +80,20 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-20 backdrop-blur-sm">
-      <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-6 rounded-lg shadow-xl w-full max-w-sm">
-        <h3 className="text-2xl font-bold mb-6 font-fantasy text-accent text-center">
-          Profile Settings
-        </h3>
+    <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-20 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-6 rounded-lg shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+        
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-2xl font-fantasy text-accent">
+            Profile Settings
+          </h3>
+          <button onClick={onClose} className="p-1 rounded-full text-text-muted hover:bg-surface hover:text-text-base transition-colors duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
         <form onSubmit={handleSave} className="space-y-4">
           <div>
             <label className="block text-sm font-bold mb-2 text-text-muted">Display Name</label>
@@ -114,13 +123,10 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
             </button>
           </div>
         </form>
+
         <div className="border-t border-destructive/20 mt-6 pt-4">
-            <h4 className="text-destructive font-bold text-lg mb-2">Danger Zone</h4>
-            <p className="text-sm text-text-muted mb-4">
-              Deleting your account is permanent. All of your personal data, campaigns, and inventories will be removed.
-            </p>
-            <button onClick={handleDeleteAccount} disabled={loading} className="w-full bg-destructive hover:bg-destructive/80 text-text-base font-bold py-2 px-4 rounded transition-colors duration-200">
-              Delete My Account
+            <button onClick={handleDeleteAccount} disabled={loading} className="w-full bg-destructive/80 hover:bg-destructive text-text-base font-bold py-2 px-4 rounded transition-colors duration-200">
+              {loading ? 'Deleting...' : 'Delete My Account'}
             </button>
         </div>
       </div>
