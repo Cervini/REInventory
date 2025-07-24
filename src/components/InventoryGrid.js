@@ -29,38 +29,30 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
   
   const gridRefs = useRef({});
 
-  // This new effect handles moving out-of-bounds items after a grid resize
   useEffect(() => {
-    // We only want this to run when the profile has loaded and isn't the initial default
-    if (!userProfile || !user || isLoading || !campaignId) {
-      return;
-    }
+    // Only run this logic if we have the necessary data
+    if (!user || !inventories[user.uid] || isLoading) return;
 
-    // Use a functional update to safely access the latest inventories state
+    // Use a functional update to safely access the latest state
     setInventories(prevInventories => {
       const myCurrentInventory = prevInventories[user.uid];
-
-      // If there's no inventory for this user yet, do nothing.
-      if (!myCurrentInventory) {
-        return prevInventories;
-      }
-
-      const newGridWidth = userProfile.gridWidth;
-      const newGridHeight = userProfile.gridHeight;
+      const myGridWidth = myCurrentInventory.gridWidth;
+      const myGridHeight = myCurrentInventory.gridHeight;
 
       const itemsToMove = [];
       const itemsToKeep = [];
 
       (myCurrentInventory.gridItems || []).forEach(item => {
-        if (outOfBounds(item.x, item.y, item, newGridWidth, newGridHeight)) {
-          const { x, y, ...trayItem } = item;
+        // Use the helper function to check if the item is out of bounds
+        if (outOfBounds(item.x, item.y, item, myGridWidth, myGridHeight)) {
+          const { x, y, ...trayItem } = item; // Strip coordinates for the tray
           itemsToMove.push(trayItem);
         } else {
           itemsToKeep.push(item);
         }
       });
 
-      // If we found items to move, calculate the new state and update Firestore
+      // If we found items to move, update the state and Firestore
       if (itemsToMove.length > 0) {
         const newTrayItems = [...(myCurrentInventory.trayItems || []), ...itemsToMove];
         const newGridItems = itemsToKeep;
@@ -70,25 +62,24 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
           gridItems: newGridItems,
           trayItems: newTrayItems,
         }).then(() => {
-          toast.success(`${itemsToMove.length} item(s) moved to your tray due to the grid resize.`);
+          toast.success(`${itemsToMove.length} item(s) moved to your tray.`);
         });
 
-        // Return the new state for inventories
+        // Return the new state for an instant UI update
         return {
           ...prevInventories,
           [user.uid]: {
             ...myCurrentInventory,
             gridItems: newGridItems,
             trayItems: newTrayItems,
-          }
+          },
         };
       }
       
       // If no items were moved, return the state unchanged
       return prevInventories;
     });
-
-  }, [userProfile, user, campaignId, isLoading, setInventories]);
+  }, [inventories, user, isLoading, campaignId, setInventories]); // Add all stable dependencies
 
   const handleContextMenu = (event, item, playerId, source) => {
     event.preventDefault();
@@ -281,7 +272,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
     const { active } = event;
     const ownerId = active.data.current?.ownerId;
     const item = active.data.current?.item;
-    const source = active.data.current?.source; // Check if it's from the 'grid' or 'tray'
+    const source = active.data.current?.source;
 
     if (!item) return;
 
@@ -290,9 +281,9 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
       const gridElement = gridRefs.current[ownerId];
       if (!gridElement) return;
 
-      const playerProfile = playerProfiles[ownerId];
-      const gridWidth = playerProfile?.gridWidth || 30;
-      const gridHeight = playerProfile?.gridHeight || 10;
+      const playerInventory = inventories[ownerId];
+      const gridWidth = playerInventory?.gridWidth || 30;
+      const gridHeight = playerInventory?.gridHeight || 10;
       
       const cellSize = {
         width: gridElement.offsetWidth / gridWidth,
@@ -327,18 +318,15 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
     setActiveItem(null);
     const { active, over, delta } = event;
 
-    if (!over) return; // Dropped outside any droppable zone
+    if (!over) return;
 
-    const startSource = active.data.current?.source; // 'grid' or 'tray'
+    const startSource = active.data.current?.source;
     const startPlayerId = active.data.current?.ownerId;
     const item = active.data.current?.item;
-
-    // The end ID could be a playerId (for a grid) or "playerId-tray"
-    const endDroppableId = over.id;
-    const endPlayerId = endDroppableId.toString().replace("-tray", "");
-    const endDestination = endDroppableId.toString().includes("-tray")
-      ? "tray"
-      : "grid";
+    
+    const endDroppableId = over.id; 
+    const endPlayerId = endDroppableId.toString().replace('-tray', '');
+    const endDestination = endDroppableId.toString().includes('-tray') ? 'tray' : 'grid';
 
     if (!startPlayerId || !endPlayerId || !item) return;
 
@@ -349,30 +337,18 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
     if (startSource === "grid") {
       // Grid -> Tray
       if (endDestination === "tray") {
-        const newStartGridItems = startInventory.gridItems.filter(
-          (i) => i.id !== item.id
-        );
+        const newStartGridItems = startInventory.gridItems.filter(i => i.id !== item.id);
         const {x, y, ...trayItem} = item;
         const newEndTrayItems = [...endInventory.trayItems, trayItem];
-
-        setInventories((prev) => ({
-          ...prev,
-          [startPlayerId]: {
-            ...prev[startPlayerId],
-            gridItems: newStartGridItems,
-          },
-          [endPlayerId]: { ...prev[endPlayerId], trayItems: newEndTrayItems },
+        
+        setInventories(prev => ({ ...prev, 
+          [startPlayerId]: { ...prev[startPlayerId], gridItems: newStartGridItems },
+          [endPlayerId]: { ...prev[endPlayerId], trayItems: newEndTrayItems }
         }));
-
+        
         const batch = writeBatch(db);
-        batch.update(
-          doc(db, "campaigns", campaignId, "inventories", startPlayerId),
-          { gridItems: newStartGridItems }
-        );
-        batch.update(
-          doc(db, "campaigns", campaignId, "inventories", endPlayerId),
-          { trayItems: newEndTrayItems }
-        );
+        batch.update(doc(db, "campaigns", campaignId, "inventories", startPlayerId), { gridItems: newStartGridItems });
+        batch.update(doc(db, "campaigns", campaignId, "inventories", endPlayerId), { trayItems: newEndTrayItems });
         await batch.commit();
       }
       // Grid -> Grid (Reposition or Transfer)
@@ -382,9 +358,8 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
           const gridElement = gridRefs.current[startPlayerId];
           if (!gridElement) return;
 
-          const profile = playerProfiles[startPlayerId];
-          const gridWidth = profile?.gridWidth || 30;
-          const gridHeight = profile?.gridHeight || 10;
+          const gridWidth = startInventory.gridWidth;
+          const gridHeight = startInventory.gridHeight;
           const currentGridItems = startInventory.gridItems || [];
 
           const cellSize = {
@@ -392,45 +367,22 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
             height: gridElement.offsetHeight / gridHeight,
           };
 
-          const newX = Math.round(
-            (item.x * cellSize.width + delta.x) / cellSize.width
-          );
-          const newY = Math.round(
-            (item.y * cellSize.height + delta.y) / cellSize.height
-          );
+          const newX = Math.round((item.x * cellSize.width + delta.x) / cellSize.width);
+          const newY = Math.round((item.y * cellSize.height + delta.y) / cellSize.height);
 
           if (outOfBounds(newX, newY, item, gridWidth, gridHeight)) return;
-          const isColliding = currentGridItems.some(
-            (other) =>
-              other.id !== item.id && onOtherItem(newX, newY, item, other)
-          );
+          const isColliding = currentGridItems.some(other => (other.id !== item.id) && onOtherItem(newX, newY, item, other));
           if (isColliding) return;
-
-          const newGridItems = currentGridItems.map((i) =>
-            i.id === item.id ? { ...i, x: newX, y: newY } : i
-          );
-
-          setInventories((prev) => ({
-            ...prev,
-            [startPlayerId]: {
-              ...prev[startPlayerId],
-              gridItems: newGridItems,
-            },
-          }));
-          const inventoryDocRef = doc(
-            db,
-            "campaigns",
-            campaignId,
-            "inventories",
-            startPlayerId
-          );
-          await updateDoc(inventoryDocRef, { gridItems: newGridItems });
+          
+          const newGridItems = currentGridItems.map(i => (i.id === item.id ? { ...i, x: newX, y: newY } : i));
+          
+          setInventories(prev => ({ ...prev, [startPlayerId]: { ...prev[startPlayerId], gridItems: newGridItems } }));
+          await updateDoc(doc(db, "campaigns", campaignId, "inventories", startPlayerId), { gridItems: newGridItems });
         }
         // --- Scenario 1B: Transferring item to a DIFFERENT grid ---
         else {
-          const endPlayerProfile = playerProfiles[endPlayerId];
-          const endGridWidth = endPlayerProfile?.gridWidth || 30;
-          const endGridHeight = endPlayerProfile?.gridHeight || 10;
+          const endGridWidth = endInventory.gridWidth;
+          const endGridHeight = endInventory.gridHeight;
           const startGridItems = startInventory.gridItems || [];
           const endGridItems = endInventory.gridItems || [];
           const endGridElement = gridRefs.current[endPlayerId];
@@ -440,25 +392,17 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
             width: endGridElement.offsetWidth / endGridWidth,
             height: endGridElement.offsetHeight / endGridHeight,
           };
-
+          
           const endGridRect = endGridElement.getBoundingClientRect();
           const dropX = active.rect.current.translated.left - endGridRect.left;
           const dropY = active.rect.current.translated.top - endGridRect.top;
-
+          
           let newX = Math.round(dropX / endCellSize.width);
           let newY = Math.round(dropY / endCellSize.height);
           let finalPosition = { x: newX, y: newY };
-
-          if (
-            outOfBounds(newX, newY, item, endGridWidth, endGridHeight) ||
-            endGridItems.some((other) => onOtherItem(newX, newY, item, other))
-          ) {
-            finalPosition = findFirstAvailableSlot(
-              endGridItems,
-              item,
-              endGridWidth,
-              endGridHeight
-            );
+          
+          if (outOfBounds(newX, newY, item, endGridWidth, endGridHeight) || endGridItems.some(other => onOtherItem(newX, newY, item, other))) {
+            finalPosition = findFirstAvailableSlot(endGridItems, item, endGridWidth, endGridHeight);
           }
 
           if (finalPosition === null) {
@@ -467,37 +411,18 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
           }
 
           const newItem = { ...item, x: finalPosition.x, y: finalPosition.y };
-          const newStartGridItems = startGridItems.filter(
-            (i) => i.id !== item.id
-          );
+          const newStartGridItems = startGridItems.filter(i => i.id !== item.id);
           const newEndGridItems = [...endGridItems, newItem];
 
-          setInventories((prev) => ({
+          setInventories(prev => ({
             ...prev,
-            [startPlayerId]: {
-              ...prev[startPlayerId],
-              gridItems: newStartGridItems,
-            },
+            [startPlayerId]: { ...prev[startPlayerId], gridItems: newStartGridItems },
             [endPlayerId]: { ...prev[endPlayerId], gridItems: newEndGridItems },
           }));
 
           const batch = writeBatch(db);
-          const startInventoryRef = doc(
-            db,
-            "campaigns",
-            campaignId,
-            "inventories",
-            startPlayerId
-          );
-          const endInventoryRef = doc(
-            db,
-            "campaigns",
-            campaignId,
-            "inventories",
-            endPlayerId
-          );
-          batch.update(startInventoryRef, { gridItems: newStartGridItems });
-          batch.update(endInventoryRef, { gridItems: newEndGridItems });
+          batch.update(doc(db, "campaigns", campaignId, "inventories", startPlayerId), { gridItems: newStartGridItems });
+          batch.update(doc(db, "campaigns", campaignId, "inventories", endPlayerId), { gridItems: newEndGridItems });
           await batch.commit();
         }
       }
@@ -506,49 +431,32 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
     else if (startSource === "tray") {
       // Tray -> Grid
       if (endDestination === "grid") {
-        const profile = playerProfiles[endPlayerId];
-        const gridWidth = profile?.gridWidth || 30;
-        const gridHeight = profile?.gridHeight || 10;
-
-        const position = findFirstAvailableSlot(
-          endInventory.gridItems,
-          item,
-          gridWidth,
-          gridHeight
-        );
+        const gridWidth = endInventory.gridWidth;
+        const gridHeight = endInventory.gridHeight;
+        
+        const position = findFirstAvailableSlot(endInventory.gridItems, item, gridWidth, gridHeight);
         if (position === null) {
           toast.error("Destination grid is full!");
           return;
         }
-
+        
         const newItem = { ...item, x: position.x, y: position.y };
-        const newStartTrayItems = startInventory.trayItems.filter(
-          (i) => i.id !== item.id
-        );
+        const newStartTrayItems = startInventory.trayItems.filter(i => i.id !== item.id);
         const newEndGridItems = [...endInventory.gridItems, newItem];
 
-        setInventories((prev) => ({
-          ...prev,
-          [startPlayerId]: {
-            ...prev[startPlayerId],
-            trayItems: newStartTrayItems,
-          },
-          [endPlayerId]: { ...prev[endPlayerId], gridItems: newEndGridItems },
+        setInventories(prev => ({ ...prev, 
+          [startPlayerId]: { ...prev[startPlayerId], trayItems: newStartTrayItems },
+          [endPlayerId]: { ...prev[endPlayerId], gridItems: newEndGridItems }
         }));
 
         const batch = writeBatch(db);
-        batch.update(
-          doc(db, "campaigns", campaignId, "inventories", startPlayerId),
-          { trayItems: newStartTrayItems }
-        );
-        batch.update(
-          doc(db, "campaigns", campaignId, "inventories", endPlayerId),
-          { gridItems: newEndGridItems }
-        );
+        batch.update(doc(db, "campaigns", campaignId, "inventories", startPlayerId), { trayItems: newStartTrayItems });
+        batch.update(doc(db, "campaigns", campaignId, "inventories", endPlayerId), { gridItems: newEndGridItems });
         await batch.commit();
       }
-      else { // Tray -> Tray (Transfer)
-        if (startPlayerId === endPlayerId) return; // Do nothing if it's the same tray
+      // Tray -> Tray (Transfer)
+      else {
+        if (startPlayerId === endPlayerId) return;
 
         const newStartTrayItems = startInventory.trayItems.filter(i => i.id !== item.id);
         const newEndTrayItems = [...endInventory.trayItems, item];
@@ -668,9 +576,8 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
       >
         <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24 overscroll-contain">
           {Object.entries(inventories).map(([playerId, inventoryData]) => {
-            const profile = playerProfiles[playerId];
-            const gridWidth = profile?.gridWidth || 30;
-            const gridHeight = profile?.gridHeight || 10;
+            const gridWidth = inventoryData.gridWidth;
+            const gridHeight = inventoryData.gridHeight;
             const isPlayerDM = campaign?.dmId === playerId;
 
             return (
