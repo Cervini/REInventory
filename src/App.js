@@ -14,6 +14,7 @@ import ProfileSettings from './components/ProfileSettings';
 import CookieBanner from './components/CookieBanner';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import CookiePolicy from './components/CookiePolicy';
+import Compendium from './components/Compendium';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -26,7 +27,7 @@ export default function App() {
   const [isCopied, setIsCopied] = useState(false);
   
   // State to manage which "page" is visible
-  const [currentPage, setCurrentPage] = useState('main'); // 'main', 'privacy', 'cookies'
+  const [currentPage, setCurrentPage] = useState('main'); // 'main', 'privacy', 'cookies', 'compendium'
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
@@ -71,6 +72,9 @@ export default function App() {
     }
     if (currentPage === 'cookies') {
       return <CookiePolicy onClose={() => setCurrentPage('main')} />;
+    }
+    if (currentPage === 'compendium') {
+      return <Compendium onClose={() => setCurrentPage('main')} />;
     }
 
     // Standard application flow
@@ -157,6 +161,12 @@ export default function App() {
                         <div className="px-4 py-2 text-sm text-text-muted border-b border-surface/50">Signed in as<br/><strong className="font-medium text-text-base">{userProfile?.displayName || user.email}</strong></div>
                         <button onClick={() => { setShowSettings(true); setIsUserMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-text-base hover:bg-accent hover:text-background transition-colors duration-200">Profile</button>
                         <button onClick={() => { auth.signOut(); setIsUserMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-text-base hover:bg-accent hover:text-background transition-colors duration-200">Sign Out</button>
+                        <button 
+                          onClick={() => { setCurrentPage('compendium'); setIsUserMenuOpen(false); }} 
+                          className="block w-full text-left px-4 py-2 text-sm text-text-base hover:bg-accent hover:text-background transition-colors duration-200"
+                        >
+                          Item Compendium
+                        </button>
                       </div>
                     )}
                   </div>
