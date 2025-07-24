@@ -142,7 +142,7 @@ export default function App() {
 
               {/* Center Slot */}
               <div className="flex-grow text-center">
-                <h1 className="text-4xl font-bold font-fantasy"><span className="text-accent">RE</span>Inventory</h1>
+                <h1 className="text-2xl sm:text-4xl font-bold font-fantasy"><span className="text-accent">RE</span>Inventory</h1>
               </div>
 
               {/* Right Slot */}
