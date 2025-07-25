@@ -34,8 +34,8 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
   useEffect(() => {
         const observers = [];
         Object.entries(gridRefs.current).forEach(([playerId, gridElement]) => {
-            if (gridElement) {
-                const resizeObserver = new ResizeObserver(() => {
+            if (gridElement && openInventories[playerId]) { // Only observe visible grids
+                const measure = () => {
                     const inventory = inventories[playerId];
                     if (inventory) {
                         setCellSizes(prev => ({
@@ -46,19 +46,11 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
                             }
                         }));
                     }
-                });
+                };
+                
+                const resizeObserver = new ResizeObserver(measure);
                 resizeObserver.observe(gridElement);
-                // Initial measurement
-                const inventory = inventories[playerId];
-                 if (inventory) {
-                        setCellSizes(prev => ({
-                            ...prev,
-                            [playerId]: {
-                                width: gridElement.offsetWidth / inventory.gridWidth,
-                                height: gridElement.offsetHeight / inventory.gridHeight,
-                            }
-                        }));
-                    }
+                measure(); // Initial measurement
                 observers.push({ element: gridElement, observer: resizeObserver });
             }
         });
@@ -70,7 +62,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
                 }
             });
         };
-    }, [inventories]);
+    }, [inventories, openInventories]);
 
   useEffect(() => {
     // Only run this logic if we have the necessary data
