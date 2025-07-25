@@ -27,8 +27,50 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
   const [activeItem, setActiveItem] = useState(null);
   const [openInventories, setOpenInventories] = useState({});
   const [editingInventory, setEditingInventory] = useState(null);
+  const [cellSizes, setCellSizes] = useState({});
   
   const gridRefs = useRef({});
+
+  useEffect(() => {
+        const observers = [];
+        Object.entries(gridRefs.current).forEach(([playerId, gridElement]) => {
+            if (gridElement) {
+                const resizeObserver = new ResizeObserver(() => {
+                    const inventory = inventories[playerId];
+                    if (inventory) {
+                        setCellSizes(prev => ({
+                            ...prev,
+                            [playerId]: {
+                                width: gridElement.offsetWidth / inventory.gridWidth,
+                                height: gridElement.offsetHeight / inventory.gridHeight,
+                            }
+                        }));
+                    }
+                });
+                resizeObserver.observe(gridElement);
+                // Initial measurement
+                const inventory = inventories[playerId];
+                 if (inventory) {
+                        setCellSizes(prev => ({
+                            ...prev,
+                            [playerId]: {
+                                width: gridElement.offsetWidth / inventory.gridWidth,
+                                height: gridElement.offsetHeight / inventory.gridHeight,
+                            }
+                        }));
+                    }
+                observers.push({ element: gridElement, observer: resizeObserver });
+            }
+        });
+
+        return () => {
+            observers.forEach(({ element, observer }) => {
+                if (element) {
+                    observer.unobserve(element);
+                }
+            });
+        };
+    }, [inventories]);
 
   useEffect(() => {
     // Only run this logic if we have the necessary data
@@ -697,6 +739,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
                           isDM={campaign?.dmId === user?.uid}
                           gridWidth={gridWidth}
                           gridHeight={gridHeight}
+                          cellSize={cellSizes[playerId]}
                         />
                         <ItemTray
                           campaignId={campaignId}

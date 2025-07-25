@@ -3,7 +3,7 @@ import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import InventoryItem from './InventoryItem';
 
-export default function PlayerInventoryGrid({ campaignId, playerId, items, onContextMenu, setGridRef, isDM, gridWidth, gridHeight }) {
+export default function PlayerInventoryGrid({ campaignId, playerId, items, onContextMenu, setGridRef, isDM, gridWidth, gridHeight, cellSize }) {
   
   // Droppable zone, identified by the playerId
   const { setNodeRef, isOver } = useDroppable({ id: playerId });
@@ -46,6 +46,7 @@ export default function PlayerInventoryGrid({ campaignId, playerId, items, onCon
           playerId={playerId}
           isDM={isDM}
           source="grid"
+          cellSize={cellSize}
         />
       ))}
     </div>

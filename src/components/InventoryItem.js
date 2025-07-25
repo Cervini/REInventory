@@ -12,13 +12,15 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM, sou
 
   const [size, setSize] = useState({ width: 0, height: 0 });
   const itemRef = useRef(null);
-  const lastTap = useRef(0); // For detecting double taps
+  const lastTap = useRef(0);
 
+  // This function connects our ref to dnd-kit's ref
   const setRefs = (node) => {
     itemRef.current = node;
     setNodeRef(node);
   };
 
+  // This effect measures the item's size
   useEffect(() => {
     const resizeObserver = new ResizeObserver(entries => {
       if (entries[0]) {
@@ -26,12 +28,13 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM, sou
         setSize({ width, height });
       }
     });
-    if (itemRef.current) {
-      resizeObserver.observe(itemRef.current);
+    const currentRef = itemRef.current;
+    if (currentRef) {
+      resizeObserver.observe(currentRef);
     }
     return () => {
-      if (itemRef.current) {
-        resizeObserver.unobserve(itemRef.current);
+      if (currentRef) {
+        resizeObserver.unobserve(currentRef);
       }
     };
   }, []);
@@ -49,29 +52,38 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM, sou
       gridRow: `${item.y + 1} / span ${item.h}`,
     };
   }
-
-  // This handler detects if a click/tap is a double tap
+  
   const handleClick = (event) => {
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300;
-    
     if (now - lastTap.current < DOUBLE_TAP_DELAY) {
       event.preventDefault();
-      onContextMenu(event, item);
+      onContextMenu(event, item, source);
     }
-    // A single tap will be handled by the tooltip library's openOnClick
     lastTap.current = now;
   };
   
   const tooltipContent = `
     <div style="text-align: left;">
-      <strong style="font-size: 1.1em;">${item.name}</strong>
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <strong style="font-size: 1.1em;">${item.name}</strong>
+        <span style="font-size: 0.9em; color: #ccc; font-style: italic;">${item.rarity || 'Common'}</span>
+      </div>
+      <div style="font-size: 0.9em; color: #ccc; margin-bottom: 5px;">
+        ${item.type || 'Misc'} ${item.attunement !== 'No' ? `(Requires Attunement)` : ''}
+      </div>
       <div style="font-size: 0.9em;">
         ${isDM ? `<strong>Cost:</strong> ${item.cost || 'N/A'}<br/>` : ''}
         <strong>Weight:</strong> ${item.weight || 'N/A'}
       </div>
-      <hr style="margin: 5px 0; border-color: #555;" />
-      <div style="font-size: 0.9em;">${item.description || 'No description.'}</div>
+      ${item.weaponStats ? `
+        <div style="font-size: 0.9em; margin-top: 5px;">
+          <strong>Damage:</strong> ${item.weaponStats.damage || ''} ${item.weaponStats.damageType || ''}<br/>
+          <strong>Properties:</strong> ${item.weaponStats.properties || 'None'}
+        </div>
+      ` : ''}
+      <hr style="margin: 8px 0; border-color: #555;" />
+      <div style="font-size: 0.9em; max-height: 150px; overflow-y: auto;">${item.description || 'No description.'}</div>
     </div>
   `;
 
@@ -84,13 +96,13 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM, sou
       data-tooltip-id="item-tooltip"
       data-tooltip-html={tooltipContent}
       data-tooltip-place="top"
+      title={item.name}
     >
-      {/* The listeners for drag-and-drop are now on the main div */}
       <div
         {...listeners}
         {...attributes}
         onClick={handleClick}
-         className={`${getColorForItemType(item.type)} w-full h-full rounded-lg text-text-base font-bold p-1 text-center text-xs sm:text-sm cursor-grab active:cursor-grabbing select-none flex items-center justify-center transition-all duration-200 min-w-0 touch-none`}
+        className={`${getColorForItemType(item.type)} w-full h-full rounded-lg text-text-base font-bold p-1 text-center text-xs sm:text-sm cursor-grab active:cursor-grabbing select-none flex items-center justify-center transition-all duration-200 min-w-0 touch-none`}
       >
         {size.width > TEXT_VISIBILITY_THRESHOLD.width && size.height > TEXT_VISIBILITY_THRESHOLD.height && (
           <span className="truncate">{item.name}</span>
