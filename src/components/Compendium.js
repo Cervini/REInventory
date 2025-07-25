@@ -4,6 +4,7 @@ import { db, auth } from '../firebase';
 import { collection, onSnapshot, addDoc, doc, deleteDoc } from 'firebase/firestore';
 import AddItem from './AddItem';
 import Spinner from './Spinner';
+import { getColorForItemType } from '../utils/itemUtils';
 
 export default function Compendium({ onClose }) {
   const [globalItems, setGlobalItems] = useState([]);
@@ -66,13 +67,17 @@ export default function Compendium({ onClose }) {
       return <p className="text-center text-text-muted italic">{isCustom ? "Your custom compendium is empty." : "No global items found."}</p>;
     }
     return (
+      
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {items.map(item => (
-          <div key={item.id} className={`${item.color} rounded-lg p-3 text-text-base border border-surface/50 flex flex-col justify-between`}>
-            <div>
+          <div key={item.id} className={`${getColorForItemType(item.type)} rounded-lg p-3 text-text-base border border-surface/50 flex flex-col justify-between`}>
+            
+            {/* This new div with min-w-0 allows the text to truncate correctly */}
+            <div className="min-w-0">
               <h3 className="font-bold truncate" title={item.name}>{item.name}</h3>
-              <p className="text-xs text-text-muted">{item.w}x{item.h} | {item.weight || 'N/A'}</p>
+              <p className="text-xs text-text-muted">{item.w}x{item.h}</p>
             </div>
+
             {isCustom && (
               <button 
                 onClick={() => handleDeleteItem(item.id)} 

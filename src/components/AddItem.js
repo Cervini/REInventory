@@ -1,14 +1,8 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
+import { getColorForItemType } from '../utils/itemUtils';
 
-const colorOptions = [
-  { name: 'Gear', value: 'bg-stone-700' },
-  { name: 'Weapon', value: 'bg-red-900' },
-  { name: 'Armor', value: 'bg-sky-800' },
-  { name: 'Potion', value: 'bg-teal-800' },
-  { name: 'Magic', value: 'bg-purple-900' },
-  { name: 'Treasure', value: 'bg-amber-700' },
-];
+const itemTypes = ['Gear', 'Weapon', 'Armor', 'Potion', 'Magic', 'Treasure'];
 
 export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
   
@@ -19,7 +13,7 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
   const [name, setName] = useState(isEditMode ? itemBeingEdited.name : '');
   const [w, setW] = useState(isEditMode ? itemBeingEdited.w : 1);
   const [h, setH] = useState(isEditMode ? itemBeingEdited.h : 1);
-  const [color, setColor] = useState(isEditMode ? itemBeingEdited.color : colorOptions[0].value);
+  const [type, setType] = useState(isEditMode ? itemBeingEdited.type : 'Gear');
   const [stackable, setStackable] = useState(isEditMode ? itemBeingEdited.stackable ?? false : false);
   const [quantity, setQuantity] = useState(isEditMode ? itemBeingEdited.quantity ?? 1 : 1);
   const [cost, setCost] =useState(isEditMode ? itemBeingEdited.cost ?? '' : '');
@@ -38,7 +32,7 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
         name,
         w: parseInt(w, 10),
         h: parseInt(h, 10),
-        color,
+        type,
         stackable,
         quantity: parseInt(quantity, 10),
         cost,
@@ -114,23 +108,23 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="3" className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"></textarea>
           </fieldset>
           <fieldset>
-            <label className="block text-sm font-bold mb-2 text-text-muted">Category / Color</label>
-            <div className="flex flex-wrap gap-2">
-              {colorOptions.map(option => (
-                <button 
-                  type="button" 
-                  key={option.name} 
-                  onClick={() => setColor(option.value)}
-                  className={`px-3 py-1 rounded-full text-sm border-2 ${color === option.value ? 'border-accent text-accent' : 'border-surface/50 text-text-muted'} transition-all duration-200`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full ${option.value}`}></div>
-                    <span>{option.name}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </fieldset>
+        <label className="block text-sm font-bold mb-2 text-text-muted">Type</label>
+        <div className="flex flex-wrap gap-2">
+          {itemTypes.map(itemType => (
+            <button 
+              type="button" 
+              key={itemType} 
+              onClick={() => setType(itemType)}
+              className={`px-3 py-1 rounded-full text-sm border-2 ${type === itemType ? 'border-accent text-accent' : 'border-surface/50 text-text-muted'} transition-all`}
+            >
+              <div className="flex items-center gap-2">
+                <div className={`w-4 h-4 rounded-full ${getColorForItemType(itemType)}`}></div>
+                <span>{itemType}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </fieldset>
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-4 pt-4">

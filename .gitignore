@@ -170,3 +170,10 @@ re-inventory-v2-010a3773be19.json
 
 # Firebase config file
 public/firebase-config.js
+
+items.json
+items-base.json
+
+uploadCompendium.js
+
+serviceAccountKey.json

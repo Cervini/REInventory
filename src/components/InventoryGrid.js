@@ -13,6 +13,7 @@ import SplitStack from './SplitStack';
 import Spinner from './Spinner';
 import ItemTray from './ItemTray';
 import InventorySettings from './InventorySettings';
+import { getColorForItemType } from '../utils/itemUtils';
 
 export default function InventoryGrid({ campaignId, user, userProfile }) {
   
@@ -720,7 +721,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
                 width: activeItem.dimensions.width,
                 height: activeItem.dimensions.height,
               }}
-              className={`${activeItem.item.color} rounded-lg text-text-base font-bold p-1 text-center text-xs sm:text-sm flex items-center justify-center shadow-lg`}
+              className={`${getColorForItemType(activeItem.item.type)} rounded-lg text-text-base font-bold p-1 text-center text-xs sm:text-sm flex items-center justify-center shadow-lg`}
             >
               {activeItem.item.name}
               {activeItem.item.stackable && activeItem.item.quantity > 1 && (
