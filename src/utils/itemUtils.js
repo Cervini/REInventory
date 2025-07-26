@@ -3,14 +3,12 @@ export const itemTypeOptions = [
   { type: 'Armor', color: 'bg-sky-800' },
   { type: 'Potion', color: 'bg-teal-800' },
   { type: 'Magic', color: 'bg-purple-900' },
-  { type: 'Ammunition', color: 'bg-stone-700' },
-  { type: 'Tool', color: 'bg-stone-700' },
   { type: 'Treasure', color: 'bg-amber-700' },
-  { type: 'Gear', color: 'bg-stone-700' },
+  { type: 'Gear', color: 'bg-lime-900' },
+  { type: 'Ammunition', color: 'bg-yellow-900' },
+  { type: 'Tool', color: 'bg-indigo-900' },
   { type: 'Other', color: 'bg-stone-700' },
 ];
-
-// TODO: better colors
 
 // This helper function remains the same, but it's more powerful now.
 export function getColorForItemType(type) {

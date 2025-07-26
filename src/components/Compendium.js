@@ -67,31 +67,61 @@ export default function Compendium({ onClose }) {
       return <p className="text-center text-text-muted italic">{isCustom ? "Your custom compendium is empty." : "No global items found."}</p>;
     }
     return (
-      
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {items.map(item => (
-          <div key={item.id} className={`${getColorForItemType(item.type)} rounded-lg p-3 text-text-base border border-surface/50 flex flex-col justify-between`}>
-            
-            {/* This new div with min-w-0 allows the text to truncate correctly */}
-            <div className="min-w-0">
-              <h3 className="font-bold truncate" title={item.name}>{item.name}</h3>
-              <p className="text-xs text-text-muted">{item.w}x{item.h}</p>
+        {items.map(item => {
+          // 1. We build the same tooltip content string here
+          const tooltipContent = `
+            <div style="text-align: left;">
+              <div style="display: flex; justify-content: space-between; align-items: start;">
+                <strong style="font-size: 1.1em;">${item.name}</strong>
+                <span style="font-size: 0.9em; color: #ccc; font-style: italic;">${item.rarity || 'Common'}</span>
+              </div>
+              <div style="font-size: 0.9em; color: #ccc; margin-bottom: 5px;">
+                ${item.type || 'Misc'} ${item.attunement !== 'No' ? `(Requires Attunement)` : ''}
+              </div>
+              <div style="font-size: 0.9em;">
+                <strong>Cost:</strong> ${item.cost || 'N/A'}<br/>
+                <strong>Weight:</strong> ${item.weight || 'N/A'}
+              </div>
+              ${item.weaponStats ? `
+                <div style="font-size: 0.9em; margin-top: 5px;">
+                  <strong>Damage:</strong> ${item.weaponStats.damage || ''} ${item.weaponStats.damageType || ''}<br/>
+                  <strong>Properties:</strong> ${item.weaponStats.properties || 'None'}
+                </div>
+              ` : ''}
+              <hr style="margin: 8px 0; border-color: #555;" />
+              <div style="font-size: 0.9em; max-height: 150px; overflow-y: auto;">${item.description || 'No description.'}</div>
             </div>
+          `;
 
-            {isCustom && (
-              <button 
-                onClick={() => handleDeleteItem(item.id)} 
-                className="mt-2 text-xs bg-destructive/50 hover:bg-destructive text-text-base px-2 py-1 rounded self-end transition-colors"
-              >
-                Delete
-              </button>
-            )}
-          </div>
-        ))}
+          return (
+            <div 
+              key={item.id} 
+              className={`${getColorForItemType(item.type)} rounded-lg p-3 text-text-base border border-surface/50 flex flex-col justify-between`}
+              // 2. Add the data-tooltip attributes to this div
+              data-tooltip-id="item-tooltip"
+              data-tooltip-html={tooltipContent}
+              data-tooltip-place="top"
+            >
+              <div className="min-w-0">
+                <h3 className="font-bold truncate" title={item.name}>{item.name}</h3>
+                <p className="text-xs text-text-muted">{item.w}x{item.h} | {item.weight || 'N/A'}</p>
+              </div>
+              {isCustom && (
+                <button 
+                  onClick={() => handleDeleteItem(item.id)} 
+                  className="mt-2 text-xs bg-destructive/50 hover:bg-destructive text-text-base px-2 py-1 rounded self-end transition-colors"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   };
-
+  
   return (
     <div className="w-full h-full flex flex-col">
       {showAddItem && (

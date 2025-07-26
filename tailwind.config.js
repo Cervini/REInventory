@@ -8,6 +8,9 @@ module.exports = {
     'bg-teal-800',
     'bg-purple-900',
     'bg-amber-700',
+    'bg-lime-900',
+    'bg-yellow-900',
+    'bg-indigo-900',
   ],
   theme: {
     extend: {
