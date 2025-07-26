@@ -32,7 +32,7 @@ export default function SignUp({ onSwitchToLogin, onShowPolicy, onGoogleSignIn }
   return (
     <div className="bg-surface shadow-lg shadow-accent/10 rounded-lg px-8 pt-6 pb-8 mb-4 border border-accent/20">
       <h2 className="text-3xl text-center font-bold mb-6 text-accent font-fantasy">
-        Create Account
+        Sign Up
       </h2>
       <div className="mb-4">
         <label className="block text-text-muted text-sm font-bold mb-2" htmlFor="signup-email">
