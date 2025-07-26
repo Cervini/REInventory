@@ -14,6 +14,7 @@ import Spinner from './Spinner';
 import ItemTray from './ItemTray';
 import InventorySettings from './InventorySettings';
 import { getColorForItemType } from '../utils/itemUtils';
+import AddFromCompendium from './AddFromCompendium';
 
 export default function InventoryGrid({ campaignId, user, userProfile }) {
   
@@ -28,6 +29,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
   const [openInventories, setOpenInventories] = useState({});
   const [editingInventory, setEditingInventory] = useState(null);
   const [cellSizes, setCellSizes] = useState({});
+  const [showCompendium, setShowCompendium] = useState(false);
   
   const gridRefs = useRef({});
 
@@ -615,6 +617,16 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
     <div className="w-full flex flex-col items-center flex-grow">
       {/* --- Modals (Styling has been updated in their own files) --- */}
       
+      {showCompendium && (
+        <AddFromCompendium
+          onClose={() => setShowCompendium(false)}
+          onAddItem={handleAddItem}
+          players={Object.keys(inventories)}
+          dmId={campaign?.dmId}
+          playerProfiles={playerProfiles}
+        />
+      )}
+
       {editingInventory && (
         <InventorySettings
           onClose={() => setEditingInventory(null)}
@@ -770,14 +782,27 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
       </DndContext>
       
       {/* --- Floating Action Button --- */}
-      <button
-        onClick={() => setShowAddItem(true)}
-        className="fixed z-30 bottom-8 right-8 bg-primary hover:bg-accent hover:text-background text-text-base rounded-full p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200" aria-label="Add Item"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
-        </svg>
-      </button>
+      <div className="fixed z-30 bottom-8 right-8 flex flex-col space-y-2">
+        <button
+          onClick={() => setShowCompendium(true)}
+          className="bg-primary hover:bg-accent hover:text-background text-text-base rounded-full p-4 shadow-lg"
+          aria-label="Add Item from Compendium"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v11.494m-5.747-5.747H17.747" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
+          </svg>
+        </button>
+        <button
+          onClick={() => setShowAddItem(true)}
+          className="bg-confirm hover:bg-accent hover:text-background text-text-base rounded-full p-4 shadow-lg"
+          aria-label="Create New Item"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }
