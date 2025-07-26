@@ -122,6 +122,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
     event.preventDefault();
     
     const isDM = campaign?.dmId === user?.uid;
+    const isDMInventory = campaign?.dmId === playerId;
     const availableActions = [];
 
     // --- Build the "Send to Player" submenu if the user is the DM ---
@@ -141,6 +142,9 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
 
     if (item.stackable && item.quantity > 1) {
       availableActions.push({ label: 'Split Stack', onClick: () => handleStartSplit(item, playerId) });
+    }
+    if (isDM && isDMInventory && source === 'tray') {
+        availableActions.push({ label: 'Duplicate Item', onClick: () => handleDuplicateItem(item, playerId) });
     }
     availableActions.push({ 
       label: 'Edit Item', 
@@ -566,6 +570,33 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
     } catch (error) {
       toast.error("Failed to send item.");
     }
+  };
+
+  const handleDuplicateItem = async (item, playerId) => {
+    if (!item || !playerId) return;
+
+    // Create a copy of the item with a new unique ID
+    const newItem = {
+      ...item,
+      id: crypto.randomUUID(),
+    };
+    
+    const currentInventory = inventories[playerId] || { gridItems: [], trayItems: [] };
+    const newTrayItems = [...currentInventory.trayItems, newItem];
+
+    // Update local state for an instant UI change
+    setInventories(prev => ({
+      ...prev,
+      [playerId]: {
+        ...prev[playerId],
+        trayItems: newTrayItems,
+      }
+    }));
+
+    // Save the updated tray to Firestore
+    const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', playerId);
+    await updateDoc(inventoryDocRef, { trayItems: newTrayItems });
+    toast.success(`Duplicated ${item.name}.`);
   };
 
   const sensors = useSensors(
