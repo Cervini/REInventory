@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { db, app } from '../firebase';
+import { db, app, auth } from '../firebase';
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
@@ -76,6 +76,42 @@ export default function Trade({ onClose, tradeId, user, playerProfiles, campaign
             unsubA();
             unsubB();
         };
+    }, [tradeData]);
+
+    useEffect(() => {
+        if (tradeData && tradeData.acceptedA && tradeData.acceptedB) {
+        const finalize = async () => {
+            try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) { throw new Error("Authentication not ready, please wait."); }
+            
+            const token = await currentUser.getIdToken(true);
+
+            const FIREBASE_REGION = 'us-central1'; // Make sure this is your correct region
+            const functionUrl = `https://${FIREBASE_REGION}-re-inventory-v2.cloudfunctions.net/finalizeTrade`;
+
+            const response = await fetch(functionUrl, {
+                method: 'POST',
+                headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ data: { tradeId: tradeData.id } })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error.message || 'Failed to finalize trade.');
+            }
+
+            toast.success(result.data.message);
+            } catch (error) {
+            toast.error(error.message);
+            }
+        };
+        finalize();
+        }
     }, [tradeData]);
 
     useEffect(() => {

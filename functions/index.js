@@ -60,61 +60,59 @@ exports.deleteUserAccount = functions.https.onRequest((req, res) => {
   });
 });
 
-exports.finalizeTrade = functions.https.onCall(async (data, context) => {
-  // We will now get the token from the 'data' object passed from the client.
-  const idToken = data.token;
-
-  if (!idToken) {
-    throw new functions.https.HttpsError(
-        "unauthenticated",
-        "Authentication token was not provided.",
-    );
-  }
-
-  try {
-    // Manually verify the token to get the user's UID.
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const uid = decodedToken.uid;
-    const { tradeId } = data;
-
-    if (!tradeId) {
-      throw new functions.https.HttpsError("invalid-argument", "The function must be called with a tradeId.");
+exports.finalizeTrade = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    if (req.method !== 'POST') {
+      return res.status(405).send({ error: 'Method Not Allowed' });
+    }
+    if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+      return res.status(401).send({ error: { message: 'Unauthorized: No token provided.' } });
     }
 
-    const tradeDocRef = db.collection("trades").doc(tradeId);
+    const idToken = req.headers.authorization.split('Bearer ')[1];
+    const { tradeId } = req.body.data;
 
-    return db.runTransaction(async (transaction) => {
-      const tradeDoc = await transaction.get(tradeDocRef);
-      if (!tradeDoc.exists) {
-        throw new functions.https.HttpsError("not-found", "The specified trade does not exist.");
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const uid = decodedToken.uid;
+
+      if (!tradeId) {
+        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a tradeId.");
       }
 
-      const tradeData = tradeDoc.data();
-      if (uid !== tradeData.playerA && uid !== tradeData.playerB) {
-        throw new functions.https.HttpsError("permission-denied", "You are not a participant in this trade.");
-      }
-      if (!tradeData.acceptedA || !tradeData.acceptedB) {
-        throw new functions.https.HttpsError("failed-precondition", "Both players must accept the trade.");
-      }
+      const tradeDocRef = db.collection("trades").doc(tradeId);
 
-      const inventoryRefA = db.collection("campaigns").doc(tradeData.campaignId).collection("inventories").doc(tradeData.playerA);
-      const inventoryRefB = db.collection("campaigns").doc(tradeData.campaignId).collection("inventories").doc(tradeData.playerB);
+      await db.runTransaction(async (transaction) => {
+        const tradeDoc = await transaction.get(tradeDocRef);
+        if (!tradeDoc.exists) {
+          throw new functions.https.HttpsError("not-found", "Trade does not exist.");
+        }
+        const tradeData = tradeDoc.data();
+        if (uid !== tradeData.playerA && uid !== tradeData.playerB) {
+          throw new functions.https.HttpsError("permission-denied", "You are not in this trade.");
+        }
+        if (!tradeData.acceptedA || !tradeData.acceptedB) {
+          throw new functions.https.HttpsError("failed-precondition", "Both players must accept.");
+        }
+
+        const inventoryRefA = db.collection("campaigns").doc(tradeData.campaignId).collection("inventories").doc(tradeData.playerA);
+        const inventoryRefB = db.collection("campaigns").doc(tradeData.campaignId).collection("inventories").doc(tradeData.playerB);
+        
+        if (tradeData.offerB && tradeData.offerB.length > 0) {
+          transaction.update(inventoryRefA, { trayItems: admin.firestore.FieldValue.arrayUnion(...tradeData.offerB) });
+        }
+        if (tradeData.offerA && tradeData.offerA.length > 0) {
+          transaction.update(inventoryRefB, { trayItems: admin.firestore.FieldValue.arrayUnion(...tradeData.offerA) });
+        }
+        transaction.delete(tradeDocRef);
+      });
       
-      if (tradeData.offerB && tradeData.offerB.length > 0) {
-        transaction.update(inventoryRefA, { trayItems: admin.firestore.FieldValue.arrayUnion(...tradeData.offerB) });
-      }
-      if (tradeData.offerA && tradeData.offerA.length > 0) {
-        transaction.update(inventoryRefB, { trayItems: admin.firestore.FieldValue.arrayUnion(...tradeData.offerA) });
-      }
-
-      transaction.delete(tradeDocRef);
-      
-      return { message: "Trade completed successfully!" };
-    });
-  } catch (error) {
-    console.error("Error finalizing trade:", error);
-    throw new functions.https.HttpsError("internal", "An error occurred while finalizing the trade.");
-  }
+      return res.status(200).send({ data: { message: "Trade completed successfully!" } });
+    } catch (error) {
+      console.error("Error finalizing trade:", error);
+      return res.status(500).send({ error: { message: error.message || "An internal error occurred." } });
+    }
+  });
 });
 
 exports.cancelTrade = functions.https.onRequest((req, res) => {
