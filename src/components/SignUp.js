@@ -32,7 +32,7 @@ export default function SignUp({ onSwitchToLogin, onShowPolicy, onGoogleSignIn }
   return (
     <div className="bg-surface shadow-lg shadow-accent/10 rounded-lg px-8 pt-6 pb-8 mb-4 border border-accent/20">
       <h2 className="text-3xl text-center font-bold mb-6 text-accent font-fantasy">
-        Sign Up
+        Create Account
       </h2>
       <div className="mb-4">
         <label className="block text-text-muted text-sm font-bold mb-2" htmlFor="signup-email">
@@ -60,7 +60,7 @@ export default function SignUp({ onSwitchToLogin, onShowPolicy, onGoogleSignIn }
       </div>
       <div className="flex items-center justify-center">
         <button
-          className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded w-full"
+          className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background font-bold py-2 px-4 rounded w-full transition-colors duration-200"
           type="button"
           onClick={handleSignUp}
           disabled={loading}
@@ -69,12 +69,12 @@ export default function SignUp({ onSwitchToLogin, onShowPolicy, onGoogleSignIn }
         </button>
       </div>
 
-        {/* Add this new section for social logins */}
-      <div className="relative flex py-5 items-center">
+       <div className="relative flex py-5 items-center">
         <div className="flex-grow border-t border-surface/50"></div>
         <span className="flex-shrink mx-4 text-text-muted text-xs">OR</span>
         <div className="flex-grow border-t border-surface/50"></div>
       </div>
+      
       <div className="space-y-2">
         <button onClick={onGoogleSignIn} className="w-full py-2 px-4 border border-surface/50 rounded-md flex items-center justify-center space-x-2 hover:bg-surface/80 transition-colors">
           <svg className="w-5 h-5" viewBox="0 0 48 48">

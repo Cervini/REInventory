@@ -816,7 +816,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
       <div className="fixed z-30 bottom-8 right-8 flex flex-col space-y-2">
         <button
           onClick={() => setShowCompendium(true)}
-          className="bg-primary hover:bg-accent hover:text-background text-text-base rounded-full p-4 shadow-lg"
+          className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background rounded-full p-4 shadow-lg"
           aria-label="Add Item from Compendium"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -826,7 +826,7 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
         </button>
         <button
           onClick={() => setShowAddItem(true)}
-          className="bg-confirm hover:bg-accent hover:text-background text-text-base rounded-full p-4 shadow-lg"
+          className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background rounded-full p-4 shadow-lg"
           aria-label="Create New Item"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

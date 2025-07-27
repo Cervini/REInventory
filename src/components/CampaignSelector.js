@@ -208,12 +208,11 @@ export default function CampaignSelector({ onCampaignSelected }) {
               </div>
             ))}
           </div>
-          <div className="text-text-muted w-full text-center pt-6 font-fantasy tracking-widest">... OR ...</div>
         </div>
       )}
 
       {/* --- Create/Join Section --- */}
-      <h2 className="text-2xl text-center font-bold mb-4 text-accent font-fantasy">New Chapter</h2>
+      <h2 className="text-2xl text-center font-bold mb-4 text-accent font-fantasy">New campaign</h2>
       <div className="flex flex-col items-center space-y-4">
         {/* Create Campaign */}
         <input
@@ -226,7 +225,7 @@ export default function CampaignSelector({ onCampaignSelected }) {
         <button
           onClick={handleCreateCampaign}
           disabled={loading}
-          className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-6 rounded w-full disabled:opacity-50 transition-colors duration-200"
+          className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background font-bold py-2 px-4 rounded w-full transition-colors duration-200"
         >
           {loading ? 'Creating...' : 'Create New Campaign'}
         </button>
@@ -242,7 +241,7 @@ export default function CampaignSelector({ onCampaignSelected }) {
         <button
           onClick={handleJoinCampaign}
           disabled={loading}
-          className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded w-full disabled:opacity-50 transition-colors duration-200"
+          className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background font-bold py-2 px-4 rounded w-full transition-colors duration-200"
         >
           {loading ? 'Joining...' : 'Join Campaign'}
         </button>

@@ -167,7 +167,7 @@ export default function Compendium({ onClose }) {
                 <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
               </svg>
             </button>
-            <button onClick={() => setShowAddItem(true)} className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-1 px-3 rounded text-sm">
+            <button onClick={() => setShowAddItem(true)} className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background font-bold py-1 px-3 rounded text-sm">
                 + Add Custom Item
             </button>
         </div>

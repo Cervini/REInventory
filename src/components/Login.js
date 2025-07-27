@@ -35,7 +35,7 @@ export default function Login({ onSwitchToSignUp, onGoogleSignIn }) {
           Email
         </label>
         <input
-          className="shadow-inner appearance-none border border-background/50 rounded w-full py-2 px-3 bg-background text-text-base leading-tight focus:outline-none focus:ring-2 focus:ring-accent"
+          className="shadow-inner appearance-none border border-background/50 rounded w-full py-2 px-3 bg-background text-text-base leading-tight focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"
           id="login-email"
           type="email"
           value={email}
@@ -48,7 +48,7 @@ export default function Login({ onSwitchToSignUp, onGoogleSignIn }) {
           Password
         </label>
         <input
-          className="shadow-inner appearance-none border border-background/50 rounded w-full py-2 px-3 bg-background text-text-base leading-tight focus:outline-none focus:ring-2 focus:ring-accent"
+          className="shadow-inner appearance-none border border-background/50 rounded w-full py-2 px-3 bg-background text-text-base leading-tight focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"
           id="login-password"
           type="password"
           value={password}
@@ -58,7 +58,7 @@ export default function Login({ onSwitchToSignUp, onGoogleSignIn }) {
       </div>
       <div className="flex items-center justify-center">
         <button
-          className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 w-full"
+          className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background font-bold py-2 px-4 rounded w-full transition-colors duration-200"
           type="button"
           onClick={handleSignIn}
           disabled={loading}
@@ -66,13 +66,13 @@ export default function Login({ onSwitchToSignUp, onGoogleSignIn }) {
           {loading ? '...' : 'Sign In'}
         </button>
       </div>
-
-        {/* Add this new section for social logins */}
+      
       <div className="relative flex py-5 items-center">
         <div className="flex-grow border-t border-surface/50"></div>
         <span className="flex-shrink mx-4 text-text-muted text-xs">OR</span>
         <div className="flex-grow border-t border-surface/50"></div>
       </div>
+      
       <div className="space-y-2">
         <button onClick={onGoogleSignIn} className="w-full py-2 px-4 border border-surface/50 rounded-md flex items-center justify-center space-x-2 hover:bg-surface/80 transition-colors">
           <svg className="w-5 h-5" viewBox="0 0 48 48">
