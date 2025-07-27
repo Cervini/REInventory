@@ -22,6 +22,7 @@ export default function ItemTray({ campaignId, playerId, items, onContextMenu, i
               playerId={playerId}
               isDM={isDM}
               source="tray"
+              cellSize={{ width: 80, height: 80 }} // Tray items have a fixed cell size
             />
           </div>
         ))}

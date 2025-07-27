@@ -25,6 +25,7 @@ export default function App() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isCodeVisible, setIsCodeVisible] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isTrading, setIsTrading] = useState(false);
   
   // State to manage which "page" is visible
   const [currentPage, setCurrentPage] = useState('main'); // 'main', 'privacy', 'cookies', 'compendium'
@@ -88,7 +89,13 @@ export default function App() {
       return <CampaignSelector onCampaignSelected={setCampaignId} />;
     }
     if (user && campaignId) {
-      return <InventoryGrid campaignId={campaignId} user={user} userProfile={userProfile} />;
+      return <InventoryGrid 
+        campaignId={campaignId} 
+        user={user} 
+        userProfile={userProfile}
+        isTrading={isTrading}
+        setIsTrading={setIsTrading}
+      />;
     }
   };
 
@@ -123,6 +130,13 @@ export default function App() {
                   <button onClick={handleBackToCampaigns} className="p-2 rounded-full hover:bg-surface transition-colors duration-200" aria-label="Back to campaigns">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                  </button>
+                )}
+                {campaignId && (
+                  <button onClick={() => setIsTrading(true)} className="p-2 rounded-full hover:bg-surface transition-colors" aria-label="Start Trade">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                     </svg>
                   </button>
                 )}

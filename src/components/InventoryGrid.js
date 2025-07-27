@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { doc, updateDoc, writeBatch } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, collection, query, where, writeBatch } from "firebase/firestore";
 import { db } from '../firebase';
 import { DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
 import { restrictToParentElement, restrictToWindowEdges } from '@dnd-kit/modifiers';
@@ -15,10 +15,17 @@ import ItemTray from './ItemTray';
 import InventorySettings from './InventorySettings';
 import { getColorForItemType } from '../utils/itemUtils';
 import AddFromCompendium from './AddFromCompendium';
+import StartTrade from './StartTrade';
+import TradeNotifications from './TradeNotifications'
+import Trade from './Trade';
+import { usePlayerProfiles } from '../hooks/usePlayerProfiles';
 
-export default function InventoryGrid({ campaignId, user, userProfile }) {
+export default function InventoryGrid({ campaignId, user, userProfile, isTrading, setIsTrading }) {
   
-  const { inventories, setInventories, campaign, playerProfiles, isLoading } = useCampaignData(campaignId, user, userProfile);
+  const { inventories, setInventories, campaign, isLoading: inventoriesLoading } = useCampaignData(campaignId, user);
+  const { playerProfiles, isLoading: profilesLoading } = usePlayerProfiles(campaignId);
+  
+  const isLoading = inventoriesLoading || profilesLoading; // Combine loading states
 
   // State for UI interactions remains here
   const [showAddItem, setShowAddItem] = useState(false);
@@ -30,8 +37,36 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
   const [editingInventory, setEditingInventory] = useState(null);
   const [cellSizes, setCellSizes] = useState({});
   const [showCompendium, setShowCompendium] = useState(false);
+  const [activeTrade, setActiveTrade] = useState(null);
+  
   
   const gridRefs = useRef({});
+
+  // Listen for active trades
+  useEffect(() => {
+    if (!user || !campaignId) return;
+
+    const tradesRef = collection(db, 'trades');
+    // Query for trades where the user is either Player A OR Player B
+    const q = query(
+      tradesRef,
+      where('campaignId', '==', campaignId),
+      where('players', 'array-contains', user.uid), // You'll need to add a 'players' field to your trade docs
+      where('status', '==', 'active')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        // If an active trade is found, open the modal
+        const tradeDoc = snapshot.docs[0];
+        setActiveTrade({ id: tradeDoc.id, ...tradeDoc.data() });
+      } else {
+        setActiveTrade(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [campaignId, user]);
 
   useEffect(() => {
         const observers = [];
@@ -647,6 +682,27 @@ export default function InventoryGrid({ campaignId, user, userProfile }) {
   return (
     <div className="w-full flex flex-col items-center flex-grow">
       {/* --- Modals (Styling has been updated in their own files) --- */}
+
+      {activeTrade && (
+        <Trade
+          tradeId={activeTrade.id}
+          onClose={() => setActiveTrade(null)}
+          user={user}
+          playerProfiles={playerProfiles}
+          campaign={campaign}
+        />
+      )}
+
+      <TradeNotifications campaignId={campaignId} />
+
+      {isTrading && (
+        <StartTrade
+          onClose={() => setIsTrading(false)}
+          campaign={{id: campaignId, ...campaign}}
+          user={user}
+          playerProfiles={playerProfiles}
+        />
+      )}
       
       {showCompendium && (
         <AddFromCompendium
