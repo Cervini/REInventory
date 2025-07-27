@@ -239,34 +239,41 @@ export default function Trade({ onClose, tradeId, user, playerProfiles, campaign
             <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-4 rounded-lg shadow-xl w-full h-full flex flex-col">
                 <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
                     <h3 className="text-2xl font-bold mb-4 font-fantasy text-accent text-center">Trading Table</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow overflow-auto">
-                        <div className="flex flex-col space-y-2">
-                            <h4 className="font-bold text-lg">{playerProfiles[you.id]?.displayName || 'Your'} Offer</h4>
-                            <TradeOffer items={you.offer} playerId={you.id} isDM={user.uid === campaign.dmId} onContextMenu={handleContextMenu} />
-                            <div className="flex-grow">
-                                <PlayerInventoryGrid items={you.inventory.gridItems} gridWidth={you.inventory.gridWidth} gridHeight={you.inventory.gridHeight} playerId={you.id} isDM={user.uid === campaign.dmId} onContextMenu={handleContextMenu} isTradeMode={true}/>
-                            </div>
-                            <ItemTray items={you.inventory.trayItems} playerId={you.id} isDM={user.uid === campaign.dmId} onContextMenu={handleContextMenu} isTradeMode={true} />
+
+                    <div className="flex flex-col md:flex-row flex-grow overflow-auto gap-4">
+
+                    {/* --- Offers Section --- */}
+                    <div className="flex flex-col space-y-4 md:w-1/3">
+                        <div>
+                        <h4 className="font-bold text-lg mb-1">{playerProfiles[you.id]?.displayName || 'Your'} Offer</h4>
+                        <TradeOffer items={you.offer} playerId={you.id} isDM={user.uid === campaign.dmId} onContextMenu={handleContextMenu} />
                         </div>
-                        <div className="flex flex-col space-y-2 opacity-70 pointer-events-none">
-                           <h4 className="font-bold text-lg">{playerProfiles[otherPlayer.id]?.displayName}'s Offer</h4>
-                            <TradeOffer items={otherPlayer.offer} playerId={otherPlayer.id} isDM={user.uid === campaign.dmId} onContextMenu={handleContextMenu} />
-                             <div className="flex-grow">
-                                <PlayerInventoryGrid items={otherPlayer.inventory.gridItems} gridWidth={otherPlayer.inventory.gridWidth} gridHeight={otherPlayer.inventory.gridHeight} playerId={otherPlayer.id} />
-                            </div>
-                            <ItemTray items={otherPlayer.inventory.trayItems} playerId={otherPlayer.id} />
+                        <div>
+                        <h4 className="font-bold text-lg mb-1">{playerProfiles[otherPlayer.id]?.displayName}'s Offer</h4>
+                        <TradeOffer items={otherPlayer.offer} playerId={otherPlayer.id} isDM={user.uid === campaign.dmId} onContextMenu={() => {}} />
                         </div>
                     </div>
+
+                    {/* --- User's Inventory Section --- */}
+                    <div className="flex flex-col space-y-2 flex-grow md:w-2/3 min-h-0">
+                        <h4 className="font-bold text-lg">Your Inventory</h4>
+                        <div className="flex-grow overflow-auto border border-surface/50 rounded-lg p-2">
+                        <PlayerInventoryGrid items={you.inventory.gridItems} gridWidth={you.inventory.gridWidth} gridHeight={you.inventory.gridHeight} playerId={you.id} isDM={user.uid === campaign.dmId} onContextMenu={handleContextMenu} isTradeMode={true}/>
+                        </div>
+                        <ItemTray items={you.inventory.trayItems} playerId={you.id} isDM={user.uid === campaign.dmId} onContextMenu={handleContextMenu} isTradeMode={true} />
+                    </div>
+                    </div>
+
                     <DragOverlay>
-                        {activeItem ? <div className={`${getColorForItemType(activeItem.item.type)} w-20 h-20 rounded-lg p-2 text-sm`}>{activeItem.item.name}</div> : null}
+                    {activeItem ? <div className={`${getColorForItemType(activeItem.item.type)} w-20 h-20 rounded-lg p-2 text-sm`}>{activeItem.item.name}</div> : null}
                     </DragOverlay>
                 </DndContext>
                 <div className="flex justify-between items-center pt-4">
                     <button onClick={handleCancelTrade} disabled={loading} className="bg-destructive/80 hover:bg-destructive text-text-base font-bold py-2 px-4 rounded transition-colors disabled:opacity-50">
-                        {loading ? 'Cancelling...' : 'Cancel Trade'}
+                    {loading ? 'Cancelling...' : 'Cancel Trade'}
                     </button>
                     <button onClick={handleAcceptTrade} disabled={you.accepted} className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded transition-colors disabled:opacity-50">
-                        {you.accepted ? 'Waiting...' : 'Accept Trade'}
+                    {you.accepted ? 'Waiting...' : 'Accept Trade'}
                     </button>
                 </div>
             </div>
