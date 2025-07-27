@@ -1,90 +1,206 @@
 # REInventory
 
-A shared, visual inventory application for TTRPGs, inspired by the "Tetris-style" systems in classic video games.
+*A modern, visual inventory management system for tabletop RPGs*
 
-## 🎯 About
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Available-brightgreen)](https://re-inventory-v2.web.app/)
+[![Firebase](https://img.shields.io/badge/Firebase-Hosted-orange)](https://firebase.google.com/)
+[![React](https://img.shields.io/badge/React-18+-blue)](https://reactjs.org/)
 
-REInventory brings the intuitive, visual inventory management from classic video games to tabletop RPGs like Dungeons & Dragons. Tired of tracking items on paper or in spreadsheets? REInventory offers a drag-and-drop interface that makes inventory management engaging and visual for both players and Dungeon Masters.
+## 🎯 Overview
 
-## 🚀 Live Demo
+REInventory transforms tedious inventory management into an engaging, visual experience for tabletop RPG players and Dungeon Masters. Drawing inspiration from classic video game inventory systems, it provides an intuitive drag-and-drop interface that makes organizing loot as satisfying as finding it.
 
-**[Try REInventory now!](https://reinventory-94505.web.app/)**
+## ✨ Key Features
 
-No installation required - just open in your browser and start organizing your party's loot!
+### 🎮 **Tetris-Style Grid System**
+- **Visual inventory grids** with customizable dimensions
+- **Drag-and-drop functionality** for intuitive item management
+- **Collision detection** prevents item overlap
+- **Smart placement** finds available slots automatically
 
-## ✨ Features
+### 👥 **Multi-Player Campaign Support**
+- **Campaign-based organization** with unique join codes
+- **Real-time synchronization** across all players
+- **DM oversight** with full party inventory access
+- **Seamless item transfers** between players
 
-- **🎲 Multiple Campaign Support** - Manage inventories across different TTRPG campaigns
-- **📦 Visual Item Management** - Create, edit, and delete items with detailed descriptions
-- **🎮 Tetris-Style Interface** - Intuitive drag-and-drop inventory system inspired by classic games
-- **👥 Shared Inventories** - DMs can view and manage all player inventories
-- **🔄 Item Transfer** - Move items between players seamlessly
-- **📚 Stackable Items** - Smart stacking system for consumables and similar items
-- **🖱️ Drag & Drop UI** - Easy-to-use interface that makes inventory management fun
+### 📦 **Advanced Item Management**
+- **Comprehensive item creation** with detailed attributes
+- **Item tray system** for temporary storage
+- **Stack splitting** for consumables and similar items
+- **Item duplication** for DMs
+- **Custom item compendium** with global item database
 
-## 🎮 Perfect For
+### 🛠️ **Rich Item Attributes**
+- **Multiple item types** (Weapons, Armor, Potions, Magic items, etc.)
+- **Rarity system** (Common to Legendary)
+- **Weapon statistics** (damage, type, properties)
+- **Weight, cost, and attunement** tracking
+- **Detailed descriptions** with hover tooltips
 
-- **TTRPG Players** who want a visual alternative to paper character sheets
-- **Dungeon Masters** who need to track party inventory and distribute loot
-- **Gaming Groups** looking for a shared, collaborative inventory system
-- **Anyone** frustrated with traditional text-based inventory management
-
-## 🛠️ Built With
-
-- **React** - Frontend framework for a responsive, interactive experience
-- **Firebase** - Hosting and backend services
+### 🎨 **Modern User Experience**
+- **Responsive design** works on desktop and mobile
+- **Dark theme** optimized for long gaming sessions
+- **Context menus** for quick item actions
+- **Real-time notifications** for all actions
+- **Intuitive user interface** requires no learning curve
 
 ## 🚀 Getting Started
 
-### For Players
+### **For Players**
+1. Visit **[re-inventory-v2.web.app](https://re-inventory-v2.web.app/)**
+2. Create an account or sign in
+3. Join an existing campaign with a code, or create your own
+4. Start adding items and organizing your inventory!
 
-1. Visit [re-inventory-v2.web.app](https://re-inventory-v2.web.app/)
-2. Create or join a campaign
-3. Start adding items to your inventory
-4. Drag and drop items to organize them visually
+### **For Dungeon Masters**
+1. Create a new campaign to get a unique join code
+2. Share the code with your players
+3. Access the **Item Compendium** to add items from a global database
+4. Create custom items and distribute loot to players
+5. Monitor all player inventories in real-time
 
-### System Requirements
+## 📱 Progressive Web App (PWA)
 
-- Any modern web browser (Chrome, Firefox, Safari, Edge)
-- Internet connection
-- That's it! No downloads or installations required
+REInventory works as a **Progressive Web App**, meaning you can install it directly to your device's home screen for a native app-like experience.
+
+### **Install on Android**
+1. Open **[re-inventory-v2.web.app](https://re-inventory-v2.web.app/)** in Chrome
+2. Tap the **menu (⋮)** in the top-right corner
+3. Select **"Add to Home screen"** or **"Install app"**
+4. Confirm the installation
+5. Launch REInventory directly from your home screen!
+
+### **Install on iOS**
+1. Open **[re-inventory-v2.web.app](https://re-inventory-v2.web.app/)** in Safari
+2. Tap the **Share button** (square with arrow pointing up)
+3. Scroll down and select **"Add to Home Screen"**
+4. Customize the name if desired and tap **"Add"**
+5. Access REInventory like any other app from your home screen!
+
+### **PWA Benefits**
+- **Faster loading** with offline caching
+- **Full-screen experience** without browser UI
+- **Native app feel** with smooth animations
+- **Background sync** for seamless multiplayer experience
+
+## 🎲 Perfect For
+
+- **D&D 5e** and other tabletop RPG systems
+- **Online gaming groups** using platforms like Roll20 or Discord
+- **In-person sessions** where digital tools enhance the experience
+- **Campaign organization** and session preparation
+- **Players who love visual organization**
+
+## 🔧 Technical Features
+
+### **Built With**
+- **React 18** - Modern frontend framework
+- **Firebase** - Authentication, database, and hosting
+- **@dnd-kit** - Accessible drag-and-drop functionality
+- **Tailwind CSS** - Utility-first styling
+- **React Hot Toast** - Beautiful notifications
+
+### **Key Capabilities**
+- **Real-time data synchronization** using Firestore
+- **Offline-capable** with local state management
+- **Touch-friendly** drag-and-drop for mobile devices
+- **Keyboard accessible** interface
+- **Responsive grid system** that adapts to screen size
+
+## 📱 System Requirements
+
+- **Any modern web browser** (Chrome, Firefox, Safari, Edge)
+- **Internet connection** for real-time sync
+- **No downloads required** - runs entirely in your browser
+
+## 🎮 How It Works
+
+### **Inventory Management**
+- Items are displayed on a **visual grid** similar to classic RPG games
+- **Drag items** to reorganize your inventory layout
+- **Right-click (or long-press)** for context menu options
+- Use the **item tray** for temporary storage and organization
+
+### **Campaign Flow**
+1. **DM creates** a campaign and receives a join code
+2. **Players join** using the campaign code
+3. **Everyone gets** their own inventory grid and tray
+4. **DM can view** and manage all player inventories
+5. **Items flow seamlessly** between players as needed
+
+### **Item Creation**
+- **Rich item editor** with all D&D 5e attributes
+- **Custom compendium** for your frequently used items
+- **Global database** of common items to speed up gameplay
+- **Weapon stats, rarity, and descriptions** fully supported
 
 ## 🗺️ Roadmap
 
-REInventory v1.0.0 is just the beginning! Future updates will include:
+### **Planned Features**
+- [ ] **Advanced filtering** and search capabilities
+- [ ] **Item categories** and custom organization
+- [ ] **Export/import** functionality for backup
+- [ ] **Integration** with popular VTT platforms
+- [ ] **Mobile app** for iOS and Android
+- [ ] **Spell slot tracking** and character stats
+- [ ] **Marketplace** for trading between campaigns
 
-1. Trade between players
-3. Better GUI
-4. Advanced filtering and search
-5. Advanced options for backpack structure
-6. Different shape items
-7. Export/import functionality
-8. Screenshots and visual documentation
+### **Under Consideration**
+- [ ] **Different item shapes** beyond rectangles
+- [ ] **Bag-in-bag** system for complex organization
+- [ ] **Visual item icons** and custom imagery
+- [ ] **Campaign notes** and shared documents
+- [ ] **Initiative tracker** integration
 
 ## 🤝 Contributing
 
-Contributions are welcome and greatly appreciated! Whether you're fixing bugs, adding features, or improving documentation, your help makes REInventory better for the entire TTRPG community.
+We welcome contributions from the TTRPG community! Whether you're fixing bugs, adding features, or improving documentation, your help makes REInventory better for everyone.
 
-### How to Contribute
-
+### **How to Contribute**
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📝 License
+### **Development Setup**
+```bash
+# Clone the repository
+git clone https://github.com/Cervini/REInventory.git
+
+# Install dependencies
+npm install
+
+# Start development server
+npm start
+
+# Build for production
+npm run build
+```
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🔗 Links
 
-- **Live Application**: [re-inventory-v2.web.app](https://re-inventory-v2.web.app/)
-- **GitHub Repository**: [github.com/Cervini/REInventory](https://github.com/Cervini/REInventory)
+- **🌐 Live Application**: [re-inventory-v2.web.app](https://re-inventory-v2.web.app/)
+- **💻 GitHub Repository**: [github.com/Cervini/REInventory](https://github.com/Cervini/REInventory)
+- **🐛 Bug Reports**: [GitHub Issues](https://github.com/Cervini/REInventory/issues)
+- **💡 Feature Requests**: [GitHub Discussions](https://github.com/Cervini/REInventory/discussions)
 
-## 📞 Support
+## 📞 Support & Community
 
-Found a bug or have a feature request? Please [open an issue](https://github.com/Cervini/REInventory/issues) on GitHub.
+- **Found a bug?** Please [open an issue](https://github.com/Cervini/REInventory/issues) on GitHub
+- **Have a feature idea?** We'd love to hear it in our [discussions](https://github.com/Cervini/REInventory/discussions)
+- **Need help?** Check out our documentation or ask the community
+
+## 🙏 Acknowledgments
+
+- Inspired by classic RPG inventory systems from games like Diablo, Torchlight, and Resident Evil
+- Built for the amazing tabletop RPG community
+- Special thanks to all beta testers and contributors
 
 ---
 
