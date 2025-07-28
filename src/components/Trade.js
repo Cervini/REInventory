@@ -79,7 +79,6 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
 
     // This effect fetches the user's FULL inventory ONCE the tradeData is loaded
     useEffect(() => {
-        // Run only if tradeData is available and local inventory hasn't been set yet
         if (!tradeData || isInventoryLoaded) return;
 
         const fetchInitialInventory = async () => {
@@ -103,21 +102,15 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
 
     // This effect FINALIZES the trade when both players have accepted
     useEffect(() => {
-        // Ensure we have data and both players have accepted
         if (tradeData && tradeData.acceptedA && tradeData.acceptedB) {
-            
-            // To prevent both players from trying to finalize, only Player A will send the request.
             if (user.uid === tradeData.playerA) {
-                 const finalize = httpsCallable(getFunctions(app, 'us-central1'), 'finalizeTrade');
-                 finalize({ tradeId: tradeId })
+                 const finalizeTrade = httpsCallable(getFunctions(app, 'us-central1'), 'finalizeTrade');
+                 finalizeTrade({ tradeId: tradeId })
                     .then((result) => {
                         toast.success(result.data.message);
-                        // The onSnapshot listener will see the document deletion and automatically close the modal.
                     })
                     .catch((error) => {
-                        console.error("Finalization Error:", error);
                         toast.error(`Error: ${error.message}`);
-                        // If it fails, reset the acceptance so they can try again
                         updateDoc(doc(db, 'trades', tradeId), { acceptedA: false, acceptedB: false });
                     });
             }
