@@ -103,17 +103,21 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
 
     // This effect FINALIZES the trade when both players have accepted
     useEffect(() => {
+        // Ensure we have data and both players have accepted
         if (tradeData && tradeData.acceptedA && tradeData.acceptedB) {
             
-            // To prevent a race condition, only have Player A execute the finalization logic.
+            // To prevent both players from trying to finalize, only Player A will send the request.
             if (user.uid === tradeData.playerA) {
-                 const finalizeTrade = httpsCallable(getFunctions(app, 'us-central1'), 'finalizeTrade');
-                 finalizeTrade({ tradeId: tradeId })
-                    .then(() => {
-                        toast.success("Trade complete!");
+                 const finalize = httpsCallable(getFunctions(app, 'us-central1'), 'finalizeTrade');
+                 finalize({ tradeId: tradeId })
+                    .then((result) => {
+                        toast.success(result.data.message);
+                        // The onSnapshot listener will see the document deletion and automatically close the modal.
                     })
                     .catch((error) => {
-                        toast.error(`Finalization Error: ${error.message}`);
+                        console.error("Finalization Error:", error);
+                        toast.error(`Error: ${error.message}`);
+                        // If it fails, reset the acceptance so they can try again
                         updateDoc(doc(db, 'trades', tradeId), { acceptedA: false, acceptedB: false });
                     });
             }

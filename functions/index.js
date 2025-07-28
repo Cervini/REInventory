@@ -61,20 +61,28 @@ exports.deleteUserAccount = functions.https.onRequest((req, res) => {
 });
 
 exports.finalizeTrade = functions.https.onCall(async (data, context) => {
+  // 1. Authentication is now handled automatically.
+  // If the user isn't logged in, the function will exit here.
   if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "The function must be called while authenticated.",
+    );
   }
 
   const { tradeId } = data;
   if (!tradeId) {
-    throw new functions.https.HttpsError("invalid-argument", "The function must be called with a 'tradeId'.");
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "The function must be called with a 'tradeId'.",
+    );
   }
 
   const uid = context.auth.uid;
-  const db = admin.firestore();
   const tradeDocRef = db.collection("trades").doc(tradeId);
 
   try {
+    // 2. A transaction ensures all database changes succeed or fail together.
     await db.runTransaction(async (transaction) => {
       const tradeDoc = await transaction.get(tradeDocRef);
       if (!tradeDoc.exists) {
@@ -82,45 +90,40 @@ exports.finalizeTrade = functions.https.onCall(async (data, context) => {
       }
       const tradeData = tradeDoc.data();
 
-      if (uid !== tradeData.playerA) {
-        throw new functions.https.HttpsError("permission-denied", "Only Player A can initiate the finalization.");
+      // 3. Security checks to ensure the caller is authorized.
+      if (uid !== tradeData.playerA && uid !== tradeData.playerB) {
+        throw new functions.https.HttpsError("permission-denied", "You are not a participant in this trade.");
       }
       if (!tradeData.acceptedA || !tradeData.acceptedB) {
         throw new functions.https.HttpsError("failed-precondition", "Both players must accept the trade.");
       }
 
+      // 4. Correctly removing items from both inventories and adding the new ones.
       const campaignId = tradeData.campaignId;
-      const playerAId = tradeData.playerA;
-      const playerBId = tradeData.playerB;
-      const offerA = tradeData.offerA || [];
-      const offerB = tradeData.offerB || [];
+      const inventoryRefA = db.collection("campaigns").doc(campaignId).collection("inventories").doc(tradeData.playerA);
+      const inventoryRefB = db.collection("campaigns").doc(campaignId).collection("inventories").doc(tradeData.playerB);
+      
+      const [invDocA, invDocB] = await transaction.getAll(inventoryRefA, inventoryRefB);
 
-      const inventoryRefA = db.collection("campaigns").doc(campaignId).collection("inventories").doc(playerAId);
-      const inventoryRefB = db.collection("campaigns").doc(campaignId).collection("inventories").doc(playerBId);
-
-      const [inventoryDocA, inventoryDocB] = await transaction.getAll(inventoryRefA, inventoryRefB);
-
-      if (!inventoryDocA.exists || !inventoryDocB.exists) {
-        throw new functions.https.HttpsError("not-found", "One or both player inventories could not be found.");
+      if (!invDocA.exists || !invDocB.exists) {
+        throw new functions.https.HttpsError("not-found", "Could not find player inventories.");
       }
 
-      const inventoryDataA = inventoryDocA.data();
-      const inventoryDataB = inventoryDocB.data();
-      
-      // --- THIS IS THE CORE FIX ---
-      const offerA_Ids = new Set(offerA.map(item => item.id));
-      const finalGridA = (inventoryDataA.gridItems || []).filter(item => !offerA_Ids.has(item.id));
-      let finalTrayA = (inventoryDataA.trayItems || []).filter(item => !offerA_Ids.has(item.id));
-      
-      const offerB_Ids = new Set(offerB.map(item => item.id));
-      const finalGridB = (inventoryDataB.gridItems || []).filter(item => !offerB_Ids.has(item.id));
-      let finalTrayB = (inventoryDataB.trayItems || []).filter(item => !offerB_Ids.has(item.id));
-
-      offerB.forEach(item => finalTrayA.push(item));
-      offerA.forEach(item => finalTrayB.push(item));
-
+      const invDataA = invDocA.data();
+      const offerA_Ids = new Set((tradeData.offerA || []).map(i => i.id));
+      const finalGridA = (invDataA.gridItems || []).filter(item => !offerA_Ids.has(item.id));
+      const finalTrayA = (invDataA.trayItems || []).filter(item => !offerA_Ids.has(item.id));
+      (tradeData.offerB || []).forEach(item => finalTrayA.push(item));
       transaction.update(inventoryRefA, { gridItems: finalGridA, trayItems: finalTrayA });
+
+      const invDataB = invDocB.data();
+      const offerB_Ids = new Set((tradeData.offerB || []).map(i => i.id));
+      const finalGridB = (invDataB.gridItems || []).filter(item => !offerB_Ids.has(item.id));
+      const finalTrayB = (invDataB.trayItems || []).filter(item => !offerB_Ids.has(item.id));
+      (tradeData.offerA || []).forEach(item => finalTrayB.push(item));
       transaction.update(inventoryRefB, { gridItems: finalGridB, trayItems: finalTrayB });
+      
+      // 5. Deleting the trade document after completion.
       transaction.delete(tradeDocRef);
     });
 
@@ -131,57 +134,37 @@ exports.finalizeTrade = functions.https.onCall(async (data, context) => {
   }
 });
 
-exports.cancelTrade = functions.https.onRequest((req, res) => {
-  cors(req, res, async () => {
-    if (req.method !== 'POST') {
-      return res.status(405).send({ error: 'Method Not Allowed' });
+
+exports.cancelTrade = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to cancel a trade.");
     }
 
-    if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
-      console.error('No Firebase ID token was passed.');
-      return res.status(401).send({ error: { message: 'Unauthorized' } });
+    const { tradeId } = data;
+    if (!tradeId) {
+        throw new functions.https.HttpsError("invalid-argument", "tradeId is required.");
     }
 
-    const idToken = req.headers.authorization.split('Bearer ')[1];
-    const { tradeId } = req.body.data;
+    const uid = context.auth.uid;
+    const tradeDocRef = db.collection("trades").doc(tradeId);
 
     try {
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
-      const uid = decodedToken.uid;
+        const tradeDoc = await tradeDocRef.get();
+        if (!tradeDoc.exists) {
+            return { message: "Trade already resolved." };
+        }
+        const tradeData = tradeDoc.data();
 
-      if (!tradeId) {
-        throw new Error("tradeId is required.");
-      }
+        if (uid !== tradeData.playerA && uid !== tradeData.playerB) {
+            throw new functions.https.HttpsError("permission-denied", "You are not a participant in this trade.");
+        }
+        
+        // Items are not returned on cancel, just delete the trade
+        await tradeDocRef.delete();
 
-      const tradeDocRef = db.collection("trades").doc(tradeId);
-      const tradeDoc = await tradeDocRef.get();
-      if (!tradeDoc.exists) {
-        return res.status(200).send({ data: { message: "Trade already resolved." } });
-      }
-
-      const tradeData = tradeDoc.data();
-      if (uid !== tradeData.playerA && uid !== tradeData.playerB) {
-        return res.status(403).send({ error: { message: 'Permission denied.' } });
-      }
-
-      const batch = db.batch();
-      const inventoryRefA = db.collection("campaigns").doc(tradeData.campaignId).collection("inventories").doc(tradeData.playerA);
-      const inventoryRefB = db.collection("campaigns").doc(tradeData.campaignId).collection("inventories").doc(tradeData.playerB);
-      
-      if (tradeData.offerA && tradeData.offerA.length > 0) {
-        batch.update(inventoryRefA, { trayItems: admin.firestore.FieldValue.arrayUnion(...tradeData.offerA) });
-      }
-      if (tradeData.offerB && tradeData.offerB.length > 0) {
-        batch.update(inventoryRefB, { trayItems: admin.firestore.FieldValue.arrayUnion(...tradeData.offerB) });
-      }
-
-      batch.delete(tradeDocRef);
-      await batch.commit();
-
-      return res.status(200).send({ data: { message: "Trade cancelled and items returned." } });
+        return { message: "Trade cancelled." };
     } catch (error) {
-      console.error("Error cancelling trade:", error);
-      return res.status(500).send({ error: { message: "An internal error occurred." } });
+        console.error("Error cancelling trade:", error);
+        throw new functions.https.HttpsError("internal", error.message, error);
     }
-  });
 });
