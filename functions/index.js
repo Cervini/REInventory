@@ -60,59 +60,87 @@ exports.deleteUserAccount = functions.https.onRequest((req, res) => {
   });
 });
 
-exports.finalizeTrade = functions.https.onRequest((req, res) => {
-  cors(req, res, async () => {
-    if (req.method !== 'POST') {
-      return res.status(405).send({ error: 'Method Not Allowed' });
-    }
-    if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
-      return res.status(401).send({ error: { message: 'Unauthorized: No token provided.' } });
-    }
+exports.finalizeTrade = functions.https.onCall(async (data, context) => {
+  // Check for authentication
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
+  }
 
-    const idToken = req.headers.authorization.split('Bearer ')[1];
-    const { tradeId } = req.body.data;
+  const { tradeId } = data;
+  if (!tradeId) {
+    throw new functions.https.HttpsError("invalid-argument", "The function must be called with a 'tradeId'.");
+  }
 
-    try {
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
-      const uid = decodedToken.uid;
+  const uid = context.auth.uid;
+  const tradeDocRef = db.collection("trades").doc(tradeId);
 
-      if (!tradeId) {
-        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a tradeId.");
+  try {
+    await db.runTransaction(async (transaction) => {
+      const tradeDoc = await transaction.get(tradeDocRef);
+      if (!tradeDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Trade does not exist.");
+      }
+      const tradeData = tradeDoc.data();
+
+      // Security check: ensure the caller is one of the players in the trade
+      if (uid !== tradeData.playerA && uid !== tradeData.playerB) {
+        throw new functions.https.HttpsError("permission-denied", "You are not a participant in this trade.");
       }
 
-      const tradeDocRef = db.collection("trades").doc(tradeId);
+      // Precondition check: ensure both players have accepted
+      if (!tradeData.acceptedA || !tradeData.acceptedB) {
+        throw new functions.https.HttpsError("failed-precondition", "Both players must accept the trade before finalizing.");
+      }
 
-      await db.runTransaction(async (transaction) => {
-        const tradeDoc = await transaction.get(tradeDocRef);
-        if (!tradeDoc.exists) {
-          throw new functions.https.HttpsError("not-found", "Trade does not exist.");
-        }
-        const tradeData = tradeDoc.data();
-        if (uid !== tradeData.playerA && uid !== tradeData.playerB) {
-          throw new functions.https.HttpsError("permission-denied", "You are not in this trade.");
-        }
-        if (!tradeData.acceptedA || !tradeData.acceptedB) {
-          throw new functions.https.HttpsError("failed-precondition", "Both players must accept.");
-        }
+      const campaignId = tradeData.campaignId;
+      const playerAId = tradeData.playerA;
+      const playerBId = tradeData.playerB;
+      const offerA = tradeData.offerA || [];
+      const offerB = tradeData.offerB || [];
 
-        const inventoryRefA = db.collection("campaigns").doc(tradeData.campaignId).collection("inventories").doc(tradeData.playerA);
-        const inventoryRefB = db.collection("campaigns").doc(tradeData.campaignId).collection("inventories").doc(tradeData.playerB);
-        
-        if (tradeData.offerB && tradeData.offerB.length > 0) {
-          transaction.update(inventoryRefA, { trayItems: admin.firestore.FieldValue.arrayUnion(...tradeData.offerB) });
-        }
-        if (tradeData.offerA && tradeData.offerA.length > 0) {
-          transaction.update(inventoryRefB, { trayItems: admin.firestore.FieldValue.arrayUnion(...tradeData.offerA) });
-        }
-        transaction.delete(tradeDocRef);
-      });
-      
-      return res.status(200).send({ data: { message: "Trade completed successfully!" } });
-    } catch (error) {
-      console.error("Error finalizing trade:", error);
-      return res.status(500).send({ error: { message: error.message || "An internal error occurred." } });
-    }
-  });
+      const inventoryRefA = db.collection("campaigns").doc(campaignId).collection("inventories").doc(playerAId);
+      const inventoryRefB = db.collection("campaigns").doc(campaignId).collection("inventories").doc(playerBId);
+
+      const [inventoryDocA, inventoryDocB] = await Promise.all([
+        transaction.get(inventoryRefA),
+        transaction.get(inventoryRefB),
+      ]);
+
+      if (!inventoryDocA.exists || !inventoryDocB.exists) {
+        throw new functions.https.HttpsError("not-found", "One or both player inventories could not be found.");
+      }
+
+      const inventoryDataA = inventoryDocA.data();
+      const inventoryDataB = inventoryDocB.data();
+
+      // --- This is the core logic fix ---
+
+      // 1. Remove offered items from Player A's inventory
+      const offerA_Ids = new Set(offerA.map((item) => item.id));
+      const finalGridA = (inventoryDataA.gridItems || []).filter((item) => !offerA_Ids.has(item.id));
+      let finalTrayA = (inventoryDataA.trayItems || []).filter((item) => !offerA_Ids.has(item.id));
+
+      // 2. Remove offered items from Player B's inventory
+      const offerB_Ids = new Set(offerB.map((item) => item.id));
+      const finalGridB = (inventoryDataB.gridItems || []).filter((item) => !offerB_Ids.has(item.id));
+      let finalTrayB = (inventoryDataB.trayItems || []).filter((item) => !offerB_Ids.has(item.id));
+
+      // 3. Add received items to the tray for both players
+      offerB.forEach((item) => finalTrayA.push(item));
+      offerA.forEach((item) => finalTrayB.push(item));
+
+      // 4. Perform all updates in the transaction
+      transaction.update(inventoryRefA, { gridItems: finalGridA, trayItems: finalTrayA });
+      transaction.update(inventoryRefB, { gridItems: finalGridB, trayItems: finalTrayB });
+      transaction.delete(tradeDocRef);
+    });
+
+    return { success: true, message: "Trade completed successfully!" };
+  } catch (error) {
+    console.error("Error finalizing trade:", error);
+    // Throw an HttpsError which the client can catch
+    throw new functions.https.HttpsError("internal", "An unexpected error occurred while finalizing the trade.", error);
+  }
 });
 
 exports.cancelTrade = functions.https.onRequest((req, res) => {
