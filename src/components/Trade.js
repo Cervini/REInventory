@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { db, app } from '../firebase';
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { doc, onSnapshot, updateDoc, getDoc, writeBatch } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import Spinner from './Spinner';
 
 // A simple, clickable list item for display
