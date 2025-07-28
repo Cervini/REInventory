@@ -61,7 +61,6 @@ exports.deleteUserAccount = functions.https.onRequest((req, res) => {
 });
 
 exports.finalizeTrade = functions.https.onCall(async (data, context) => {
-  // Check for authentication
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
   }
@@ -72,6 +71,7 @@ exports.finalizeTrade = functions.https.onCall(async (data, context) => {
   }
 
   const uid = context.auth.uid;
+  const db = admin.firestore();
   const tradeDocRef = db.collection("trades").doc(tradeId);
 
   try {
@@ -82,14 +82,11 @@ exports.finalizeTrade = functions.https.onCall(async (data, context) => {
       }
       const tradeData = tradeDoc.data();
 
-      // Security check: ensure the caller is one of the players in the trade
-      if (uid !== tradeData.playerA && uid !== tradeData.playerB) {
-        throw new functions.https.HttpsError("permission-denied", "You are not a participant in this trade.");
+      if (uid !== tradeData.playerA) {
+        throw new functions.https.HttpsError("permission-denied", "Only Player A can initiate the finalization.");
       }
-
-      // Precondition check: ensure both players have accepted
       if (!tradeData.acceptedA || !tradeData.acceptedB) {
-        throw new functions.https.HttpsError("failed-precondition", "Both players must accept the trade before finalizing.");
+        throw new functions.https.HttpsError("failed-precondition", "Both players must accept the trade.");
       }
 
       const campaignId = tradeData.campaignId;
@@ -101,10 +98,7 @@ exports.finalizeTrade = functions.https.onCall(async (data, context) => {
       const inventoryRefA = db.collection("campaigns").doc(campaignId).collection("inventories").doc(playerAId);
       const inventoryRefB = db.collection("campaigns").doc(campaignId).collection("inventories").doc(playerBId);
 
-      const [inventoryDocA, inventoryDocB] = await Promise.all([
-        transaction.get(inventoryRefA),
-        transaction.get(inventoryRefB),
-      ]);
+      const [inventoryDocA, inventoryDocB] = await transaction.getAll(inventoryRefA, inventoryRefB);
 
       if (!inventoryDocA.exists || !inventoryDocB.exists) {
         throw new functions.https.HttpsError("not-found", "One or both player inventories could not be found.");
@@ -112,24 +106,19 @@ exports.finalizeTrade = functions.https.onCall(async (data, context) => {
 
       const inventoryDataA = inventoryDocA.data();
       const inventoryDataB = inventoryDocB.data();
+      
+      // --- THIS IS THE CORE FIX ---
+      const offerA_Ids = new Set(offerA.map(item => item.id));
+      const finalGridA = (inventoryDataA.gridItems || []).filter(item => !offerA_Ids.has(item.id));
+      let finalTrayA = (inventoryDataA.trayItems || []).filter(item => !offerA_Ids.has(item.id));
+      
+      const offerB_Ids = new Set(offerB.map(item => item.id));
+      const finalGridB = (inventoryDataB.gridItems || []).filter(item => !offerB_Ids.has(item.id));
+      let finalTrayB = (inventoryDataB.trayItems || []).filter(item => !offerB_Ids.has(item.id));
 
-      // --- This is the core logic fix ---
+      offerB.forEach(item => finalTrayA.push(item));
+      offerA.forEach(item => finalTrayB.push(item));
 
-      // 1. Remove offered items from Player A's inventory
-      const offerA_Ids = new Set(offerA.map((item) => item.id));
-      const finalGridA = (inventoryDataA.gridItems || []).filter((item) => !offerA_Ids.has(item.id));
-      let finalTrayA = (inventoryDataA.trayItems || []).filter((item) => !offerA_Ids.has(item.id));
-
-      // 2. Remove offered items from Player B's inventory
-      const offerB_Ids = new Set(offerB.map((item) => item.id));
-      const finalGridB = (inventoryDataB.gridItems || []).filter((item) => !offerB_Ids.has(item.id));
-      let finalTrayB = (inventoryDataB.trayItems || []).filter((item) => !offerB_Ids.has(item.id));
-
-      // 3. Add received items to the tray for both players
-      offerB.forEach((item) => finalTrayA.push(item));
-      offerA.forEach((item) => finalTrayB.push(item));
-
-      // 4. Perform all updates in the transaction
       transaction.update(inventoryRefA, { gridItems: finalGridA, trayItems: finalTrayA });
       transaction.update(inventoryRefB, { gridItems: finalGridB, trayItems: finalTrayB });
       transaction.delete(tradeDocRef);
@@ -138,8 +127,7 @@ exports.finalizeTrade = functions.https.onCall(async (data, context) => {
     return { success: true, message: "Trade completed successfully!" };
   } catch (error) {
     console.error("Error finalizing trade:", error);
-    // Throw an HttpsError which the client can catch
-    throw new functions.https.HttpsError("internal", "An unexpected error occurred while finalizing the trade.", error);
+    throw new functions.https.HttpsError("internal", error.message, error);
   }
 });
 

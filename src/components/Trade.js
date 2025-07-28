@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { db, app, auth } from '../firebase';
+import { db, app } from '../firebase';
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, getDoc, writeBatch } from 'firebase/firestore';
 import Spinner from './Spinner';
 
 // A simple, clickable list item for display
@@ -79,6 +79,7 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
 
     // This effect fetches the user's FULL inventory ONCE the tradeData is loaded
     useEffect(() => {
+        // Run only if tradeData is available and local inventory hasn't been set yet
         if (!tradeData || isInventoryLoaded) return;
 
         const fetchInitialInventory = async () => {
@@ -103,37 +104,18 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
     // This effect FINALIZES the trade when both players have accepted
     useEffect(() => {
         if (tradeData && tradeData.acceptedA && tradeData.acceptedB) {
+            
+            // To prevent a race condition, only have Player A execute the finalization logic.
             if (user.uid === tradeData.playerA) {
-                const finalize = async () => {
-                    try {
-                        const currentUser = auth.currentUser;
-                        if (!currentUser) { throw new Error("Authentication not ready."); }
-                        
-                        const token = await currentUser.getIdToken(true);
-                        const FIREBASE_REGION = 'us-central1';
-                        const functionUrl = `https://${FIREBASE_REGION}-re-inventory-v2.cloudfunctions.net/finalizeTrade`;
-
-                        const response = await fetch(functionUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ data: { tradeId: tradeId } })
-                        });
-
-                        const result = await response.json();
-                        if (!response.ok) {
-                            throw new Error(result.error.message || 'Failed to finalize trade.');
-                        }
-                        toast.success(result.data.message);
-                    } catch (error) {
-                        toast.error(error.message);
-                        // Reset acceptance on failure
-                        await updateDoc(doc(db, 'trades', tradeId), { acceptedA: false, acceptedB: false });
-                    }
-                };
-                finalize();
+                 const finalizeTrade = httpsCallable(getFunctions(app, 'us-central1'), 'finalizeTrade');
+                 finalizeTrade({ tradeId: tradeId })
+                    .then(() => {
+                        toast.success("Trade complete!");
+                    })
+                    .catch((error) => {
+                        toast.error(`Finalization Error: ${error.message}`);
+                        updateDoc(doc(db, 'trades', tradeId), { acceptedA: false, acceptedB: false });
+                    });
             }
         }
     }, [tradeData, user.uid, tradeId]);
