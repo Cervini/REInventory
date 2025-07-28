@@ -4,14 +4,11 @@ import { db, app, auth } from '../firebase';
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
-import { useDroppable } from '@dnd-kit/core';
-import PlayerInventoryGrid from './PlayerInventoryGrid';
-import ItemTray from './ItemTray';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
 import Spinner from './Spinner';
 import InventoryItem from './InventoryItem';
 import ContextMenu from './ContextMenu';
 import { getColorForItemType } from '../utils/itemUtils';
-import { findFirstAvailableSlot } from '../utils/gridUtils';
 
 function TradeOffer({ items, playerId, isDM, onContextMenu, isOver }) {
     const { setNodeRef } = useDroppable({ id: `${playerId}-offer` });
@@ -137,45 +134,49 @@ export default function Trade({ onClose, tradeId, user, playerProfiles, campaign
 
         const item = active.data.current?.item;
         const sourcePlayerId = active.data.current?.ownerId;
-        const sourceLocation = active.data.current?.source;
-        
+        const sourceLocation = active.data.current?.source; // 'grid', 'tray', 'offer'
+
         const endDroppableId = over.id.toString();
-        const targetPlayerId = endDroppableId.replace('-offer', '').replace('-tray', '');
-        const targetLocation = endDroppableId.includes('-offer') ? 'offer' : endDroppableId.includes('-tray') ? 'tray' : 'grid';
+        const isDroppingOnOffer = endDroppableId.includes('-offer');
+        // The droppable ID for our new list
+        const isDroppingOnInventory = endDroppableId.includes('-inventory-list');
 
         if (sourcePlayerId !== user.uid) {
             return toast.error("You can only move your own items.");
         }
-        
+
         const tradeDocRef = doc(db, 'trades', tradeId);
         const inventoryDocRef = doc(db, 'campaigns', tradeData.campaignId, 'inventories', user.uid);
         const userOfferField = user.uid === tradeData.playerA ? 'offerA' : 'offerB';
 
-        const isMovingToOffer = targetLocation === 'offer' && targetPlayerId === user.uid;
-        const isReturningFromOffer = sourceLocation === 'offer' && (targetLocation === 'grid' || targetLocation === 'tray') && targetPlayerId === user.uid;
+        // A flag to check if an offer was changed
+        let offerChanged = false;
 
-        if (isMovingToOffer) {
+        // Moving item TO offer from the list
+        if (isDroppingOnOffer && (sourceLocation === 'grid' || sourceLocation === 'tray')) {
+            const itemCameFromGrid = sourceLocation === 'grid';
             await updateDoc(tradeDocRef, { [userOfferField]: arrayUnion(item) });
-            if (sourceLocation === 'grid') {
+            if (itemCameFromGrid) {
                 await updateDoc(inventoryDocRef, { gridItems: arrayRemove(item) });
-            } else { // from tray
+            } else {
                 await updateDoc(inventoryDocRef, { trayItems: arrayRemove(item) });
             }
+            offerChanged = true;
         } 
-        else if (isReturningFromOffer) {
+        // Moving item FROM offer back to the list
+        else if (isDroppingOnInventory && sourceLocation === 'offer') {
             await updateDoc(tradeDocRef, { [userOfferField]: arrayRemove(item) });
-            if (targetLocation === 'grid') {
-                const inventoryData = user.uid === tradeData.playerA ? playerAInventory : playerBInventory;
-                const position = findFirstAvailableSlot(inventoryData.gridItems, item, inventoryData.gridWidth, inventoryData.gridHeight);
-                if(position === null) {
-                    toast.error("Grid is full! Returning to tray.");
-                    await updateDoc(inventoryDocRef, { trayItems: arrayUnion(item) });
-                } else {
-                    await updateDoc(inventoryDocRef, { gridItems: arrayUnion({...item, ...position}) });
-                }
-            } else { // to tray
-                await updateDoc(inventoryDocRef, { trayItems: arrayUnion(item) });
-            }
+            const {x, y, ...trayItem} = item;
+            await updateDoc(inventoryDocRef, { trayItems: arrayUnion(trayItem) });
+            offerChanged = true;
+        }
+
+        // If any offer was modified, reset both players' acceptance status
+        if (offerChanged) {
+            await updateDoc(tradeDocRef, {
+                acceptedA: false,
+                acceptedB: false,
+            });
         }
     };
 
@@ -221,11 +222,61 @@ export default function Trade({ onClose, tradeId, user, playerProfiles, campaign
         });
     };
 
+    function DraggableListItem({ item, playerId }) {
+        const {attributes, listeners, setNodeRef} = useDraggable({
+            id: item.id,
+            // We need to know the original source to remove it from the correct array
+            data: { ownerId: playerId, item: item, source: item.originalSource },
+        });
+
+        const tooltipContent = `
+            <div style="text-align: left;">
+            <strong>${item.name}</strong> (${item.rarity || 'Common'})
+            <hr style="margin: 5px 0; border-color: #555;" />
+            <div>${item.description || 'No description.'}</div>
+            </div>
+        `;
+
+        return (
+            <div 
+            ref={setNodeRef} 
+            {...listeners} 
+            {...attributes} 
+            className="p-2 bg-surface/80 rounded-md flex justify-between items-center cursor-grab hover:bg-surface transition-colors"
+            data-tooltip-id="item-tooltip"
+            data-tooltip-html={tooltipContent}
+            >
+            <span>{item.name} {item.quantity > 1 ? <span className="text-text-muted text-sm">x{item.quantity}</span> : ''}</span>
+            </div>
+        )
+    }
+
+    // Add this new component inside Trade.js as well
+    function InventoryList({ droppableId, items, playerId }) {
+        const { setNodeRef, isOver } = useDroppable({ id: droppableId });
+
+        return (
+            <div ref={setNodeRef} className={`flex-grow overflow-auto border border-surface/50 rounded-lg p-2 space-y-2 ${isOver ? 'bg-accent/10' : ''}`}>
+            {items.length > 0 ? items.map(item => (
+                <DraggableListItem key={item.id} item={item} playerId={playerId}/>
+            )) : (
+                <p className="text-text-muted text-center italic p-4">Your inventory is empty.</p>
+            )}
+            </div>
+        );
+    }
+
     if (isLoading) { return <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-40 backdrop-blur-sm"><Spinner /></div>; }
     
     const isPlayerA = user.uid === tradeData.playerA;
     const you = { id: isPlayerA ? tradeData.playerA : tradeData.playerB, inventory: isPlayerA ? playerAInventory : playerBInventory, offer: isPlayerA ? tradeData.offerA : tradeData.offerB, accepted: isPlayerA ? tradeData.acceptedA : tradeData.acceptedB };
     const otherPlayer = { id: isPlayerA ? tradeData.playerB : tradeData.playerA, inventory: isPlayerA ? playerBInventory : playerAInventory, offer: isPlayerA ? tradeData.offerB : tradeData.offerA, accepted: isPlayerA ? tradeData.acceptedB : tradeData.acceptedA };
+
+    // Combine grid and tray items into a single list for display
+    const allMyItems = [
+        ...(you.inventory.gridItems || []).map(i => ({...i, originalSource: 'grid'})),
+        ...(you.inventory.trayItems || []).map(i => ({...i, originalSource: 'tray'}))
+    ];
 
     return (
         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-40 backdrop-blur-sm p-4">
@@ -240,40 +291,42 @@ export default function Trade({ onClose, tradeId, user, playerProfiles, campaign
                 <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
                     <h3 className="text-2xl font-bold mb-4 font-fantasy text-accent text-center">Trading Table</h3>
 
-                    <div className="flex flex-col md:flex-row flex-grow overflow-auto gap-4">
+                    <div className="flex flex-col md:flex-row flex-grow overflow-auto gap-4 min-h-0">
 
-                    {/* --- Offers Section --- */}
-                    <div className="flex flex-col space-y-4 md:w-1/3">
+                      {/* --- Offers Section --- */}
+                      <div className="flex flex-col space-y-4 md:w-1/3">
                         <div>
-                        <h4 className="font-bold text-lg mb-1">{playerProfiles[you.id]?.displayName || 'Your'} Offer</h4>
-                        <TradeOffer items={you.offer} playerId={you.id} isDM={user.uid === campaign.dmId} onContextMenu={handleContextMenu} />
+                          <h4 className="font-bold text-lg mb-1">{playerProfiles[you.id]?.displayName || 'Your'} Offer</h4>
+                          <TradeOffer items={you.offer} playerId={you.id} isDM={user.uid === campaign.dmId} onContextMenu={handleContextMenu} />
                         </div>
                         <div>
-                        <h4 className="font-bold text-lg mb-1">{playerProfiles[otherPlayer.id]?.displayName}'s Offer</h4>
-                        <TradeOffer items={otherPlayer.offer} playerId={otherPlayer.id} isDM={user.uid === campaign.dmId} onContextMenu={() => {}} />
+                          <h4 className="font-bold text-lg mb-1">{playerProfiles[otherPlayer.id]?.displayName}'s Offer</h4>
+                          {otherPlayer.accepted && (
+                            <span className="bg-green-800/80 text-text-base text-xs font-bold px-2 py-1 rounded-md">
+                              Accepted
+                            </span>
+                          )}
+                          <TradeOffer items={otherPlayer.offer} playerId={otherPlayer.id} isDM={user.uid === campaign.dmId} onContextMenu={() => {}} />
                         </div>
-                    </div>
+                      </div>
 
-                    {/* --- User's Inventory Section --- */}
-                    <div className="flex flex-col space-y-2 flex-grow md:w-2/3 min-h-0">
+                      {/* --- User's Inventory List Section --- */}
+                      <div className="flex flex-col space-y-2 flex-grow md:w-2/3 min-h-0">
                         <h4 className="font-bold text-lg">Your Inventory</h4>
-                        <div className="flex-grow overflow-auto border border-surface/50 rounded-lg p-2">
-                        <PlayerInventoryGrid items={you.inventory.gridItems} gridWidth={you.inventory.gridWidth} gridHeight={you.inventory.gridHeight} playerId={you.id} isDM={user.uid === campaign.dmId} onContextMenu={handleContextMenu} isTradeMode={true}/>
-                        </div>
-                        <ItemTray items={you.inventory.trayItems} playerId={you.id} isDM={user.uid === campaign.dmId} onContextMenu={handleContextMenu} isTradeMode={true} />
-                    </div>
+                        <InventoryList droppableId={`${you.id}-inventory-list`} items={allMyItems} playerId={you.id}/>
+                      </div>
                     </div>
 
                     <DragOverlay>
-                    {activeItem ? <div className={`${getColorForItemType(activeItem.item.type)} w-20 h-20 rounded-lg p-2 text-sm`}>{activeItem.item.name}</div> : null}
+                        {activeItem ? <div className={`${getColorForItemType(activeItem.item.type)} w-20 h-20 rounded-lg p-2 text-sm`}>{activeItem.item.name}</div> : null}
                     </DragOverlay>
                 </DndContext>
                 <div className="flex justify-between items-center pt-4">
                     <button onClick={handleCancelTrade} disabled={loading} className="bg-destructive/80 hover:bg-destructive text-text-base font-bold py-2 px-4 rounded transition-colors disabled:opacity-50">
-                    {loading ? 'Cancelling...' : 'Cancel Trade'}
+                        {loading ? 'Cancelling...' : 'Cancel Trade'}
                     </button>
                     <button onClick={handleAcceptTrade} disabled={you.accepted} className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded transition-colors disabled:opacity-50">
-                    {you.accepted ? 'Waiting...' : 'Accept Trade'}
+                        {you.accepted ? 'Waiting...' : 'Accept Trade'}
                     </button>
                 </div>
             </div>
