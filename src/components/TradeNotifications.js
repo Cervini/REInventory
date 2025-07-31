@@ -45,7 +45,7 @@ export default function TradeNotifications({ campaignId }) {
                             </div>
                         </div>
                     ), {
-                        duration: Infinity,
+                        duration: 5000,
                     });
                 }
             }

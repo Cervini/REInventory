@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { db, auth } from '../firebase';
 import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
@@ -57,15 +57,16 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
     const [localOffer, setLocalOffer] = useState([]);
     const [otherPlayerOffer, setOtherPlayerOffer] = useState([]);
     const [isInventoryLoaded, setIsInventoryLoaded] = useState(false);
-
+    
+    // **THIS IS THE FIX**: A ref to hold the unsubscribe function
+    const snapshotUnsubscribe = useRef(null);
 
     // This effect listens for REAL-TIME changes to the trade document
     useEffect(() => {
         const tradeDocRef = doc(db, 'trades', tradeId);
-        const unsubscribe = onSnapshot(tradeDocRef, (doc) => {
+        // Store the unsubscribe function in the ref
+        snapshotUnsubscribe.current = onSnapshot(tradeDocRef, (doc) => {
             if (!doc.exists()) {
-                // The document was deleted, so we must close the modal.
-                // This handles cancellation for both players and success for Player B.
                 onClose();
                 return;
             }
@@ -76,12 +77,16 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
             setOtherPlayerOffer(isPlayerA ? updatedTradeData.offerB : updatedTradeData.offerA);
             setLocalOffer(isPlayerA ? updatedTradeData.offerA : updatedTradeData.offerB);
         }, (error) => {
-            // If we get an error, it's safest to just close the trade window.
             console.error("Snapshot listener error:", error);
             onClose();
         });
-        // This cleanup function is crucial for preventing memory leaks
-        return () => unsubscribe();
+
+        return () => {
+            // The cleanup function now uses the ref
+            if (snapshotUnsubscribe.current) {
+                snapshotUnsubscribe.current();
+            }
+        };
     }, [tradeId, user.uid, onClose]);
 
     // This effect fetches the user's FULL inventory ONCE the tradeData is loaded
@@ -107,13 +112,11 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
     }, [tradeData, user.uid, localOffer, isInventoryLoaded]);
 
 
+    // This effect FINALIZES the trade when both players have accepted
     useEffect(() => {
-        // **THIS IS THE FIX**: Added a check for isFinalizing
         if (tradeData && tradeData.acceptedA && tradeData.acceptedB && !isFinalizing) {
             if (user.uid === tradeData.playerA) {
-                // Set the flag immediately to prevent this from running again
                 setIsFinalizing(true);
-                
                 const finalize = async () => {
                     try {
                         const currentUser = auth.currentUser;
@@ -137,22 +140,24 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
                             throw new Error(result.error.message || 'Failed to finalize trade.');
                         }
                         
-                        // On success, show the toast and THEN close the modal.
-                        // This prevents the snapshot listener from firing on a deleted document.
+                        // **THIS IS THE FIX**: Manually unsubscribe before closing.
+                        if (snapshotUnsubscribe.current) {
+                            snapshotUnsubscribe.current();
+                        }
+                        
                         toast.success(result.data.message);
                         onClose();
 
                     } catch (error) {
                         toast.error(error.message);
-                        // If finalization fails, reset acceptance so they can try again
                         await updateDoc(doc(db, 'trades', tradeId), { acceptedA: false, acceptedB: false });
-                        setIsFinalizing(false); // Allow another attempt
+                        setIsFinalizing(false);
                     }
                 };
                 finalize();
             }
         }
-    }, [tradeData, user.uid, tradeId, onClose, isFinalizing]); // Add isFinalizing to dependencies
+    }, [tradeData, user.uid, tradeId, onClose, isFinalizing]);
 
 
     const handleItemClick = async (item, source) => {
@@ -213,7 +218,6 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
                 },
                 body: JSON.stringify({ data: { tradeId: tradeId } })
             });
-            // The snapshot listener will handle the onClose call automatically.
         } catch (error) {
             toast.error(error.message);
         } finally {
