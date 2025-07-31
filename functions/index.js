@@ -101,26 +101,37 @@ exports.finalizeTrade = functions.https.onRequest(async (req, res) => {
         const inventoryRefA = db.collection("campaigns").doc(campaignId).collection("inventories").doc(tradeData.playerA);
         const inventoryRefB = db.collection("campaigns").doc(campaignId).collection("inventories").doc(tradeData.playerB);
         
-        const [invDocA, invDocB] = await transaction.getAll(inventoryRefA, inventoryRefB);
+        const invDocA = await transaction.get(inventoryRefA);
+        const invDocB = await transaction.get(inventoryRefB);
 
         if (!invDocA.exists || !invDocB.exists) {
           throw new Error("Could not find player inventories.");
         }
 
+        // --- THIS IS THE CORE FIX ---
+        // Robustly handle the inventory swap.
+
         const invDataA = invDocA.data();
         const offerA_Ids = new Set((tradeData.offerA || []).map(i => i.id));
-        const finalGridA = (invDataA.gridItems || []).filter(item => !offerA_Ids.has(item.id));
-        const finalTrayA = (invDataA.trayItems || []).filter(item => !offerA_Ids.has(item.id));
+        // Create new, completely separate arrays for the final state.
+        let finalGridA = (invDataA.gridItems || []).filter(item => !offerA_Ids.has(item.id));
+        let finalTrayA = (invDataA.trayItems || []).filter(item => !offerA_Ids.has(item.id));
+        // Add received items to the new tray array.
         (tradeData.offerB || []).forEach(item => finalTrayA.push(item));
+        
+        // Update Player A's inventory in the transaction.
         transaction.update(inventoryRefA, { gridItems: finalGridA, trayItems: finalTrayA });
 
         const invDataB = invDocB.data();
         const offerB_Ids = new Set((tradeData.offerB || []).map(i => i.id));
-        const finalGridB = (invDataB.gridItems || []).filter(item => !offerB_Ids.has(item.id));
-        const finalTrayB = (invDataB.trayItems || []).filter(item => !offerB_Ids.has(item.id));
+        let finalGridB = (invDataB.gridItems || []).filter(item => !offerB_Ids.has(item.id));
+        let finalTrayB = (invDataB.trayItems || []).filter(item => !offerB_Ids.has(item.id));
         (tradeData.offerA || []).forEach(item => finalTrayB.push(item));
+        
+        // Update Player B's inventory in the transaction.
         transaction.update(inventoryRefB, { gridItems: finalGridB, trayItems: finalTrayB });
         
+        // Finally, delete the trade document.
         transaction.delete(tradeDocRef);
       });
       

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { db, app } from '../firebase';
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { db, auth } from '../firebase';
 import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import Spinner from './Spinner';
 
@@ -51,6 +50,7 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
     const [tradeData, setTradeData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isFinalizing, setIsFinalizing] = useState(false);
 
     // Local state for the user's available inventory and current offer
     const [localInventory, setLocalInventory] = useState([]);
@@ -64,6 +64,8 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
         const tradeDocRef = doc(db, 'trades', tradeId);
         const unsubscribe = onSnapshot(tradeDocRef, (doc) => {
             if (!doc.exists()) {
+                // The document was deleted, so we must close the modal.
+                // This handles cancellation for both players and success for Player B.
                 onClose();
                 return;
             }
@@ -73,7 +75,12 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
             const isPlayerA = user.uid === updatedTradeData.playerA;
             setOtherPlayerOffer(isPlayerA ? updatedTradeData.offerB : updatedTradeData.offerA);
             setLocalOffer(isPlayerA ? updatedTradeData.offerA : updatedTradeData.offerB);
+        }, (error) => {
+            // If we get an error, it's safest to just close the trade window.
+            console.error("Snapshot listener error:", error);
+            onClose();
         });
+        // This cleanup function is crucial for preventing memory leaks
         return () => unsubscribe();
     }, [tradeId, user.uid, onClose]);
 
@@ -100,22 +107,52 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
     }, [tradeData, user.uid, localOffer, isInventoryLoaded]);
 
 
-    // This effect FINALIZES the trade when both players have accepted
     useEffect(() => {
-        if (tradeData && tradeData.acceptedA && tradeData.acceptedB) {
+        // **THIS IS THE FIX**: Added a check for isFinalizing
+        if (tradeData && tradeData.acceptedA && tradeData.acceptedB && !isFinalizing) {
             if (user.uid === tradeData.playerA) {
-                 const finalizeTrade = httpsCallable(getFunctions(app, 'us-central1'), 'finalizeTrade');
-                 finalizeTrade({ tradeId: tradeId })
-                    .then((result) => {
+                // Set the flag immediately to prevent this from running again
+                setIsFinalizing(true);
+                
+                const finalize = async () => {
+                    try {
+                        const currentUser = auth.currentUser;
+                        if (!currentUser) { throw new Error("Authentication not ready."); }
+                        
+                        const token = await currentUser.getIdToken(true);
+                        const FIREBASE_REGION = 'us-central1';
+                        const functionUrl = `https://${FIREBASE_REGION}-re-inventory-v2.cloudfunctions.net/finalizeTrade`;
+
+                        const response = await fetch(functionUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ data: { tradeId: tradeId } })
+                        });
+
+                        const result = await response.json();
+                        if (!response.ok) {
+                            throw new Error(result.error.message || 'Failed to finalize trade.');
+                        }
+                        
+                        // On success, show the toast and THEN close the modal.
+                        // This prevents the snapshot listener from firing on a deleted document.
                         toast.success(result.data.message);
-                    })
-                    .catch((error) => {
-                        toast.error(`Error: ${error.message}`);
-                        updateDoc(doc(db, 'trades', tradeId), { acceptedA: false, acceptedB: false });
-                    });
+                        onClose();
+
+                    } catch (error) {
+                        toast.error(error.message);
+                        // If finalization fails, reset acceptance so they can try again
+                        await updateDoc(doc(db, 'trades', tradeId), { acceptedA: false, acceptedB: false });
+                        setIsFinalizing(false); // Allow another attempt
+                    }
+                };
+                finalize();
             }
         }
-    }, [tradeData, user.uid, tradeId]);
+    }, [tradeData, user.uid, tradeId, onClose, isFinalizing]); // Add isFinalizing to dependencies
 
 
     const handleItemClick = async (item, source) => {
@@ -161,9 +198,22 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
     const handleCancelTrade = async () => {
         setIsSubmitting(true);
         try {
-            const functions = getFunctions(app, 'us-central1');
-            const cancelTrade = httpsCallable(functions, 'cancelTrade');
-            await cancelTrade({ tradeId: tradeId });
+            const currentUser = auth.currentUser;
+            if (!currentUser) { throw new Error("Authentication not ready."); }
+            
+            const token = await currentUser.getIdToken(true);
+            const FIREBASE_REGION = 'us-central1';
+            const functionUrl = `https://${FIREBASE_REGION}-re-inventory-v2.cloudfunctions.net/cancelTrade`;
+
+            await fetch(functionUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ data: { tradeId: tradeId } })
+            });
+            // The snapshot listener will handle the onClose call automatically.
         } catch (error) {
             toast.error(error.message);
         } finally {
