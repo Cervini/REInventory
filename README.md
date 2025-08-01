@@ -135,24 +135,6 @@ REInventory works as a **Progressive Web App**, meaning you can install it direc
 - **Global database** of common items to speed up gameplay
 - **Weapon stats, rarity, and descriptions** fully supported
 
-## 🗺️ Roadmap
-
-### **Planned Features**
-- [ ] **Advanced filtering** and search capabilities
-- [ ] **Item categories** and custom organization
-- [ ] **Export/import** functionality for backup
-- [ ] **Integration** with popular VTT platforms
-- [ ] **Mobile app** for iOS and Android
-- [ ] **Spell slot tracking** and character stats
-- [ ] **Marketplace** for trading between campaigns
-
-### **Under Consideration**
-- [ ] **Different item shapes** beyond rectangles
-- [ ] **Bag-in-bag** system for complex organization
-- [ ] **Visual item icons** and custom imagery
-- [ ] **Campaign notes** and shared documents
-- [ ] **Initiative tracker** integration
-
 ## 🤝 Contributing
 
 We welcome contributions from the TTRPG community! Whether you're fixing bugs, adding features, or improving documentation, your help makes REInventory better for everyone.
@@ -194,13 +176,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Found a bug?** Please [open an issue](https://github.com/Cervini/REInventory/issues) on GitHub
 - **Have a feature idea?** We'd love to hear it in our [discussions](https://github.com/Cervini/REInventory/discussions)
-- **Need help?** Check out our documentation or ask the community
-
-## 🙏 Acknowledgments
-
-- Inspired by classic RPG inventory systems from games like Diablo, Torchlight, and Resident Evil
-- Built for the amazing tabletop RPG community
-- Special thanks to all beta testers and contributors
 
 ---
 

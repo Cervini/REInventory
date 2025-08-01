@@ -36,12 +36,6 @@ export default function CookiePolicy({ onClose }) {
         <h2 className="text-xl font-fantasy text-accent pt-2">How can I control this?</h2>
         <p>You can control and/or delete data stored by websites in your browser's settings. If you clear your site data for this application, you will be logged out and will need to sign in again.</p>
       </div>
-
-      <div className="text-center mt-8">
-        <button onClick={onClose} className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-6 rounded transition-colors duration-200">
-          Back
-        </button>
-      </div>
     </div>
   );
 }
