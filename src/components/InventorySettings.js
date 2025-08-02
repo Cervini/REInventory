@@ -10,8 +10,8 @@ export default function InventorySettings({ onClose, campaignId, userId, current
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (gridWidth < 10 || gridHeight < 5) {
-      toast.error("Grid must be at least 10x5.");
+    if (gridWidth < 5 || gridHeight < 5) {
+      toast.error("Grid must be at least 5x5.");
       return;
     }
     setLoading(true);

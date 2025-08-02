@@ -412,19 +412,78 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     const startSource = active.data.current?.source;
     const startPlayerId = active.data.current?.ownerId;
     const item = active.data.current?.item;
+
+    // --- STACKING LOGIC ---
+    const passiveItem = over.data.current?.item;
+    if (passiveItem && item && item.id !== passiveItem.id) {
+        const endPlayerId = over.data.current?.ownerId;
+
+        if (
+            startPlayerId === endPlayerId &&
+            item.stackable &&
+            passiveItem.stackable &&
+            item.name.toLowerCase() === passiveItem.name.toLowerCase()
+        ) {
+            const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", startPlayerId);
+            const currentInventory = inventories[startPlayerId];
+            const targetLocation = over.data.current?.source;
+
+            // **THIS IS THE FIX**: Create new versions of both arrays.
+            let newGridItems = [...currentInventory.gridItems];
+            let newTrayItems = [...currentInventory.trayItems];
+
+            // First, remove the dragged item from its original location.
+            if (startSource === 'grid') {
+                newGridItems = newGridItems.filter(i => i.id !== item.id);
+            } else { // startSource === 'tray'
+                newTrayItems = newTrayItems.filter(i => i.id !== item.id);
+            }
+            
+            // Next, add the quantity to the target item in its location.
+            if (targetLocation === 'grid') {
+                newGridItems = newGridItems.map(i => 
+                    i.id === passiveItem.id 
+                        ? { ...i, quantity: i.quantity + item.quantity } 
+                        : i
+                );
+            } else { // targetLocation === 'tray'
+                newTrayItems = newTrayItems.map(i => 
+                    i.id === passiveItem.id 
+                        ? { ...i, quantity: i.quantity + item.quantity } 
+                        : i
+                );
+            }
+            
+            // Update the state and Firestore with the new arrays.
+            setInventories(prev => ({
+                ...prev,
+                [startPlayerId]: { ...prev[startPlayerId], gridItems: newGridItems, trayItems: newTrayItems },
+            }));
+            
+            await updateDoc(inventoryDocRef, { gridItems: newGridItems, trayItems: newTrayItems });
+            toast.success(`Stacked ${item.name}.`);
+            return;
+        }
+    }
     
-    const endDroppableId = over.id; 
-    const endPlayerId = endDroppableId.toString().replace('-tray', '');
-    const endDestination = endDroppableId.toString().includes('-tray') ? 'tray' : 'grid';
+    // --- REGULAR DRAG AND DROP LOGIC ---
+    let endPlayerId, endDestination;
+    
+    if (over.data.current?.item) {
+        endPlayerId = over.data.current.ownerId;
+        endDestination = over.data.current.source; 
+    } else { 
+        const endDroppableId = over.id.toString();
+        endPlayerId = endDroppableId.replace('-tray', '');
+        endDestination = endDroppableId.includes('-tray') ? 'tray' : 'grid';
+    }
 
     if (!startPlayerId || !endPlayerId || !item) return;
 
     const startInventory = inventories[startPlayerId];
     const endInventory = inventories[endPlayerId];
 
-    // --- Scenario 1: Dragging from GRID ---
     if (startSource === "grid") {
-      // Grid -> Tray
       if (endDestination === "tray") {
         const newStartGridItems = startInventory.gridItems.filter(i => i.id !== item.id);
         const {x, y, ...trayItem} = item;
@@ -440,9 +499,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         batch.update(doc(db, "campaigns", campaignId, "inventories", endPlayerId), { trayItems: newEndTrayItems });
         await batch.commit();
       }
-      // Grid -> Grid (Reposition or Transfer)
       else {
-        // --- Scenario 1A: Repositioning item within the SAME grid ---
         if (startPlayerId === endPlayerId) {
           const gridElement = gridRefs.current[startPlayerId];
           if (!gridElement) return;
@@ -468,7 +525,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
           setInventories(prev => ({ ...prev, [startPlayerId]: { ...prev[startPlayerId], gridItems: newGridItems } }));
           await updateDoc(doc(db, "campaigns", campaignId, "inventories", startPlayerId), { gridItems: newGridItems });
         }
-        // --- Scenario 1B: Transferring item to a DIFFERENT grid ---
         else {
           const endGridWidth = endInventory.gridWidth;
           const endGridHeight = endInventory.gridHeight;
@@ -516,9 +572,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         }
       }
     }
-    // --- Scenario 2: Dragging from TRAY ---
     else if (startSource === "tray") {
-      // Tray -> Grid
       if (endDestination === "grid") {
         const gridWidth = endInventory.gridWidth;
         const gridHeight = endInventory.gridHeight;
@@ -543,7 +597,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         batch.update(doc(db, "campaigns", campaignId, "inventories", endPlayerId), { gridItems: newEndGridItems });
         await batch.commit();
       }
-      // Tray -> Tray (Transfer)
       else {
         if (startPlayerId === endPlayerId) return;
 

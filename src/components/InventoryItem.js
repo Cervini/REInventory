@@ -1,11 +1,16 @@
 import React from 'react';
-import { useDraggable } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { getColorForItemType } from '../utils/itemUtils';
 
 const TEXT_VISIBILITY_THRESHOLD = { width: 28, height: 28 };
 
 export default function InventoryItem({ item, onContextMenu, playerId, isDM, source, cellSize }) {
-  const {attributes, listeners, setNodeRef, transform, isDragging} = useDraggable({
+  const {attributes, listeners, setNodeRef: setDraggableNodeRef, transform, isDragging} = useDraggable({
+    id: item.id,
+    data: { ownerId: playerId, item: item, source: source },
+  });
+
+  const { setNodeRef: setDroppableNodeRef } = useDroppable({
     id: item.id,
     data: { ownerId: playerId, item: item, source: source },
   });
@@ -24,7 +29,6 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM, sou
     };
   }
 
-  // Calculate visibility directly and reliably from the prop
   const itemPixelWidth = (cellSize?.width || 0) * item.w;
   const itemPixelHeight = (cellSize?.height || 0) * item.h;
   const isTextVisible = itemPixelWidth > TEXT_VISIBILITY_THRESHOLD.width && itemPixelHeight > TEXT_VISIBILITY_THRESHOLD.height;
@@ -67,7 +71,10 @@ export default function InventoryItem({ item, onContextMenu, playerId, isDM, sou
 
    return (
     <div 
-      ref={setNodeRef} 
+      ref={(node) => {
+        setDraggableNodeRef(node);
+        setDroppableNodeRef(node);
+      }} 
       style={{...wrapperStyle, ...style}} 
       className={`relative border border-surface/50 rounded-lg ${(source === 'tray' || source === 'offer') ? 'w-full h-full' : ''}`}
       onContextMenu={(e) => onContextMenu(e, item, source)}
