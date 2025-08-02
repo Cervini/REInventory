@@ -313,47 +313,56 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
 
     if (isNaN(amount) || amount <= 0 || amount >= originalItem.quantity) return;
 
-    // 1. The original stack with its quantity reduced (remains on the grid)
+    const currentInventory = inventories[playerId];
+    const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", playerId);
+
     const updatedOriginalItem = {
       ...originalItem,
       quantity: originalItem.quantity - amount,
     };
 
-    // 2. The new stack (goes to the tray, so no x/y needed)
-    const { x, y, ...restOfItem } = originalItem;
-    const newItemForTray = {
-      ...restOfItem,
+    const newItem = {
+      ...originalItem,
       id: crypto.randomUUID(),
       quantity: amount,
     };
 
-    // 3. Update the arrays
-    const currentInventory = inventories[playerId] || {
-      gridItems: [],
-      trayItems: [],
-    };
-    const newGridItems = currentInventory.gridItems.map((i) =>
-      i.id === originalItem.id ? updatedOriginalItem : i
+    // for the collision check. This includes all other items plus the updated original stack.
+    const itemsForCollisionCheck = currentInventory.gridItems.map(i => 
+        i.id === originalItem.id ? updatedOriginalItem : i
     );
-    const newTrayItems = [...currentInventory.trayItems, newItemForTray];
 
-    // 4. Update local state and Firestore
+    const availableSlot = findFirstAvailableSlot(
+      itemsForCollisionCheck,
+      newItem,
+      currentInventory.gridWidth,
+      currentInventory.gridHeight
+    );
+
+    let finalGridItems = [...itemsForCollisionCheck];
+    let finalTrayItems = [...currentInventory.trayItems];
+
+    if (availableSlot) {
+      // If a slot is found, add the new item to the grid.
+      newItem.x = availableSlot.x;
+      newItem.y = availableSlot.y;
+      finalGridItems.push(newItem);
+      toast.success("Split stack and placed it in the inventory.");
+    } else {
+      // If no slot is found, add the new item to the tray.
+      const { x, y, ...trayItem } = newItem;
+      finalTrayItems.push(trayItem);
+      toast.success("Inventory is full. Split stack placed in the tray.");
+    }
+
     setInventories((prev) => ({
       ...prev,
-      [playerId]: { gridItems: newGridItems, trayItems: newTrayItems },
+      [playerId]: { ...prev[playerId], gridItems: finalGridItems, trayItems: finalTrayItems },
     }));
 
-    const inventoryDocRef = doc(
-      db,
-      "campaigns",
-      campaignId,
-      "inventories",
-      playerId
-    );
-    // Note: This updates both arrays at once.
     await updateDoc(inventoryDocRef, {
-      gridItems: newGridItems,
-      trayItems: newTrayItems,
+      gridItems: finalGridItems,
+      trayItems: finalTrayItems,
     });
   };
 
