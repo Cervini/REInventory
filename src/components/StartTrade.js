@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
+// **FIX**: The 'inventories' prop is no longer needed
 export default function StartTrade({ onClose, campaign, user, playerProfiles }) {
   const otherPlayers = campaign.players.filter(pId => pId !== user.uid);
 
@@ -18,7 +19,10 @@ export default function StartTrade({ onClose, campaign, user, playerProfiles }) 
         status: 'pending',
         createdAt: serverTimestamp(),
       });
-      toast.success(`Trade request sent to ${playerProfiles[targetPlayerId]?.displayName}.`);
+      
+      // **FIX**: Use the characterName from the enhanced playerProfiles object
+      const targetName = playerProfiles[targetPlayerId]?.characterName || playerProfiles[targetPlayerId]?.displayName;
+      toast.success(`Trade request sent to ${targetName}.`);
       onClose();
     } catch (error) {
       toast.error("Failed to send trade request.");
@@ -34,11 +38,12 @@ export default function StartTrade({ onClose, campaign, user, playerProfiles }) 
           <ul className="space-y-2">
             {otherPlayers.map(pId => (
               <li key={pId}>
-                <button 
+                <button
                   onClick={() => handleInitiateTrade(pId)}
                   className="w-full text-left p-3 bg-background hover:bg-surface/80 rounded-md transition-colors"
                 >
-                  {playerProfiles[pId]?.displayName || pId}
+                  {/* **FIX**: Display characterName from playerProfiles, with fallbacks */}
+                  {playerProfiles[pId]?.characterName || playerProfiles[pId]?.displayName || pId}
                 </button>
               </li>
             ))}

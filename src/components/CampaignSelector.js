@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-// Import the tools we need from firestore
-import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc, updateDoc, arrayUnion, query, where, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc, query, where, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import JoinCampaign from './JoinCampaign';
 
 // This component receives a function from App.js to set the active campaign
 export default function CampaignSelector({ onCampaignSelected }) {
@@ -10,6 +10,9 @@ export default function CampaignSelector({ onCampaignSelected }) {
   const [campaignName, setCampaignName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [myCampaigns, setMyCampaigns] = useState([]);
+  
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [campaignToJoin, setCampaignToJoin] = useState(null);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -38,100 +41,64 @@ export default function CampaignSelector({ onCampaignSelected }) {
   }, []);
 
   const handleCreateCampaign = async () => {
-    // Basic validation
     if (!campaignName.trim()) {
       toast.error("Please enter a campaign name.");
       return;
     }
-
     setLoading(true);
     const currentUser = auth.currentUser;
 
-    if (!currentUser) {
-      toast.error("You must be logged in to create a campaign.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Create the main campaign document
       const campaignDocRef = await addDoc(collection(db, "campaigns"), {
-        dmId: currentUser.uid, // Store the DM's user ID
+        dmId: currentUser.uid,
         dmEmail: currentUser.email,
-        createdAt: serverTimestamp(), // Store the creation date
+        createdAt: serverTimestamp(),
         name: campaignName,
-        players: [currentUser.uid] // Store a list of player IDs for later use
+        players: [currentUser.uid]
       });
 
-      console.log("New campaign created with ID: ", campaignDocRef.id);
-
-      // Create an initial, empty inventory for the DM (who is also the first player)
-      // We create a reference to a new document inside the 'inventories' sub-collection
       const inventoryDocRef = doc(db, "campaigns", campaignDocRef.id, "inventories", currentUser.uid);
-      
-      // We use setDoc to create the document with our specific ID (the user's ID)
       await setDoc(inventoryDocRef, {
-        gridItems: [], // Formerly "items"
-        trayItems: [], // Add the new tray items array
+        characterName: "DM", // **THIS IS THE FIX**: Automatically set the name to "DM"
         ownerId: currentUser.uid,
-        gridWidth: 10,
-        gridHeight: 5,
+        gridItems: [],
+        trayItems: [],
+        gridWidth: 30,
+        gridHeight: 10,
       });
 
-      console.log("Initial inventory created for DM.");
-      // Tell the parent App component which campaign is now active
       onCampaignSelected(campaignDocRef.id);
 
     } catch (error) {
       console.error("Error creating campaign: ", error);
       toast.error("Failed to create campaign.");
-      setLoading(false);
+    } finally {
+        setLoading(false);
     }
   };
 
   const handleJoinCampaign = async () => {
     const code = joinCode.trim();
     if (!code) {
-      toast.error("Please enter a campaign code to join.");
+      toast.error("Please enter a campaign code.");
       return;
     }
-
     setLoading(true);
-    const currentUser = auth.currentUser;
-
     try {
       const campaignDocRef = doc(db, 'campaigns', code);
       const campaignSnap = await getDoc(campaignDocRef);
 
-      // If the campaign exists
       if (!campaignSnap.exists()) {
-        toast.error("Campaign not found. Please check the code and try again.");
-        setLoading(false);
+        toast.error("Campaign not found. Please check the code.");
         return;
       }
-
-      // Add user to the campaign's player list
-      await updateDoc(campaignDocRef, {
-        players: arrayUnion(currentUser.uid)
-      });
-
-      // New inventory document for the joining player
-      const inventoryDocRef = doc(db, "campaigns", code, "inventories", currentUser.uid);
-      await setDoc(inventoryDocRef, {
-        gridItems: [],
-        trayItems: [],
-        ownerId: currentUser.uid,
-        gridWidth: 10,
-        gridHeight: 5,
-      }, { merge: true }); // Use {merge: true} to avoid overwriting if they rejoin
-
-      console.log(`Successfully joined campaign: ${code}`);
       
-      onCampaignSelected(code);
-
+      // If the code is valid, set the campaign ID and show the modal
+      setCampaignToJoin(code);
+      setShowJoinModal(true);
     } catch (error) {
-      console.error("Error joining campaign: ", error);
-      toast.error("Failed to join campaign.");
+      toast.error("An error occurred while checking the code.");
+    } finally {
       setLoading(false);
     }
   };
@@ -171,6 +138,13 @@ export default function CampaignSelector({ onCampaignSelected }) {
 
   return (
     <div className="w-full max-w-md mx-auto bg-surface shadow-lg shadow-accent/10 rounded-lg p-8 border border-accent/20">
+      {showJoinModal && (
+        <JoinCampaign
+          campaignId={campaignToJoin}
+          onClose={() => setShowJoinModal(false)}
+          onJoinSuccess={onCampaignSelected}
+        />
+      )}
 
       {/* --- Empty State --- */}
       {!loading && myCampaigns.length === 0 && (
@@ -212,39 +186,49 @@ export default function CampaignSelector({ onCampaignSelected }) {
       )}
 
       {/* --- Create/Join Section --- */}
-      <h2 className="text-2xl text-center font-bold mb-4 text-accent font-fantasy">New campaign</h2>
+      <h2 className="text-2xl text-center font-bold mb-4 text-accent font-fantasy">New adventure</h2>
       <div className="flex flex-col items-center space-y-4">
         {/* Create Campaign */}
-        <input
-          type="text"
-          placeholder="Enter New Campaign Name"
-          value={campaignName}
-          onChange={(e) => setCampaignName(e.target.value)}
-          className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"
-        />
-        <button
-          onClick={handleCreateCampaign}
-          disabled={loading}
-          className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background font-bold py-2 px-4 rounded w-full transition-colors duration-200"
-        >
-          {loading ? 'Creating...' : 'Create New Campaign'}
-        </button>
+        <div className="w-full space-y-4 p-4 border border-surface/50 rounded-lg">
+            <input
+              type="text"
+              placeholder="Enter New Campaign Name"
+              value={campaignName}
+              onChange={(e) => setCampaignName(e.target.value)}
+              className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+            <button
+              onClick={handleCreateCampaign}
+              disabled={loading}
+              className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background font-bold py-2 px-4 rounded w-full transition-colors duration-200"
+            >
+              {loading ? 'Creating...' : 'Create New Campaign'}
+            </button>
+        </div>
         
+        <div className="relative flex py-2 items-center w-full">
+            <div className="flex-grow border-t border-surface/50"></div>
+            <span className="flex-shrink mx-4 text-text-muted text-xs">OR</span>
+            <div className="flex-grow border-t border-surface/50"></div>
+        </div>
+
         {/* Join Campaign */}
-        <input
-          type="text"
-          placeholder="Enter Join Code"
-          value={joinCode}
-          onChange={(e) => setJoinCode(e.target.value)}
-          className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"
-        />
-        <button
-          onClick={handleJoinCampaign}
-          disabled={loading}
-          className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background font-bold py-2 px-4 rounded w-full transition-colors duration-200"
-        >
-          {loading ? 'Joining...' : 'Join Campaign'}
-        </button>
+        <div className="w-full space-y-4">
+            <input
+              type="text"
+              placeholder="Enter Campaign Join Code"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+              className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+            <button
+              onClick={handleJoinCampaign}
+              disabled={loading}
+              className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background font-bold py-2 px-4 rounded w-full transition-colors duration-200"
+            >
+              {loading ? 'Checking Code...' : 'Join Campaign'}
+            </button>
+        </div>
       </div>
     </div>
   );

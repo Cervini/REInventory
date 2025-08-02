@@ -19,6 +19,7 @@ import StartTrade from './StartTrade';
 import TradeNotifications from './TradeNotifications'
 import Trade from './Trade';
 import { usePlayerProfiles } from '../hooks/usePlayerProfiles';
+import CharacterName from './CharacterName';
 
 export default function InventoryGrid({ campaignId, user, userProfile, isTrading, setIsTrading }) {
   
@@ -38,7 +39,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   const [cellSizes, setCellSizes] = useState({});
   const [showCompendium, setShowCompendium] = useState(false);
   const [activeTrade, setActiveTrade] = useState(null);
-  
+  const [editingCharacter, setEditingCharacter] = useState(null);
   
   const gridRefs = useRef({});
 
@@ -745,6 +746,15 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     <div className="w-full flex flex-col items-center flex-grow">
       {/* --- Modals (Styling has been updated in their own files) --- */}
 
+      {editingCharacter && (
+        <CharacterName
+          onClose={() => setEditingCharacter(null)}
+          campaignId={campaignId}
+          playerId={editingCharacter.playerId}
+          currentName={editingCharacter.currentName}
+        />
+      )}
+
       {activeTrade && (
         <Trade
           tradeId={activeTrade.id}
@@ -763,6 +773,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
           campaign={{id: campaignId, ...campaign}}
           user={user}
           playerProfiles={playerProfiles}
+          inventories={inventories} 
         />
       )}
       
@@ -830,19 +841,17 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24 overscroll-contain">
           {Object.entries(inventories)
           .sort(([playerIdA], [playerIdB]) => {
-            // If playerIdA is the DM, it should come first (-1).
             if (playerIdA === user.uid) return -1;
-            // If playerIdB is the DM, it should come first.
             if (playerIdB === user.uid) return 1;
-            // Otherwise, sort alphabetically by display name.
-            const nameA = playerProfiles[playerIdA]?.displayName || '';
-            const nameB = playerProfiles[playerIdB]?.displayName || '';
+            const nameA = inventories[playerIdA]?.characterName || playerProfiles[playerIdA]?.displayName || '';
+            const nameB = inventories[playerIdB]?.characterName || playerProfiles[playerIdB]?.displayName || '';
             return nameA.localeCompare(nameB);
           })
           .map(([playerId, inventoryData]) => {
             const gridWidth = inventoryData.gridWidth;
             const gridHeight = inventoryData.gridHeight;
             const isPlayerDM = campaign?.dmId === playerId;
+            const isMyInventory = user.uid === playerId;
 
             return (
               <div
@@ -850,35 +859,50 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
                 className="bg-surface rounded-lg shadow-lg shadow-accent/10 border border-accent/20 overflow-hidden"
               >
                 <div className="w-full p-2 text-left bg-surface/80 hover:bg-surface/50 focus:outline-none flex justify-between items-center transition-colors duration-200">
-                <button onClick={() => toggleInventory(playerId)} className="flex-grow flex items-center space-x-2">
+                <button onClick={() => toggleInventory(playerId)} className="flex-grow flex items-center space-x-4">
                   <h2 className="text-xl font-bold text-accent font-fantasy tracking-wider">
-                    {playerProfiles[playerId]?.displayName || playerId}
+                    {inventoryData.characterName || playerProfiles[playerId]?.displayName}
                   </h2>
                   <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-text-base transition-transform duration-200 ${ openInventories[playerId] ? "rotate-180" : "" }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
                   </svg>
                 </button>
 
-                {user.uid === playerId && (
-                  <button onClick={() => setEditingInventory(playerId)} className="p-2 rounded-full hover:bg-background transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                    </svg>
-                  </button>
-                )}
+                <div className="flex items-center space-x-2">
+                    {isMyInventory && (
+                        <button 
+                            onClick={() => setEditingCharacter({ playerId: playerId, currentName: inventoryData.characterName })}
+                            className="p-2 rounded-full hover:bg-background transition-colors"
+                            aria-label="Edit character name"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                        </button>
+                    )}
+                    {user.uid === playerId && (
+                      <button onClick={() => setEditingInventory(playerId)} className="p-2 rounded-full hover:bg-background transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                        </svg>
+                      </button>
+                    )}
+                </div>
                 </div>
 
                 {openInventories[playerId] && (
                   <div className="p-2 bg-background/50">
+                    {/* **THIS IS THE FIX**: If the inventory belongs to the DM, only show their item tray. */}
                     {isPlayerDM ? (
                       <ItemTray
                         campaignId={campaignId}
                         playerId={playerId}
                         items={inventoryData.trayItems}
                         onContextMenu={handleContextMenu}
-                        isDM={isPlayerDM}
+                        isDM={campaign?.dmId === user?.uid}
                       />
                     ) : (
+                      // Otherwise, for regular players, show their grid and tray.
                       <>
                         <div className="relative">
                         <PlayerInventoryGrid
