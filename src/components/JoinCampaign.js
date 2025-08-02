@@ -4,10 +4,16 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { db, auth } from '../firebase';
 import { doc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore';
+// Import the new hook
+import { useStarterPacks } from '../hooks/useStarterPacks';
 
 export default function JoinCampaign({ campaignId, onClose, onJoinSuccess }) {
   const [characterName, setCharacterName] = useState('');
+  const [selectedPackId, setSelectedPackId] = useState('none');
   const [loading, setLoading] = useState(false);
+  
+  // Use the new hook to get the packs
+  const { packs, isLoading: packsLoading } = useStarterPacks();
 
   const handleJoin = async (e) => {
     e.preventDefault();
@@ -17,10 +23,21 @@ export default function JoinCampaign({ campaignId, onClose, onJoinSuccess }) {
     }
     setLoading(true);
     const currentUser = auth.currentUser;
+    
+    let startingItems = [];
+    if (selectedPackId !== 'none') {
+        const selectedPack = packs.find(p => p.id === selectedPackId);
+        if (selectedPack) {
+            // Give each item a unique ID before adding it
+            startingItems = selectedPack.items.map(item => ({
+                ...item,
+                id: crypto.randomUUID()
+            }));
+        }
+    }
 
     try {
       const campaignDocRef = doc(db, 'campaigns', campaignId);
-      
       await updateDoc(campaignDocRef, {
         players: arrayUnion(currentUser.uid)
       });
@@ -30,8 +47,9 @@ export default function JoinCampaign({ campaignId, onClose, onJoinSuccess }) {
         characterName: characterName.trim(),
         ownerId: currentUser.uid,
         gridItems: [],
-        trayItems: [],
-        gridWidth: 10,
+        // Add the starting items to the tray
+        trayItems: startingItems,
+        gridWidth: 15,
         gridHeight: 5,
       }, { merge: true });
 
@@ -58,15 +76,21 @@ export default function JoinCampaign({ campaignId, onClose, onJoinSuccess }) {
               value={characterName}
               onChange={(e) => setCharacterName(e.target.value)}
               className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-              placeholder="e.g., Elara Swift"
+              placeholder="e.g., Billy Ray Valentine"
             />
           </div>
           <div>
-            <label className="block text-sm font-bold mb-2 text-text-muted">Starting Pack (Coming Soon)</label>
-            <select disabled className="w-full p-2 bg-background border border-surface/50 rounded-md disabled:opacity-50">
-              <option>Standard Equipment</option>
-              <option>Dungeoneer's Pack</option>
-              <option>Explorer's Pack</option>
+            <label className="block text-sm font-bold mb-2 text-text-muted">Starting Pack</label>
+            <select 
+                value={selectedPackId}
+                onChange={(e) => setSelectedPackId(e.target.value)}
+                disabled={packsLoading} 
+                className="w-full p-2 bg-background border border-surface/50 rounded-md disabled:opacity-50"
+            >
+              <option value="none">Standard Equipment (None)</option>
+              {packs.map(pack => (
+                  <option key={pack.id} value={pack.id}>{pack.name}</option>
+              ))}
             </select>
           </div>
           <div className="flex justify-end space-x-4 pt-4">
