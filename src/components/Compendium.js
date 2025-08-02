@@ -4,6 +4,7 @@ import { db, auth } from '../firebase';
 import { collection, onSnapshot, addDoc, doc, deleteDoc } from 'firebase/firestore';
 import AddItem from './AddItem';
 import Spinner from './Spinner';
+import ContextMenu from './ContextMenu';
 import { getColorForItemType, itemTypeOptions } from '../utils/itemUtils';
 
 const rarityOptions = ['Common', 'Uncommon', 'Rare', 'Very Rare', 'Legendary', 'Artifact'];
@@ -18,6 +19,8 @@ export default function Compendium({ onClose }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeType, setActiveType] = useState(null);
   const [activeRarity, setActiveRarity] = useState(null);
+  const [contextMenu, setContextMenu] = useState({ visible: false, position: null, actions: [] });
+  const [itemToCustomize, setItemToCustomize] = useState(null);
 
   const currentUser = auth.currentUser;
 
@@ -42,9 +45,7 @@ export default function Compendium({ onClose }) {
     };
   }, [currentUser]);
 
-  // THIS IS THE FIX: Combine the lists and apply filtering
   const filteredItems = useMemo(() => {
-    // 1. Determine which list to show based on the active tab
     const sourceItems = activeTab === 'custom' ? customItems : globalItems;
     
     // 2. Apply search and filters to the selected list
@@ -56,6 +57,27 @@ export default function Compendium({ onClose }) {
     });
   }, [activeTab, customItems, globalItems, searchTerm, activeType, activeRarity]);
   
+  const handleContextMenu = (event, item) => {
+    event.preventDefault();
+    // This feature should only work on the "Global Compendium" tab
+    if (activeTab !== 'global') return;
+
+    setContextMenu({
+      visible: true,
+      position: { x: event.clientX, y: event.clientY },
+      actions: [
+        {
+          label: 'Create Custom Version',
+          onClick: () => {
+            // Set the item to customize and show the AddItem modal
+            setItemToCustomize(item);
+            setShowAddItem(true);
+          },
+        },
+      ],
+    });
+  };
+
   const handleAddItem = async (itemData) => {
     const customItemsRef = collection(db, 'compendiums', currentUser.uid, 'masterItems');
     try {
@@ -84,7 +106,6 @@ export default function Compendium({ onClose }) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {items.map(item => {
-          // 1. We build the tooltip content string here
           const tooltipContent = `
             <div style="text-align: left;">
               <div style="display: flex; justify-content: space-between; align-items: start;">
@@ -113,7 +134,7 @@ export default function Compendium({ onClose }) {
             <div 
               key={item.id} 
               className={`${getColorForItemType(item.type)} rounded-lg p-3 text-text-base border border-surface/50 flex flex-col justify-between`}
-              // 2. Add the data-tooltip attributes to this div
+              onContextMenu={(e) => handleContextMenu(e, item)}
               data-tooltip-id="item-tooltip"
               data-tooltip-html={tooltipContent}
               data-tooltip-place="top"
@@ -140,7 +161,23 @@ export default function Compendium({ onClose }) {
   return (
     <div className="w-full h-full flex flex-col">
       {showAddItem && (
-        <AddItem onAddItem={handleAddItem} onClose={() => setShowAddItem(false)} isDM={true} />
+        <AddItem 
+          onAddItem={handleAddItem} 
+          onClose={() => {
+            setShowAddItem(false);
+            setItemToCustomize(null); // Clear the item when closing
+          }} 
+          isDM={true}
+          itemToEdit={itemToCustomize ? { item: itemToCustomize } : null} 
+        />
+      )}
+
+      {contextMenu.visible && (
+        <ContextMenu
+          menuPosition={contextMenu.position}
+          actions={contextMenu.actions}
+          onClose={() => setContextMenu({ ...contextMenu, visible: false })}
+        />
       )}
 
       <div className="flex justify-between items-center mb-4">
