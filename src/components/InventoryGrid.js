@@ -12,14 +12,14 @@ import ContextMenu from './ContextMenu';
 import SplitStack from './SplitStack';
 import Spinner from './Spinner';
 import ItemTray from './ItemTray';
-import InventorySettings from './InventorySettings';
 import { getColorForItemType } from '../utils/itemUtils';
 import AddFromCompendium from './AddFromCompendium';
 import StartTrade from './StartTrade';
 import TradeNotifications from './TradeNotifications'
 import Trade from './Trade';
 import { usePlayerProfiles } from '../hooks/usePlayerProfiles';
-import CharacterName from './CharacterName';
+import InventorySettings from './InventorySettings';
+import WeightCounter from './WeightCounter';
 
 export default function InventoryGrid({ campaignId, user, userProfile, isTrading, setIsTrading }) {
   
@@ -35,11 +35,10 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   const [splittingItem, setSplittingItem] = useState(null);
   const [activeItem, setActiveItem] = useState(null);
   const [openInventories, setOpenInventories] = useState({});
-  const [editingInventory, setEditingInventory] = useState(null);
   const [cellSizes, setCellSizes] = useState({});
   const [showCompendium, setShowCompendium] = useState(false);
   const [activeTrade, setActiveTrade] = useState(null);
-  const [editingCharacter, setEditingCharacter] = useState(null);
+  const [editingSettings, setEditingSettings] = useState(null);
   
   const gridRefs = useRef({});
 
@@ -746,12 +745,12 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     <div className="w-full flex flex-col items-center flex-grow">
       {/* --- Modals (Styling has been updated in their own files) --- */}
 
-      {editingCharacter && (
-        <CharacterName
-          onClose={() => setEditingCharacter(null)}
+      {editingSettings && (
+        <InventorySettings
+          onClose={() => setEditingSettings(null)}
           campaignId={campaignId}
-          playerId={editingCharacter.playerId}
-          currentName={editingCharacter.currentName}
+          userId={editingSettings.playerId}
+          currentSettings={editingSettings.currentSettings}
         />
       )}
 
@@ -787,16 +786,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         />
       )}
 
-      {editingInventory && (
-        <InventorySettings
-          onClose={() => setEditingInventory(null)}
-          campaignId={campaignId}
-          userId={editingInventory}
-          currentWidth={inventories[editingInventory]?.gridWidth}
-          currentHeight={inventories[editingInventory]?.gridHeight}
-        />
-      )}
-
       {splittingItem && (
         <SplitStack
           item={splittingItem.item}
@@ -826,7 +815,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         />
       )}
 
-      {/* --- Main Content --- */}
+       {/* --- Main Content --- */}
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
@@ -840,13 +829,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
       >
         <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24 overscroll-contain">
           {Object.entries(inventories)
-          .sort(([playerIdA], [playerIdB]) => {
-            if (playerIdA === user.uid) return -1;
-            if (playerIdB === user.uid) return 1;
-            const nameA = inventories[playerIdA]?.characterName || playerProfiles[playerIdA]?.displayName || '';
-            const nameB = inventories[playerIdB]?.characterName || playerProfiles[playerIdB]?.displayName || '';
-            return nameA.localeCompare(nameB);
-          })
+          .sort(/* ... */)
           .map(([playerId, inventoryData]) => {
             const gridWidth = inventoryData.gridWidth;
             const gridHeight = inventoryData.gridHeight;
@@ -858,41 +841,46 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
                 key={playerId}
                 className="bg-surface rounded-lg shadow-lg shadow-accent/10 border border-accent/20 overflow-hidden"
               >
-                <div className="w-full p-2 text-left bg-surface/80 hover:bg-surface/50 focus:outline-none flex justify-between items-center transition-colors duration-200">
-                <button onClick={() => toggleInventory(playerId)} className="flex-grow flex items-center space-x-4">
-                  <h2 className="text-xl font-bold text-accent font-fantasy tracking-wider">
-                    {inventoryData.characterName || playerProfiles[playerId]?.displayName}
-                  </h2>
-                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-text-base transition-transform duration-200 ${ openInventories[playerId] ? "rotate-180" : "" }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
-                  </svg>
-                </button>
-
-                <div className="flex items-center space-x-2">
-                    {isMyInventory && (
-                        <button 
-                            onClick={() => setEditingCharacter({ playerId: playerId, currentName: inventoryData.characterName })}
-                            className="p-2 rounded-full hover:bg-background transition-colors"
-                            aria-label="Edit character name"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                <div className="w-full p-2 text-left bg-surface/80 flex justify-between items-center transition-colors duration-200">
+                  {/* **THIS IS THE FIX**: The header is now a single flex container */}
+                  <div className="flex-grow flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                        <button onClick={() => toggleInventory(playerId)} className="flex items-center space-x-2">
+                            <h2 className="text-xl font-bold text-accent font-fantasy tracking-wider">
+                                {inventoryData.characterName || playerProfiles[playerId]?.displayName}
+                            </h2>
+                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-text-base transition-transform duration-200 ${ openInventories[playerId] ? "rotate-180" : "" }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
                             </svg>
                         </button>
-                    )}
-                    {user.uid === playerId && (
-                      <button onClick={() => setEditingInventory(playerId)} className="p-2 rounded-full hover:bg-background transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                        </svg>
-                      </button>
-                    )}
-                </div>
+                        
+                        {/* The WeightCounter is now here, and only receives gridItems */}
+                        <WeightCounter
+                            items={inventoryData.gridItems || []}
+                            maxWeight={inventoryData.maxWeight || 0}
+                            unit={inventoryData.weightUnit || 'lbs'}
+                        />
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                        {isMyInventory && (
+                            <button 
+                                onClick={() => setEditingSettings({ playerId: playerId, currentSettings: inventoryData })}
+                                className="p-2 rounded-full hover:bg-background transition-colors"
+                                aria-label="Edit character and inventory settings"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
+                                  <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                                  <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
+                  </div>
                 </div>
 
                 {openInventories[playerId] && (
                   <div className="p-2 bg-background/50">
-                    {/* **THIS IS THE FIX**: If the inventory belongs to the DM, only show their item tray. */}
                     {isPlayerDM ? (
                       <ItemTray
                         campaignId={campaignId}
@@ -902,7 +890,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
                         isDM={campaign?.dmId === user?.uid}
                       />
                     ) : (
-                      // Otherwise, for regular players, show their grid and tray.
                       <>
                         <div className="relative">
                         <PlayerInventoryGrid
