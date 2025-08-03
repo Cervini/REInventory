@@ -124,8 +124,11 @@ export default function App() {
         {currentPage === 'main' && (
            <div className="flex justify-between items-center w-full mb-4">
               
+              {/* --- THIS IS THE FIX --- */}
+              {/* The left and right slots now have a fixed basis width to ensure the center is always perfect. */}
+              
               {/* Left Slot */}
-              <div className="flex items-center space-x-2">
+              <div className="flex-1 flex justify-start items-center space-x-2">
                 {campaignId && (
                   <button onClick={handleBackToCampaigns} className="p-2 rounded-full hover:bg-surface transition-colors duration-200" aria-label="Back to campaigns">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -159,12 +162,12 @@ export default function App() {
               </div>
 
               {/* Center Slot */}
-              <div className="flex-grow text-center">
+              <div className="text-center">
                 <h1 className="text-2xl sm:text-4xl font-bold font-fantasy"><span className="text-accent">RE</span>Inventory</h1>
               </div>
 
               {/* Right Slot */}
-              <div>
+              <div className="flex-1 flex justify-end">
                 {user && (
                   <div className="relative">
                     <button onClick={() => setIsUserMenuOpen(prev => !prev)} className="p-2 rounded-full hover:bg-surface transition-colors duration-200">
