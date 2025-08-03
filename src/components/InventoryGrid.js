@@ -39,6 +39,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   const [showCompendium, setShowCompendium] = useState(false);
   const [activeTrade, setActiveTrade] = useState(null);
   const [editingSettings, setEditingSettings] = useState(null);
+  const [openTrays, setOpenTrays] = useState({});
   
   const gridRefs = useRef({});
 
@@ -719,6 +720,13 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
       [playerId]: !prev[playerId],
     }));
   };
+  
+  const toggleTray = (playerId) => {
+    setOpenTrays((prev) => ({
+      ...prev,
+      [playerId]: !prev[playerId],
+    }));
+  };
 
   if (isLoading) {
     return <Spinner />;
@@ -743,17 +751,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
 
   return (
     <div className="w-full flex flex-col items-center flex-grow">
-      {/* --- Modals (Styling has been updated in their own files) --- */}
-
-      {editingSettings && (
-        <InventorySettings
-          onClose={() => setEditingSettings(null)}
-          campaignId={campaignId}
-          userId={editingSettings.playerId}
-          currentSettings={editingSettings.currentSettings}
-        />
-      )}
-
+      {/* --- Modals --- */}
       {activeTrade && (
         <Trade
           tradeId={activeTrade.id}
@@ -772,7 +770,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
           campaign={{id: campaignId, ...campaign}}
           user={user}
           playerProfiles={playerProfiles}
-          inventories={inventories} 
+          inventories={inventories}
         />
       )}
       
@@ -783,6 +781,15 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
           players={Object.keys(inventories)}
           dmId={campaign?.dmId}
           playerProfiles={playerProfiles}
+        />
+      )}
+
+      {editingSettings && (
+        <InventorySettings
+          onClose={() => setEditingSettings(null)}
+          campaignId={campaignId}
+          userId={editingSettings.playerId}
+          currentSettings={editingSettings.currentSettings}
         />
       )}
 
@@ -815,7 +822,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         />
       )}
 
-       {/* --- Main Content --- */}
+      {/* --- Main Content --- */}
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
@@ -829,7 +836,13 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
       >
         <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24 overscroll-contain">
           {Object.entries(inventories)
-          .sort(/* ... */)
+          .sort(([playerIdA], [playerIdB]) => {
+            if (playerIdA === user.uid) return -1;
+            if (playerIdB === user.uid) return 1;
+            const nameA = inventories[playerIdA]?.characterName || playerProfiles[playerIdA]?.displayName || '';
+            const nameB = inventories[playerIdB]?.characterName || playerProfiles[playerIdB]?.displayName || '';
+            return nameA.localeCompare(nameB);
+          })
           .map(([playerId, inventoryData]) => {
             const gridWidth = inventoryData.gridWidth;
             const gridHeight = inventoryData.gridHeight;
@@ -842,7 +855,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
                 className="bg-surface rounded-lg shadow-lg shadow-accent/10 border border-accent/20 overflow-hidden"
               >
                 <div className="w-full p-2 text-left bg-surface/80 flex justify-between items-center transition-colors duration-200">
-                  {/* **THIS IS THE FIX**: The header is now a single flex container */}
                   <div className="flex-grow flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                         <button onClick={() => toggleInventory(playerId)} className="flex items-center space-x-2">
@@ -854,7 +866,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
                             </svg>
                         </button>
                         
-                        {/* The WeightCounter is now here, and only receives gridItems */}
                         <WeightCounter
                             items={inventoryData.gridItems || []}
                             maxWeight={inventoryData.maxWeight || 0}
@@ -905,13 +916,27 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
                           gridHeight={gridHeight}
                           cellSize={cellSizes[playerId]}
                         />
-                        <ItemTray
-                          campaignId={campaignId}
-                          playerId={playerId}
-                          items={inventoryData.trayItems}
-                          onContextMenu={handleContextMenu}
-                          isDM={campaign?.dmId === user?.uid}
-                        />
+                        </div>
+                        <div className="mt-2">
+                          <button 
+                            onClick={() => toggleTray(playerId)}
+                            className="w-full p-2 text-left bg-surface/50 hover:bg-surface/30 rounded-t-lg flex justify-between items-center transition-colors"
+                          >
+                            <span className="font-bold font-fantasy text-text-muted">Tray</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-text-base transition-transform duration-200 ${ openTrays[playerId] ? "rotate-180" : "" }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+                            </svg>
+                          </button>
+                          
+                          {openTrays[playerId] && (
+                            <ItemTray
+                              campaignId={campaignId}
+                              playerId={playerId}
+                              items={inventoryData.trayItems}
+                              onContextMenu={handleContextMenu}
+                              isDM={campaign?.dmId === user?.uid}
+                            />
+                          )}
                         </div>
                       </>
                     )}
