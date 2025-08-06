@@ -241,62 +241,74 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     const finalPlayerId = itemToEdit ? itemToEdit.playerId : user.uid;
     if (!campaignId || !finalPlayerId) return;
 
-    const inventoryDocRef = doc(
-      db,
-      "campaigns",
-      campaignId,
-      "inventories",
-      finalPlayerId
-    );
-    const currentInventory = inventories[finalPlayerId] || {
-      gridItems: [],
-      trayItems: [],
-    };
+    const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", finalPlayerId);
+    const currentInventory = inventories[finalPlayerId] || { gridItems: [], trayItems: [] };
 
-    // --- EDIT LOGIC (Updates an item already on the grid) ---
     if (itemToEdit) {
-      const newGridItems = currentInventory.gridItems.map((i) =>
-        i.id === itemToEdit.item.id ? { ...itemToEdit.item, ...itemData } : i
-      );
-      setInventories((prev) => ({
-        ...prev,
-        [finalPlayerId]: { ...prev[finalPlayerId], gridItems: newGridItems },
-      }));
-      await updateDoc(inventoryDocRef, { gridItems: newGridItems });
-    }
-    // --- ADD LOGIC (Adds the new item to the TRAY) ---
-    else {
-      // Logic for merging with an existing stack (now checks the tray)
-      if (itemData.stackable) {
-        const existingItemIndex = currentInventory.trayItems.findIndex(
-          (item) =>
-            item.stackable &&
-            item.name.toLowerCase() === itemData.name.toLowerCase()
+      // --- THIS IS THE NEW LOGIC FOR AUTO-SPLITTING ---
+      const originalItem = itemToEdit.item;
+      const originalQuantity = originalItem.quantity;
+      const newMaxStack = itemData.maxStack;
+
+      if (itemData.stackable && newMaxStack > 0 && originalQuantity > newMaxStack) {
+        // Condition met: The stack needs to be split.
+        const remainderQuantity = originalQuantity - newMaxStack;
+
+        // 1. The original item, updated with the new max stack size as its quantity.
+        const updatedOriginalItem = { ...originalItem, ...itemData, quantity: newMaxStack };
+
+        // 2. The new item for the remainder.
+        const remainderItem = {
+          ...originalItem,
+          ...itemData,
+          id: crypto.randomUUID(),
+          quantity: remainderQuantity,
+        };
+
+        let finalGridItems = currentInventory.gridItems.map(i =>
+          i.id === originalItem.id ? updatedOriginalItem : i
+        );
+        let finalTrayItems = [...currentInventory.trayItems];
+
+        // 3. Find a place for the remainder stack.
+        const availableSlot = findFirstAvailableSlot(finalGridItems, remainderItem, currentInventory.gridWidth, currentInventory.gridHeight);
+
+        if (availableSlot) {
+          remainderItem.x = availableSlot.x;
+          remainderItem.y = availableSlot.y;
+          finalGridItems.push(remainderItem);
+          toast.success("Stack size reduced, remainder placed in inventory.");
+        } else {
+          const { x, y, ...trayItem } = remainderItem;
+          finalTrayItems.push(trayItem);
+          toast.success("Stack size reduced, remainder placed in tray.");
+        }
+
+        setInventories(prev => ({
+          ...prev,
+          [finalPlayerId]: { ...prev[finalPlayerId], gridItems: finalGridItems, trayItems: finalTrayItems },
+        }));
+
+        await updateDoc(inventoryDocRef, { gridItems: finalGridItems, trayItems: finalTrayItems });
+
+      } else {
+        // --- Standard Edit Logic (No splitting needed) ---
+        const newGridItems = currentInventory.gridItems.map((i) =>
+          i.id === originalItem.id ? { ...originalItem, ...itemData } : i
+        );
+        const newTrayItems = currentInventory.trayItems.map((i) =>
+          i.id === originalItem.id ? { ...originalItem, ...itemData } : i
         );
 
-        if (existingItemIndex !== -1) {
-          const newTrayItems = [...currentInventory.trayItems];
-          const existingItem = newTrayItems[existingItemIndex];
-          newTrayItems[existingItemIndex] = {
-            ...existingItem,
-            quantity: existingItem.quantity + itemData.quantity,
-          };
-
-          setInventories((prev) => ({
-            ...prev,
-            [finalPlayerId]: {
-              ...prev[finalPlayerId],
-              trayItems: newTrayItems,
-            },
-          }));
-          await updateDoc(inventoryDocRef, { trayItems: newTrayItems });
-          setItemToEdit(null);
-          setShowAddItem(false);
-          return; // Exit after merging
-        }
+        setInventories((prev) => ({
+          ...prev,
+          [finalPlayerId]: { ...prev[finalPlayerId], gridItems: newGridItems, trayItems: newTrayItems },
+        }));
+        await updateDoc(inventoryDocRef, { gridItems: newGridItems, trayItems: newTrayItems });
       }
 
-      // If not merging, add the new item to the trayItems array
+    } else {
+      // --- Standard Add New Item Logic (to the tray) ---
       const newTrayItems = [...currentInventory.trayItems, itemData];
       setInventories(prev => ({ ...prev, [finalPlayerId]: { ...prev[finalPlayerId], trayItems: newTrayItems } }));
       await updateDoc(inventoryDocRef, { trayItems: newTrayItems });
@@ -436,42 +448,70 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         ) {
             const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", startPlayerId);
             const currentInventory = inventories[startPlayerId];
+            
+            // **THIS IS THE NEW LOGIC**: Calculate stack limits
+            const maxStack = passiveItem.maxStack || 20;
+            const roomInStack = maxStack - passiveItem.quantity;
+            const amountToTransfer = Math.min(item.quantity, roomInStack);
+
+            if (amountToTransfer <= 0) {
+                toast.error("Stack is already full.");
+                return; // Exit if there's no room
+            }
+
+            let finalGridItems = [...currentInventory.gridItems];
+            let finalTrayItems = [...currentInventory.trayItems];
+
+            // Update the target item (either in grid or tray)
             const targetLocation = over.data.current?.source;
-
-            // **THIS IS THE FIX**: Create new versions of both arrays.
-            let newGridItems = [...currentInventory.gridItems];
-            let newTrayItems = [...currentInventory.trayItems];
-
-            // First, remove the dragged item from its original location.
-            if (startSource === 'grid') {
-                newGridItems = newGridItems.filter(i => i.id !== item.id);
-            } else { // startSource === 'tray'
-                newTrayItems = newTrayItems.filter(i => i.id !== item.id);
-            }
-            
-            // Next, add the quantity to the target item in its location.
             if (targetLocation === 'grid') {
-                newGridItems = newGridItems.map(i => 
+                finalGridItems = finalGridItems.map(i => 
                     i.id === passiveItem.id 
-                        ? { ...i, quantity: i.quantity + item.quantity } 
+                        ? { ...i, quantity: i.quantity + amountToTransfer } 
                         : i
                 );
-            } else { // targetLocation === 'tray'
-                newTrayItems = newTrayItems.map(i => 
+            } else { // tray
+                finalTrayItems = finalTrayItems.map(i => 
                     i.id === passiveItem.id 
-                        ? { ...i, quantity: i.quantity + item.quantity } 
+                        ? { ...i, quantity: i.quantity + amountToTransfer } 
                         : i
                 );
             }
+
+            // Update the source item (dragged item)
+            const remainingQuantity = item.quantity - amountToTransfer;
+
+            if (remainingQuantity <= 0) {
+                // If the whole stack was transferred, remove the source item
+                if (startSource === 'grid') {
+                    finalGridItems = finalGridItems.filter(i => i.id !== item.id);
+                } else {
+                    finalTrayItems = finalTrayItems.filter(i => i.id !== item.id);
+                }
+            } else {
+                // Otherwise, update the source item's quantity
+                if (startSource === 'grid') {
+                    finalGridItems = finalGridItems.map(i => 
+                        i.id === item.id 
+                            ? { ...i, quantity: remainingQuantity } 
+                            : i
+                    );
+                } else {
+                    finalTrayItems = finalTrayItems.map(i => 
+                        i.id === item.id 
+                            ? { ...i, quantity: remainingQuantity } 
+                            : i
+                    );
+                }
+            }
             
-            // Update the state and Firestore with the new arrays.
             setInventories(prev => ({
                 ...prev,
-                [startPlayerId]: { ...prev[startPlayerId], gridItems: newGridItems, trayItems: newTrayItems },
+                [startPlayerId]: { ...prev[startPlayerId], gridItems: finalGridItems, trayItems: finalTrayItems },
             }));
             
-            await updateDoc(inventoryDocRef, { gridItems: newGridItems, trayItems: newTrayItems });
-            toast.success(`Stacked ${item.name}.`);
+            await updateDoc(inventoryDocRef, { gridItems: finalGridItems, trayItems: finalTrayItems });
+            toast.success(`Moved ${amountToTransfer} ${item.name}.`);
             return;
         }
     }

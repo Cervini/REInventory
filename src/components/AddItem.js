@@ -15,6 +15,7 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
   const [h, setH] = useState(isEditMode ? itemBeingEdited.h : 1);
   const [type, setType] = useState(isEditMode ? itemBeingEdited.type : 'Gear');
   const [stackable, setStackable] = useState(isEditMode ? itemBeingEdited.stackable ?? false : false);
+  const [maxStack, setMaxStack] = useState(isEditMode ? itemBeingEdited.maxStack ?? 20 : 20);
   const [quantity, setQuantity] = useState(isEditMode ? itemBeingEdited.quantity ?? 1 : 1);
   const [cost, setCost] =useState(isEditMode ? itemBeingEdited.cost ?? '' : '');
   const [weight, setWeight] = useState(isEditMode ? itemBeingEdited.weight ?? '' : '');
@@ -39,6 +40,7 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
         h: parseInt(h, 10),
         type,
         stackable,
+        maxStack: stackable ? parseInt(maxStack, 10) : null,
         quantity: parseInt(quantity, 10),
         cost,
         weight,
@@ -111,6 +113,12 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
               <label className="block text-sm font-bold mb-2 text-text-muted">Quantity</label>
               <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} disabled={!stackable && !isEditMode} className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200 disabled:opacity-50" />
             </div>
+            {stackable && (
+              <div className="w-1/3">
+                <label className="block text-sm font-bold mb-2 text-text-muted">Max Stack</label>
+                <input type="number" min="1" value={maxStack} onChange={(e) => setMaxStack(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent" />
+              </div>
+            )}
           </fieldset>
 
           <fieldset className="flex items-end space-x-4">
