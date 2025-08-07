@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { doc, onSnapshot, updateDoc, collection, query, where, writeBatch } from "firebase/firestore";
 import { db } from '../firebase';
@@ -20,6 +20,7 @@ import Trade from './Trade';
 import { usePlayerProfiles } from '../hooks/usePlayerProfiles';
 import InventorySettings from './InventorySettings';
 import WeightCounter from './WeightCounter';
+import CampaignLayout from './CampaignLayout';
 
 export default function InventoryGrid({ campaignId, user, userProfile, isTrading, setIsTrading }) {
   
@@ -40,6 +41,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   const [activeTrade, setActiveTrade] = useState(null);
   const [editingSettings, setEditingSettings] = useState(null);
   const [openTrays, setOpenTrays] = useState({});
+  const [showLayoutSettings, setShowLayoutSettings] = useState(false);
   
   const gridRefs = useRef({});
 
@@ -153,6 +155,19 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
       return prevInventories;
     });
   }, [inventories, user, isLoading, campaignId, setInventories]); // Add all stable dependencies
+
+  const orderedAndVisibleInventories = useMemo(() => {
+    if (!campaign?.layout) return Object.entries(inventories);
+
+    const { order = [], visible = {} } = campaign.layout;
+    
+    // 1. Filter out players who are marked as not visible
+    const visiblePlayerIds = order.filter(playerId => visible[playerId] ?? true);
+
+    // 2. Map these IDs to their inventory data
+    return visiblePlayerIds.map(playerId => [playerId, inventories[playerId]]).filter(entry => entry[1]);
+
+  }, [campaign, inventories]);
 
   const handleContextMenu = (event, item, playerId, source) => {
     event.preventDefault();
@@ -792,6 +807,14 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   return (
     <div className="w-full flex flex-col items-center flex-grow">
       {/* --- Modals --- */}
+      {showLayoutSettings && (
+        <CampaignLayout
+          campaign={{ id: campaignId, ...campaign }}
+          inventories={inventories}
+          playerProfiles={playerProfiles}
+          onClose={() => setShowLayoutSettings(false)}
+        />
+      )}
       {activeTrade && (
         <Trade
           tradeId={activeTrade.id}
@@ -830,6 +853,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
           campaignId={campaignId}
           userId={editingSettings.playerId}
           currentSettings={editingSettings.currentSettings}
+          isDMInventory={editingSettings.isDMInventory}
         />
       )}
 
@@ -843,6 +867,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
           }}
         />
       )}
+
       {showAddItem && (
         <AddItem 
           onAddItem={handleAddItem} 
@@ -854,12 +879,22 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
           itemToEdit={itemToEdit}
         />
       )}
+
       {contextMenu.visible && (
         <ContextMenu
           menuPosition={contextMenu.position}
           actions={contextMenu.actions}
           onClose={() => setContextMenu({ ...contextMenu, visible: false })}
         />
+      )}
+
+      {/* --- DM-Only Button --- */}
+      {campaign?.dmId === user?.uid && (
+        <div className="w-full flex justify-end mb-4 px-4">
+            <button onClick={() => setShowLayoutSettings(true)} className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors text-sm">
+                Manage Layout
+            </button>
+        </div>
       )}
 
       {/* --- Main Content --- */}
@@ -875,15 +910,9 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         collisionDetection={pointerWithin}
       >
         <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24 overscroll-contain">
-          {Object.entries(inventories)
-          .sort(([playerIdA], [playerIdB]) => {
-            if (playerIdA === user.uid) return -1;
-            if (playerIdB === user.uid) return 1;
-            const nameA = inventories[playerIdA]?.characterName || playerProfiles[playerIdA]?.displayName || '';
-            const nameB = inventories[playerIdB]?.characterName || playerProfiles[playerIdB]?.displayName || '';
-            return nameA.localeCompare(nameB);
-          })
-          .map(([playerId, inventoryData]) => {
+          {/* Use the new sorted and filtered array to render the inventories */}
+          {orderedAndVisibleInventories.map(([playerId, inventoryData]) => {
+            if (!inventoryData) return null; // Safeguard
             const gridWidth = inventoryData.gridWidth;
             const gridHeight = inventoryData.gridHeight;
             const isPlayerDM = campaign?.dmId === playerId;
@@ -897,35 +926,35 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
                 <div className="w-full p-2 text-left bg-surface/80 flex justify-between items-center transition-colors duration-200">
                   <div className="flex-grow flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                        <button onClick={() => toggleInventory(playerId)} className="flex items-center space-x-2">
-                            <h2 className="text-xl font-bold text-accent font-fantasy tracking-wider">
-                                {inventoryData.characterName || playerProfiles[playerId]?.displayName}
-                            </h2>
-                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-text-base transition-transform duration-200 ${ openInventories[playerId] ? "rotate-180" : "" }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
-                        
+                      <button onClick={() => toggleInventory(playerId)} className="flex items-center space-x-2">
+                        <h2 className="text-xl font-bold text-accent font-fantasy tracking-wider">
+                          {inventoryData.characterName || playerProfiles[playerId]?.displayName}
+                        </h2>
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-text-base transition-transform duration-200 ${openInventories[playerId] ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {!isPlayerDM && (
                         <WeightCounter
-                            items={inventoryData.gridItems || []}
-                            maxWeight={inventoryData.maxWeight || 0}
-                            unit={inventoryData.weightUnit || 'lbs'}
+                          items={inventoryData.gridItems || []}
+                          maxWeight={inventoryData.maxWeight || 0}
+                          unit={inventoryData.weightUnit || 'lbs'}
                         />
+                      )}
                     </div>
-                    
                     <div className="flex items-center space-x-2">
-                        {isMyInventory && (
-                            <button 
-                                onClick={() => setEditingSettings({ playerId: playerId, currentSettings: inventoryData })}
-                                className="p-2 rounded-full hover:bg-background transition-colors"
-                                aria-label="Edit character and inventory settings"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
-                                  <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                                  <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
-                                </svg>
-                            </button>
-                        )}
+                      {isMyInventory && (
+                        <button
+                          onClick={() => setEditingSettings({ playerId: playerId, currentSettings: inventoryData, isDMInventory: isPlayerDM })}
+                          className="p-2 rounded-full hover:bg-background transition-colors"
+                          aria-label="Edit character and inventory settings"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                            <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -943,31 +972,30 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
                     ) : (
                       <>
                         <div className="relative">
-                        <PlayerInventoryGrid
-                          campaignId={campaignId}
-                          playerId={playerId}
-                          items={inventoryData.gridItems}
-                          onContextMenu={handleContextMenu}
-                          setGridRef={(node) =>
-                            (gridRefs.current[playerId] = node)
-                          }
-                          isDM={campaign?.dmId === user?.uid}
-                          gridWidth={gridWidth}
-                          gridHeight={gridHeight}
-                          cellSize={cellSizes[playerId]}
-                        />
+                          <PlayerInventoryGrid
+                            campaignId={campaignId}
+                            playerId={playerId}
+                            items={inventoryData.gridItems}
+                            onContextMenu={handleContextMenu}
+                            setGridRef={(node) =>
+                              (gridRefs.current[playerId] = node)
+                            }
+                            isDM={campaign?.dmId === user?.uid}
+                            gridWidth={gridWidth}
+                            gridHeight={gridHeight}
+                            cellSize={cellSizes[playerId]}
+                          />
                         </div>
                         <div className="mt-2">
-                          <button 
+                          <button
                             onClick={() => toggleTray(playerId)}
                             className="w-full p-2 text-left bg-surface/50 hover:bg-surface/30 rounded-t-lg flex justify-between items-center transition-colors"
                           >
                             <span className="font-bold font-fantasy text-text-muted">Tray</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-text-base transition-transform duration-200 ${ openTrays[playerId] ? "rotate-180" : "" }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-text-base transition-transform duration-200 ${openTrays[playerId] ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
-                          
                           {openTrays[playerId] && (
                             <ItemTray
                               campaignId={campaignId}

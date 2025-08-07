@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { doc, updateDoc } from "firebase/firestore";
 
 // The props now include all the settings we need to edit
-export default function InventorySettings({ onClose, campaignId, userId, currentSettings }) {
+export default function InventorySettings({ onClose, campaignId, userId, currentSettings, isDMInventory }) {
   const [characterName, setCharacterName] = useState(currentSettings.characterName || '');
   const [gridWidth, setGridWidth] = useState(currentSettings.gridWidth || 30);
   const [gridHeight, setGridHeight] = useState(currentSettings.gridHeight || 10);
@@ -59,6 +59,8 @@ export default function InventorySettings({ onClose, campaignId, userId, current
                 onChange={(e) => setCharacterName(e.target.value)} 
                 className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent" />
           </div>
+
+          {!isDMInventory && ( <div>
           
           <div className="flex space-x-4">
             <div className="w-1/2">
@@ -71,28 +73,31 @@ export default function InventorySettings({ onClose, campaignId, userId, current
             </div>
           </div>
           
-          <div className="flex items-end space-x-4">
-            <div className="flex-grow">
-              <label className="block text-sm font-bold mb-2 text-text-muted">Max Weight</label>
-              <input 
-                  type="number" 
-                  value={maxWeight} 
-                  onChange={(e) => setMaxWeight(e.target.value)} 
-                  className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent" />
+            <div className="flex items-end space-x-4">
+              <div className="flex-grow">
+                <label className="block text-sm font-bold mb-2 text-text-muted">Max Weight</label>
+                <input 
+                    type="number" 
+                    value={maxWeight} 
+                    onChange={(e) => setMaxWeight(e.target.value)} 
+                    className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-2 text-text-muted">Unit</label>
+                <select 
+                  value={weightUnit} 
+                  onChange={(e) => setWeightUnit(e.target.value)}
+                  className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
+                >
+                  <option value="lbs">lbs</option>
+                  <option value="kg">kg</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-bold mb-2 text-text-muted">Unit</label>
-              <select 
-                value={weightUnit} 
-                onChange={(e) => setWeightUnit(e.target.value)}
-                className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-              >
-                <option value="lbs">lbs</option>
-                <option value="kg">kg</option>
-              </select>
-            </div>
+            <p className="text-xs text-text-muted/80 pt-2">Warning: Changing grid size may cause items to be out of bounds and move to your tray.</p>
           </div>
-          <p className="text-xs text-text-muted/80 pt-2">Warning: Changing grid size may cause items to be out of bounds and move to your tray.</p>
+          
+          )}
           <div className="flex justify-end space-x-4 pt-4">
             <button type="button" onClick={onClose} disabled={loading} className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors">Cancel</button>
             <button type="submit" disabled={loading} className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded transition-colors">

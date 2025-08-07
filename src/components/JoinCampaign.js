@@ -39,7 +39,9 @@ export default function JoinCampaign({ campaignId, onClose, onJoinSuccess }) {
     try {
       const campaignDocRef = doc(db, 'campaigns', campaignId);
       await updateDoc(campaignDocRef, {
-        players: arrayUnion(currentUser.uid)
+        players: arrayUnion(currentUser.uid),
+        [`layout.order`]: arrayUnion(currentUser.uid), // Adds the player to the end of the order
+        [`layout.visible.${currentUser.uid}`]: true // Sets the new player to be visible
       });
 
       const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", currentUser.uid);
@@ -47,7 +49,6 @@ export default function JoinCampaign({ campaignId, onClose, onJoinSuccess }) {
         characterName: characterName.trim(),
         ownerId: currentUser.uid,
         gridItems: [],
-        // Add the starting items to the tray
         trayItems: startingItems,
         gridWidth: 15,
         gridHeight: 5,

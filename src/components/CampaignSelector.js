@@ -54,7 +54,11 @@ export default function CampaignSelector({ onCampaignSelected }) {
         dmEmail: currentUser.email,
         createdAt: serverTimestamp(),
         name: campaignName,
-        players: [currentUser.uid]
+        players: [currentUser.uid],
+        layout: {
+          order: [currentUser.uid], // The DM is first by default
+          visible: { [currentUser.uid]: true } // The DM is visible by default
+        }
       });
 
       const inventoryDocRef = doc(db, "campaigns", campaignDocRef.id, "inventories", currentUser.uid);
