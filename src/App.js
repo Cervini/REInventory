@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, onValue, set, onDisconnect, serverTimestamp } from "firebase/database";
+import { doc, onSnapshot } from 'firebase/firestore';
+import { rtdb } from './firebase';
 import { Tooltip } from 'react-tooltip';
 import { Toaster } from 'react-hot-toast';
 import { auth, db } from './firebase';
@@ -30,26 +32,35 @@ export default function App() {
   // State to manage which "page" is visible
   const [currentPage, setCurrentPage] = useState('main'); // 'main', 'privacy', 'cookies', 'compendium'
 
-  useEffect(() => {
-    // This effect should only run when a user is logged in.
+   useEffect(() => {
     if (!user) return;
 
-    // A reference to this user's specific status document.
-    const userStatusDocRef = doc(db, 'status', user.uid);
+    // A reference to this user's specific location in the Realtime Database
+    const userStatusDatabaseRef = ref(rtdb, '/status/' + user.uid);
 
-    // Set up a heartbeat to update the lastSeen timestamp every 60 seconds.
-    // This tells the database the user is still active.
-    const interval = setInterval(() => {
-        setDoc(userStatusDocRef, { 
-            lastSeen: serverTimestamp() 
-        }, { merge: true });
-    }, 60000); // 60,000 milliseconds = 1 minute
+    // A reference to the special '.info/connected' path, which is a boolean
+    // provided by Firebase that is true when the client is connected.
+    const connectedRef = ref(rtdb, '.info/connected');
 
-    // The cleanup function runs when the component unmounts (e.g., user logs out or closes the tab).
-    return () => {
-        clearInterval(interval);
-    };
-  }, [user]); // This effect re-runs whenever the user logs in or out.
+    onValue(connectedRef, (snap) => {
+      if (snap.val() === true) {
+        // We're connected. Set the user's status to online.
+        set(userStatusDatabaseRef, {
+          isOnline: true,
+          lastSeen: serverTimestamp(),
+        });
+
+        // When the client disconnects, set their status to offline.
+        // This is the magic of onDisconnect!
+        onDisconnect(userStatusDatabaseRef).set({
+          isOnline: false,
+          lastSeen: serverTimestamp(),
+        });
+      }
+    });
+
+    // We don't need a cleanup function in the same way, as onDisconnect handles it.
+  }, [user]);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {

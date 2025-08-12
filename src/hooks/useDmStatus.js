@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+// THIS IS THE FIX: Import from the Realtime Database
+import { rtdb } from '../firebase';
+import { ref, onValue } from 'firebase/database';
 
 export function useDmStatus(dmId) {
     const [isDmOnline, setIsDmOnline] = useState(false);
@@ -11,24 +12,14 @@ export function useDmStatus(dmId) {
             return;
         }
 
-        const statusDocRef = doc(db, 'status', dmId);
-        const unsubscribe = onSnapshot(statusDocRef, (docSnap) => {
-            if (!docSnap.exists()) {
-                setIsDmOnline(false);
-                return;
-            }
-
-            const status = docSnap.data();
-            // A user is "online" if their status document has a `lastSeen` timestamp
-            // from the last 2 minutes. This is our new, wider, and more robust definition.
-            const twoMinutesInMillis = 2 * 60 * 1000;
-            const lastSeenTime = status.lastSeen?.toDate();
-
-            if (lastSeenTime && (new Date() - lastSeenTime < twoMinutesInMillis)) {
-                setIsDmOnline(true);
-            } else {
-                setIsDmOnline(false);
-            }
+        // A reference to the DM's status in the Realtime Database
+        const statusRef = ref(rtdb, 'status/' + dmId);
+        
+        // onValue is the real-time listener for the Realtime Database
+        const unsubscribe = onValue(statusRef, (snapshot) => {
+            const status = snapshot.val();
+            // The user is online if the status object exists and has isOnline set to true.
+            setIsDmOnline(status?.isOnline === true);
         });
 
         return () => unsubscribe();
