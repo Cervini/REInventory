@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { doc, onSnapshot, collection } from "firebase/firestore";
 import { db } from '../firebase';
 
@@ -6,70 +6,90 @@ export function useCampaignData(campaignId, user) {
     const [inventories, setInventories] = useState({});
     const [campaign, setCampaign] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    
+    // Use a ref to hold the listener unsubscribe functions.
+    // This solves potential infinite loops and makes management easier.
+    const containerListenersRef = useRef({});
 
     useEffect(() => {
         if (!campaignId || !user) {
             setIsLoading(true);
+            setInventories({});
             return;
         }
 
         setIsLoading(true);
 
+        // 1. Listen to the main campaign document
         const campaignDocRef = doc(db, 'campaigns', campaignId);
         const unsubscribeCampaign = onSnapshot(campaignDocRef, (campaignDocSnap) => {
-            if (campaignDocSnap.exists()) {
-                setCampaign(campaignDocSnap.data());
-            } else {
-                console.error("Campaign not found!");
-                setCampaign(null);
-            }
+            setCampaign(campaignDocSnap.exists() ? campaignDocSnap.data() : null);
         });
 
+        // 2. Listen to the top-level inventories collection
         const inventoriesColRef = collection(db, 'campaigns', campaignId, 'inventories');
-        let unsubscribeInventories = () => {};
+        const unsubscribeInventories = onSnapshot(inventoriesColRef, (inventoriesSnapshot) => {
+            
+            // This logic safely merges updates to top-level inventory data (like trayItems)
+            // without discarding the container data that is loaded by a separate listener.
+            setInventories(prevInventories => {
+                const newInventories = { ...prevInventories };
+                inventoriesSnapshot.forEach(doc => {
+                    const existingData = newInventories[doc.id] || {};
+                    newInventories[doc.id] = {
+                        ...existingData, // IMPORTANT: Preserve existing container data
+                        ...doc.data(), // Overwrite with fresh top-level data
+                        id: doc.id,
+                    };
+                });
+                return newInventories;
+            });
 
-        const setupInventoryListener = () => {
-            onSnapshot(campaignDocRef, (campaignDocSnap) => {
-                if (!campaignDocSnap.exists()) {
-                    setIsLoading(false);
-                    return;
+            // 3. Manage container listeners based on the current inventories
+            const currentInventoryIds = inventoriesSnapshot.docs.map(doc => doc.id);
+            const currentListeners = containerListenersRef.current;
+
+            // Unsubscribe from listeners for players who are no longer in the campaign
+            Object.keys(currentListeners).forEach(inventoryId => {
+                if (!currentInventoryIds.includes(inventoryId)) {
+                    currentListeners[inventoryId](); // Call the unsubscribe function
+                    delete currentListeners[inventoryId];
                 }
+            });
 
-                const campaignData = campaignDocSnap.data();
-                const isDM = campaignData.dmId === user.uid;
-
-                unsubscribeInventories();
-
-                if (isDM) {
-                    // DM gets all inventories.
-                    unsubscribeInventories = onSnapshot(inventoriesColRef, (snapshot) => {
-                        const allInventories = {};
-                        snapshot.forEach(doc => {
-                            allInventories[doc.id] = { id: doc.id, ...doc.data() };
+            // Subscribe to container listeners for new players
+            currentInventoryIds.forEach(inventoryId => {
+                if (!currentListeners[inventoryId]) {
+                    const containersColRef = collection(db, 'campaigns', campaignId, 'inventories', inventoryId, 'containers');
+                    // Store the new unsubscribe function in our ref
+                    currentListeners[inventoryId] = onSnapshot(containersColRef, (containersSnapshot) => {
+                        const playerContainers = {};
+                        containersSnapshot.forEach((containerDoc) => {
+                            playerContainers[containerDoc.id] = { id: containerDoc.id, ...containerDoc.data() };
                         });
-                        setInventories(allInventories);
-                        setIsLoading(false);
-                    });
-                } else {
-                    // A player ONLY gets their own inventory.
-                    const playerInventoryDocRef = doc(inventoriesColRef, user.uid);
-                    unsubscribeInventories = onSnapshot(playerInventoryDocRef, (docSnap) => {
-                        if (docSnap.exists()) {
-                            setInventories({
-                                [user.uid]: { id: docSnap.id, ...docSnap.data() }
-                            });
-                        }
-                        setIsLoading(false);
+                        
+                        // Merge the new container data into the state
+                        setInventories(prev => ({
+                            ...prev,
+                            [inventoryId]: {
+                                ...(prev[inventoryId] || {}),
+                                containers: playerContainers,
+                            }
+                        }));
                     });
                 }
             });
-        };
 
-        setupInventoryListener();
+            setIsLoading(false);
+        });
 
+        // Main cleanup function for the entire effect
         return () => {
             unsubscribeCampaign();
             unsubscribeInventories();
+            // Unsubscribe from all active container listeners
+            Object.values(containerListenersRef.current).forEach(unsubscribe => unsubscribe());
+            containerListenersRef.current = {};
         };
     }, [campaignId, user]);
 

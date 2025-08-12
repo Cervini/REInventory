@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Tooltip } from 'react-tooltip';
 import { Toaster } from 'react-hot-toast';
 import { auth, db } from './firebase';
@@ -29,6 +29,27 @@ export default function App() {
   
   // State to manage which "page" is visible
   const [currentPage, setCurrentPage] = useState('main'); // 'main', 'privacy', 'cookies', 'compendium'
+
+  useEffect(() => {
+    // This effect should only run when a user is logged in.
+    if (!user) return;
+
+    // A reference to this user's specific status document.
+    const userStatusDocRef = doc(db, 'status', user.uid);
+
+    // Set up a heartbeat to update the lastSeen timestamp every 60 seconds.
+    // This tells the database the user is still active.
+    const interval = setInterval(() => {
+        setDoc(userStatusDocRef, { 
+            lastSeen: serverTimestamp() 
+        }, { merge: true });
+    }, 60000); // 60,000 milliseconds = 1 minute
+
+    // The cleanup function runs when the component unmounts (e.g., user logs out or closes the tab).
+    return () => {
+        clearInterval(interval);
+    };
+  }, [user]); // This effect re-runs whenever the user logs in or out.
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {

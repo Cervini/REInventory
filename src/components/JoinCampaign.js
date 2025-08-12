@@ -28,9 +28,14 @@ export default function JoinCampaign({ campaignId, onClose, onJoinSuccess }) {
     if (selectedPackId !== 'none') {
         const selectedPack = packs.find(p => p.id === selectedPackId);
         if (selectedPack) {
-            // Give each item a unique ID before adding it
+            // THIS IS THE FIX (Part 1): Ensure every starter item has all the
+            // necessary default properties to be rendered correctly.
             startingItems = selectedPack.items.map(item => ({
-                ...item,
+                name: "Unknown Item",
+                w: 1, h: 1,
+                type: 'Gear',
+                stackable: item.quantity > 1,
+                ...item, // The item's data from the pack will override defaults
                 id: crypto.randomUUID()
             }));
         }
@@ -40,26 +45,35 @@ export default function JoinCampaign({ campaignId, onClose, onJoinSuccess }) {
       const campaignDocRef = doc(db, 'campaigns', campaignId);
       await updateDoc(campaignDocRef, {
         players: arrayUnion(currentUser.uid),
-        [`layout.order`]: arrayUnion(currentUser.uid), // Adds the player to the end of the order
-        [`layout.visible.${currentUser.uid}`]: true // Sets the new player to be visible
+        [`layout.order`]: arrayUnion(currentUser.uid),
+        [`layout.visible.${currentUser.uid}`]: true
       });
 
       const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", currentUser.uid);
+      // THIS IS THE FIX (Part 2): Add starter items to the main player tray.
       await setDoc(inventoryDocRef, {
         characterName: characterName.trim(),
         ownerId: currentUser.uid,
-        gridItems: [],
-        trayItems: startingItems,
-        gridWidth: 15,
-        gridHeight: 5,
-      }, { merge: true });
+        trayItems: startingItems, // <-- Correct location
+        totalMaxWeight: 100,
+        weightUnit: 'lbs'
+      });
+      
+      const backpackRef = doc(inventoryDocRef, "containers", "backpack");
+      await setDoc(backpackRef, {
+          name: "Backpack",
+          gridItems: [], // The backpack starts empty
+          gridWidth: 10,
+          gridHeight: 5,
+          trackWeight: true
+      });
 
       toast.success(`Welcome, ${characterName.trim()}!`);
       onJoinSuccess(campaignId);
 
     } catch (error) {
       console.error("Error joining campaign: ", error);
-      toast.error("Failed to join campaign. The code may be invalid.");
+      toast.error("Failed to join campaign.");
       setLoading(false);
     }
   };

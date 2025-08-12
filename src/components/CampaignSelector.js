@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc, query, where, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, doc, setDoc, getDoc, query, where, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import JoinCampaign from './JoinCampaign';
 
@@ -51,22 +51,26 @@ export default function CampaignSelector({ onCampaignSelected }) {
     try {
       const campaignDocRef = await addDoc(collection(db, "campaigns"), {
         dmId: currentUser.uid,
-        dmEmail: currentUser.email,
-        createdAt: serverTimestamp(),
         name: campaignName,
         players: [currentUser.uid],
         layout: {
-          order: [currentUser.uid], // The DM is first by default
-          visible: { [currentUser.uid]: true } // The DM is visible by default
+          order: [currentUser.uid],
+          visible: { [currentUser.uid]: true }
         }
       });
 
       const inventoryDocRef = doc(db, "campaigns", campaignDocRef.id, "inventories", currentUser.uid);
+      // THIS IS THE FIX: Add the trayItems array here for the DM
       await setDoc(inventoryDocRef, {
-        characterName: "DM", // **THIS IS THE FIX**: Automatically set the name to "DM"
+        characterName: "DM",
         ownerId: currentUser.uid,
+        trayItems: [], // The shared tray for the DM
+      });
+
+      const backpackRef = doc(inventoryDocRef, "containers", "backpack");
+      await setDoc(backpackRef, {
+        name: "Backpack",
         gridItems: [],
-        trayItems: [],
         gridWidth: 30,
         gridHeight: 10,
       });

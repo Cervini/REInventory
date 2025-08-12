@@ -1,40 +1,103 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { db } from '../firebase';
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, writeBatch } from "firebase/firestore";
 
-// The props now include all the settings we need to edit
+const LBS_TO_KG = 0.453592;
+const KG_TO_LBS = 2.20462;
+
 export default function InventorySettings({ onClose, campaignId, userId, currentSettings, isDMInventory }) {
   const [characterName, setCharacterName] = useState(currentSettings.characterName || '');
-  const [gridWidth, setGridWidth] = useState(currentSettings.gridWidth || 30);
-  const [gridHeight, setGridHeight] = useState(currentSettings.gridHeight || 10);
-  const [maxWeight, setMaxWeight] = useState(currentSettings.maxWeight || 100);
+  const [totalMaxWeight, setTotalMaxWeight] = useState(() => {
+    const storedWeightLbs = currentSettings.totalMaxWeight || 0;
+    return currentSettings.weightUnit === 'kg' ? storedWeightLbs * LBS_TO_KG : storedWeightLbs;
+  });
   const [weightUnit, setWeightUnit] = useState(currentSettings.weightUnit || 'lbs');
+  
+  // State for containers now tracks edits, additions, and deletions
+  const [containers, setContainers] = useState(Object.values(currentSettings.containers || {}));
+  const [containersToDelete, setContainersToDelete] = useState([]);
+  
   const [loading, setLoading] = useState(false);
+
+  const handleContainerChange = (containerId, field, value) => {
+    setContainers(prev => 
+      prev.map(c => c.id === containerId ? { ...c, [field]: value } : c)
+    );
+  };
+
+  // Function to add a new, temporary container to the UI
+  const handleAddNewContainer = () => {
+    const newContainer = {
+      id: `new-${Date.now()}`, // Temporary ID for the key
+      name: "New Container",
+      gridWidth: 10,
+      gridHeight: 5,
+      trackWeight: true,
+      gridItems: [],
+      trayItems: [],
+      isNew: true, // Flag to identify new containers
+    };
+    setContainers(prev => [...prev, newContainer]);
+  };
+
+  // Function to mark a container for deletion
+  const handleDeleteContainer = (containerId) => {
+    if (!window.confirm("Are you sure you want to delete this container and all items within it? This cannot be undone.")) {
+        return;
+    }
+    setContainers(prev => prev.filter(c => c.id !== containerId));
+    // If it's not a newly added container, add its ID to the list for deletion from Firestore
+    if (!containerId.startsWith('new-')) {
+        setContainersToDelete(prev => [...prev, containerId]);
+    }
+  };
+
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!characterName.trim()) {
-      toast.error("Character name cannot be empty.");
-      return;
-    }
-    if (gridWidth < 10 || gridHeight < 5) {
-      toast.error("Grid must be at least 10x5.");
-      return;
-    }
     setLoading(true);
 
+    let weightToSaveInLbs = parseFloat(totalMaxWeight);
+    if (weightUnit === 'kg') {
+        weightToSaveInLbs = parseFloat(totalMaxWeight) * KG_TO_LBS;
+    }
+
+    const batch = writeBatch(db);
     const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', userId);
+
+    batch.update(inventoryDocRef, { 
+      characterName: characterName.trim(),
+      totalMaxWeight: weightToSaveInLbs,
+      weightUnit: weightUnit
+    });
+
+    // Process creations and updates
+    containers.forEach(container => {
+        // If the container is new, create a new doc reference for it
+        const isNew = container.isNew;
+        const containerRef = isNew 
+            ? doc(inventoryDocRef, 'containers', crypto.randomUUID()) 
+            : doc(inventoryDocRef, 'containers', container.id);
+        
+        const { id, isNew: newFlag, ...containerData } = container;
+
+        if (isNew) {
+            batch.set(containerRef, containerData);
+        } else {
+            batch.update(containerRef, containerData);
+        }
+    });
+    
+    // Process deletions
+    for (const containerId of containersToDelete) {
+        const containerRef = doc(inventoryDocRef, 'containers', containerId);
+        batch.delete(containerRef);
+    }
+
     try {
-      // Update all fields in a single operation
-      await updateDoc(inventoryDocRef, {
-        characterName: characterName.trim(),
-        gridWidth: parseInt(gridWidth, 10),
-        gridHeight: parseInt(gridHeight, 10),
-        maxWeight: Number(maxWeight),
-        weightUnit: weightUnit,
-      });
-      toast.success("Settings updated!");
+      await batch.commit();
+      toast.success("Settings updated successfully!");
       onClose();
     } catch (err) {
       toast.error("Failed to update settings.");
@@ -46,62 +109,90 @@ export default function InventorySettings({ onClose, campaignId, userId, current
 
   return (
     <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-6 rounded-lg shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+      <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
         <h3 className="text-2xl font-bold mb-6 font-fantasy text-accent text-center">
           Character & Inventory Settings
         </h3>
         <form onSubmit={handleSave} className="space-y-6">
+          {/* Character Name and Weight Settings... */}
           <div>
             <label className="block text-sm font-bold mb-2 text-text-muted">Character Name</label>
             <input 
                 type="text" 
                 value={characterName} 
                 onChange={(e) => setCharacterName(e.target.value)} 
-                className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent" />
+                className="w-full p-2 bg-background border border-surface/50 rounded-md" />
           </div>
 
-          {!isDMInventory && ( <div>
-          
-          <div className="flex space-x-4">
-            <div className="w-1/2">
-              <label className="block text-sm font-bold mb-2 text-text-muted">Grid Width</label>
-              <input type="number" min="10" value={gridWidth} onChange={(e) => setGridWidth(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent" />
+          {!isDMInventory && (
+            <div className="flex items-end space-x-4 border-t border-surface/50 pt-4">
+                <div className="flex-grow">
+                  <label className="block text-sm font-bold mb-2 text-text-muted">Total Max Weight</label>
+                  <input type="number" value={totalMaxWeight} onChange={(e) => setTotalMaxWeight(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-2 text-text-muted">Unit</label>
+                  <select value={weightUnit} onChange={(e) => setWeightUnit(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md">
+                    <option value="lbs">lbs</option>
+                    <option value="kg">kg</option>
+                  </select>
+                </div>
             </div>
-            <div className="w-1/2">
-              <label className="block text-sm font-bold mb-2 text-text-muted">Grid Height</label>
-              <input type="number" min="5" value={gridHeight} onChange={(e) => setGridHeight(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent" />
-            </div>
-          </div>
-          
-            <div className="flex items-end space-x-4">
-              <div className="flex-grow">
-                <label className="block text-sm font-bold mb-2 text-text-muted">Max Weight</label>
-                <input 
-                    type="number" 
-                    value={maxWeight} 
-                    onChange={(e) => setMaxWeight(e.target.value)} 
-                    className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold mb-2 text-text-muted">Unit</label>
-                <select 
-                  value={weightUnit} 
-                  onChange={(e) => setWeightUnit(e.target.value)}
-                  className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-                >
-                  <option value="lbs">lbs</option>
-                  <option value="kg">kg</option>
-                </select>
-              </div>
-            </div>
-            <p className="text-xs text-text-muted/80 pt-2">Warning: Changing grid size may cause items to be out of bounds and move to your tray.</p>
-          </div>
-          
           )}
+          <hr className="border-surface/50" />
+
+          {/* Container Management Section */}
+          <div className="space-y-4">
+            <h4 className="text-xl font-bold font-fantasy text-accent">Containers</h4>
+            {containers.map((container) => (
+              <div key={container.id} className="p-4 border border-surface/50 rounded-lg space-y-4 bg-background/50">
+                <div className="flex items-center justify-between">
+                    <input 
+                        type="text"
+                        value={container.name}
+                        onChange={(e) => handleContainerChange(container.id, 'name', e.target.value)}
+                        className="font-bold text-lg bg-transparent border-b border-surface/50 focus:outline-none focus:border-accent"
+                    />
+                    <button type="button" onClick={() => handleDeleteContainer(container.id)} className="text-destructive/70 hover:text-destructive transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div className="flex space-x-4">
+                  <div className="w-1/2">
+                    <label className="block text-sm font-bold mb-2 text-text-muted">Grid Width</label>
+                    <input type="number" min="1" value={container.gridWidth} onChange={(e) => handleContainerChange(container.id, 'gridWidth', parseInt(e.target.value, 10) || 1)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+                  </div>
+                  <div className="w-1/2">
+                    <label className="block text-sm font-bold mb-2 text-text-muted">Grid Height</label>
+                    <input type="number" min="1" value={container.gridHeight} onChange={(e) => handleContainerChange(container.id, 'gridHeight', parseInt(e.target.value, 10) || 1)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+                  </div>
+                </div>
+
+                {!isDMInventory && (
+                    <div className="flex items-center">
+                        <input 
+                            id={`track-${container.id}`} 
+                            type="checkbox" 
+                            checked={container.trackWeight ?? true}
+                            onChange={(e) => handleContainerChange(container.id, 'trackWeight', e.target.checked)} 
+                            className="w-4 h-4 text-primary bg-background border-surface/50 rounded focus:ring-accent" />
+                        <label htmlFor={`track-${container.id}`} className="ml-2 text-sm font-medium text-text-muted">Track weight for this container</label>
+                    </div>
+                )}
+              </div>
+            ))}
+            <button type="button" onClick={handleAddNewContainer} className="w-full bg-surface/50 hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors border border-dashed border-surface">
+              + Add New Container
+            </button>
+          </div>
+          
           <div className="flex justify-end space-x-4 pt-4">
             <button type="button" onClick={onClose} disabled={loading} className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors">Cancel</button>
             <button type="submit" disabled={loading} className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded transition-colors">
-              {loading ? 'Saving...' : 'Save'}
+              {loading ? 'Saving...' : 'Save All Changes'}
             </button>
           </div>
         </form>

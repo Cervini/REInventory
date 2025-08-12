@@ -1,66 +1,203 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { doc, onSnapshot, updateDoc, collection, query, where, writeBatch } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, writeBatch, where, collection, query, setDoc } from "firebase/firestore";
 import { db } from '../firebase';
 import { DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
-import { restrictToParentElement, restrictToWindowEdges } from '@dnd-kit/modifiers';
 import PlayerInventoryGrid from './PlayerInventoryGrid';
-import { findFirstAvailableSlot, onOtherItem, outOfBounds } from '../utils/gridUtils'; // Import from utils
-import { useCampaignData } from '../hooks/useCampaignData'; // Import the custom hook
+import { findFirstAvailableSlot, onOtherItem, outOfBounds } from '../utils/gridUtils';
+import { useCampaignData } from '../hooks/useCampaignData';
 import AddItem from './AddItem';
 import ContextMenu from './ContextMenu';
 import SplitStack from './SplitStack';
 import Spinner from './Spinner';
 import ItemTray from './ItemTray';
+import InventorySettings from './InventorySettings';
 import { getColorForItemType } from '../utils/itemUtils';
 import AddFromCompendium from './AddFromCompendium';
 import StartTrade from './StartTrade';
-import TradeNotifications from './TradeNotifications'
+import TradeNotifications from './TradeNotifications';
 import Trade from './Trade';
 import { usePlayerProfiles } from '../hooks/usePlayerProfiles';
-import InventorySettings from './InventorySettings';
-import WeightCounter from './WeightCounter';
 import CampaignLayout from './CampaignLayout';
+import WeightCounter from './WeightCounter';
+
+const PlayerInventory = ({
+  playerId, inventoryData, campaign, playerProfiles, user,
+  setEditingSettings, cellSizes, gridRefs, onContextMenu
+}) => {
+  // THIS IS THE FIX: All hooks are now at the top of the component, before any returns.
+  // We use optional chaining (?.) to prevent errors if inventoryData is not ready.
+  const containers = useMemo(() => Object.values(inventoryData?.containers || {}), [inventoryData]);
+
+  const totalWeightLbs = useMemo(() => {
+    if (!inventoryData) return 0;
+    
+    const containerGridItems = containers
+      .filter(c => c.trackWeight ?? true)
+      .flatMap(c => c.gridItems || []);
+    const playerTrayItems = inventoryData.trayItems || [];
+    const allItems = [...containerGridItems, ...playerTrayItems];
+
+    return allItems.reduce((total, item) => {
+        const weightValue = parseFloat(item.weight);
+        if (!isNaN(weightValue)) {
+          return total + (weightValue * (item.quantity || 1));
+        }
+        return total;
+      }, 0);
+  }, [inventoryData, containers]);
+  
+  // The conditional return now correctly happens AFTER all hooks are called.
+  if (!inventoryData) return null;
+
+  const isPlayerDM = campaign?.dmId === playerId;
+  const isMyInventory = user.uid === playerId;
+
+  return (
+    <div className="bg-surface rounded-lg shadow-lg shadow-accent/10 border border-accent/20 overflow-hidden">
+      <div className="w-full p-2 text-left bg-surface/80 flex justify-between items-center">
+        <h2 className="text-xl font-bold text-accent font-fantasy tracking-wider">
+          {inventoryData.characterName || playerProfiles[playerId]?.displayName}
+        </h2>
+        <div className="flex items-center space-x-4">
+          {!isPlayerDM && (
+            <WeightCounter
+              currentWeight={totalWeightLbs}
+              maxWeight={inventoryData.totalMaxWeight || 0}
+              unit={inventoryData.weightUnit || 'lbs'}
+            />
+          )}
+          {isMyInventory && (
+            <button
+              onClick={() => setEditingSettings({
+                playerId: playerId,
+                currentSettings: inventoryData,
+                isDMInventory: isPlayerDM
+              })}
+              className="p-2 rounded-full hover:bg-background transition-colors"
+              aria-label="Edit character and inventory settings"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+      
+      <div className="p-2 bg-background/50 space-y-4">
+        {isPlayerDM ? (
+            containers.map(container => (
+                <ItemTray
+                    key={container.id}
+                    items={container.trayItems || []}
+                    containerId={container.id}
+                    onContextMenu={onContextMenu}
+                    playerId={playerId}
+                />
+            ))
+        ) : (
+            <>
+                {containers.map((container) => (
+                  <div key={container.id} className="bg-surface/50 rounded-lg p-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-bold text-text-muted">{container.name}</h3>
+                    </div>
+                    <PlayerInventoryGrid
+                      items={container.gridItems || []}
+                      gridWidth={container.gridWidth}
+                      gridHeight={container.gridHeight}
+                      containerId={container.id}
+                      onContextMenu={onContextMenu}
+                      playerId={playerId}
+                      setGridRef={(node) => (gridRefs.current[container.id] = node)}
+                      cellSize={cellSizes[container.id]}
+                    />
+                  </div>
+                ))}
+                <div className="mt-2">
+                    <h3 className="font-bold font-fantasy text-text-muted p-2">Floor / Ground</h3>
+                    <ItemTray
+                        items={inventoryData.trayItems || []}
+                        containerId="tray" 
+                        onContextMenu={onContextMenu}
+                        playerId={playerId}
+                    />
+                </div>
+            </>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default function InventoryGrid({ campaignId, user, userProfile, isTrading, setIsTrading }) {
-  
+
   const { inventories, setInventories, campaign, isLoading: inventoriesLoading } = useCampaignData(campaignId, user);
   const { playerProfiles, isLoading: profilesLoading } = usePlayerProfiles(campaignId);
-  
-  const isLoading = inventoriesLoading || profilesLoading; // Combine loading states
+  const isLoading = inventoriesLoading || profilesLoading;
 
-  // State for UI interactions remains here
+  const isDM = campaign?.dmId === user?.uid;
+
   const [showAddItem, setShowAddItem] = useState(false);
   const [contextMenu, setContextMenu] = useState({ visible: false, position: null, item: null, playerId: null, actions: [] });
   const [itemToEdit, setItemToEdit] = useState(null);
   const [splittingItem, setSplittingItem] = useState(null);
   const [activeItem, setActiveItem] = useState(null);
-  const [openInventories, setOpenInventories] = useState({});
+  const [openTrays, setOpenTrays] = useState({});
+  const [editingSettings, setEditingSettings] = useState(null);
+  // eslint-disable-next-line
   const [cellSizes, setCellSizes] = useState({});
   const [showCompendium, setShowCompendium] = useState(false);
   const [activeTrade, setActiveTrade] = useState(null);
-  const [editingSettings, setEditingSettings] = useState(null);
-  const [openTrays, setOpenTrays] = useState({});
   const [showLayoutSettings, setShowLayoutSettings] = useState(false);
-  
+
   const gridRefs = useRef({});
+
+  const containerStructureSignature = useMemo(() => {
+    return Object.values(inventories)
+        .flatMap(inv => Object.values(inv.containers || {}))
+        .map(c => `${c.id}-${c.gridWidth}-${c.gridHeight}`)
+        .join(',');
+  }, [inventories]);
+
+  const orderedAndVisibleInventories = useMemo(() => {
+    if (!user || !inventories || Object.keys(inventories).length === 0) return [];
+
+    if (!isDM) {
+        // If the user is a player, only return their own inventory data.
+        const myInventory = inventories[user.uid];
+        return myInventory ? [[user.uid, myInventory]] : [];
+    }
+    
+    // If the user is the DM, use the existing layout and visibility logic.
+    if (!campaign?.layout) {
+      return Object.entries(inventories);
+    }
+    const { order = [], visible = {} } = campaign.layout;
+    const ordered = order
+        .map(playerId => ([playerId, inventories[playerId]]))
+        .filter(entry => entry[1]); // Ensure player data exists
+    
+    return ordered.filter(([playerId]) => visible[playerId] ?? true);
+
+  }, [campaign, inventories, user, isDM]);
 
   // Listen for active trades
   useEffect(() => {
     if (!user || !campaignId) return;
 
     const tradesRef = collection(db, 'trades');
-    // Query for trades where the user is either Player A OR Player B
     const q = query(
       tradesRef,
       where('campaignId', '==', campaignId),
-      where('players', 'array-contains', user.uid), // You'll need to add a 'players' field to your trade docs
+      where('players', 'array-contains', user.uid),
       where('status', '==', 'active')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (!snapshot.empty) {
-        // If an active trade is found, open the modal
         const tradeDoc = snapshot.docs[0];
         setActiveTrade({ id: tradeDoc.id, ...tradeDoc.data() });
       } else {
@@ -72,111 +209,54 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   }, [campaignId, user]);
 
   useEffect(() => {
-        const observers = [];
-        Object.entries(gridRefs.current).forEach(([playerId, gridElement]) => {
-            if (gridElement && openInventories[playerId]) { // Only observe visible grids
-                const measure = () => {
-                    const inventory = inventories[playerId];
-                    if (inventory) {
-                        setCellSizes(prev => ({
-                            ...prev,
-                            [playerId]: {
-                                width: gridElement.offsetWidth / inventory.gridWidth,
-                                height: gridElement.offsetHeight / inventory.gridHeight,
-                            }
-                        }));
-                    }
-                };
-                
-                const resizeObserver = new ResizeObserver(measure);
-                resizeObserver.observe(gridElement);
-                measure(); // Initial measurement
-                observers.push({ element: gridElement, observer: resizeObserver });
+    const observers = [];
+    
+    Object.entries(gridRefs.current).forEach(([containerId, gridElement]) => {
+      if (gridElement) {
+        const measure = () => {
+          let containerData;
+          for (const inv of Object.values(inventories)) {
+            if (inv.containers && inv.containers[containerId]) {
+              containerData = inv.containers[containerId];
+              break;
             }
-        });
+          }
 
-        return () => {
-            observers.forEach(({ element, observer }) => {
-                if (element) {
-                    observer.unobserve(element);
-                }
-            });
+          if (containerData) {
+            setCellSizes(prev => ({
+              ...prev,
+              [containerId]: {
+                width: gridElement.offsetWidth / containerData.gridWidth,
+                height: gridElement.offsetHeight / containerData.gridHeight,
+              }
+            }));
+          }
         };
-    }, [inventories, openInventories]);
 
-  useEffect(() => {
-    // Only run this logic if we have the necessary data
-    if (!user || !inventories[user.uid] || isLoading) return;
+        const resizeObserver = new ResizeObserver(measure);
+        resizeObserver.observe(gridElement);
+        measure();
+        
+        observers.push({ element: gridElement, observer: resizeObserver });
+      }
+    });
 
-    // Use a functional update to safely access the latest state
-    setInventories(prevInventories => {
-      const myCurrentInventory = prevInventories[user.uid];
-      const myGridWidth = myCurrentInventory.gridWidth;
-      const myGridHeight = myCurrentInventory.gridHeight;
-
-      const itemsToMove = [];
-      const itemsToKeep = [];
-
-      (myCurrentInventory.gridItems || []).forEach(item => {
-        // Use the helper function to check if the item is out of bounds
-        if (outOfBounds(item.x, item.y, item, myGridWidth, myGridHeight)) {
-          const { x, y, ...trayItem } = item; // Strip coordinates for the tray
-          itemsToMove.push(trayItem);
-        } else {
-          itemsToKeep.push(item);
+    return () => {
+      observers.forEach(({ element, observer }) => {
+        if (element) {
+          observer.unobserve(element);
         }
       });
+    };
+  }, [containerStructureSignature, inventories]);
 
-      // If we found items to move, update the state and Firestore
-      if (itemsToMove.length > 0) {
-        const newTrayItems = [...(myCurrentInventory.trayItems || []), ...itemsToMove];
-        const newGridItems = itemsToKeep;
-
-        const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', user.uid);
-        updateDoc(inventoryDocRef, {
-          gridItems: newGridItems,
-          trayItems: newTrayItems,
-        }).then(() => {
-          toast.success(`${itemsToMove.length} item(s) moved to your tray.`);
-        });
-
-        // Return the new state for an instant UI update
-        return {
-          ...prevInventories,
-          [user.uid]: {
-            ...myCurrentInventory,
-            gridItems: newGridItems,
-            trayItems: newTrayItems,
-          },
-        };
-      }
-      
-      // If no items were moved, return the state unchanged
-      return prevInventories;
-    });
-  }, [inventories, user, isLoading, campaignId, setInventories]); // Add all stable dependencies
-
-  const orderedAndVisibleInventories = useMemo(() => {
-    if (!campaign?.layout) return Object.entries(inventories);
-
-    const { order = [], visible = {} } = campaign.layout;
-    
-    // 1. Filter out players who are marked as not visible
-    const visiblePlayerIds = order.filter(playerId => visible[playerId] ?? true);
-
-    // 2. Map these IDs to their inventory data
-    return visiblePlayerIds.map(playerId => [playerId, inventories[playerId]]).filter(entry => entry[1]);
-
-  }, [campaign, inventories]);
-
-  const handleContextMenu = (event, item, playerId, source) => {
+  const handleContextMenu = (event, item, playerId, source, containerId) => {
     event.preventDefault();
     
     const isDM = campaign?.dmId === user?.uid;
-    const isDMInventory = campaign?.dmId === playerId;
+    const isMyInventory = user.uid === playerId;
     const availableActions = [];
 
-    // --- Build the "Send to Player" submenu if the user is the DM ---
     if (isDM) {
       const otherPlayers = Object.keys(playerProfiles).filter(id => id !== playerId);
       if (otherPlayers.length > 0) {
@@ -184,27 +264,26 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
           label: 'Send to Player...',
           submenu: otherPlayers.map(targetId => ({
             label: playerProfiles[targetId]?.displayName || targetId,
-            // Pass the item's source to the send function
-            onClick: () => handleSendItem(item, source, playerId, targetId),
+            onClick: () => handleSendItem(item, source, playerId, targetId, containerId),
           })),
         });
       }
     }
 
     if (item.stackable && item.quantity > 1) {
-      availableActions.push({ label: 'Split Stack', onClick: () => handleStartSplit(item, playerId) });
+      availableActions.push({ label: 'Split Stack', onClick: () => handleStartSplit(item, playerId, containerId) });
     }
-    if (isDM && isDMInventory && source === 'tray') {
-        availableActions.push({ label: 'Duplicate Item', onClick: () => handleDuplicateItem(item, playerId) });
+    if (isDM || isMyInventory) {
+      availableActions.push({ 
+        label: 'Edit Item', 
+        onClick: () => handleStartEdit(item, playerId, containerId),
+      });
+      availableActions.push({ label: 'Duplicate Item', onClick: () => handleDuplicateItem(item, playerId, containerId) });
+      availableActions.push({
+        label: 'Delete Item',
+        onClick: () => handleDeleteItem(item, playerId, source, containerId),
+      });
     }
-    availableActions.push({ 
-      label: 'Edit Item', 
-      onClick: () => handleStartEdit(item, playerId),
-    });
-    availableActions.push({
-      label: 'Delete Item',
-      onClick: () => handleDeleteItem(item, playerId, source),
-    });
 
     setContextMenu({
       visible: true,
@@ -213,227 +292,170 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     });
   };
 
-  const handleStartSplit = (item, playerId) => {
-    setSplittingItem({ item, playerId });
+  const handleStartSplit = (item, playerId, containerId) => {
+    setSplittingItem({ item, playerId, containerId });
   };
 
-  const handleDeleteItem = async (item, playerId, source) => {
-    if (!item || !playerId || !source) return;
+  const handleDeleteItem = async (item, playerId, source, containerId) => {
+    if (!item || !playerId || !source || !containerId) return;
 
-    const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", playerId);
-    const currentInventory = inventories[playerId] || { gridItems: [], trayItems: [] };
+    const containerDocRef = doc(db, "campaigns", campaignId, "inventories", playerId, "containers", containerId);
+    const currentContainer = inventories[playerId].containers[containerId];
     
-    let newGridItems = currentInventory.gridItems;
-    let newTrayItems = currentInventory.trayItems;
-
+    let updatePayload = {};
     if (source === 'grid') {
-      newGridItems = currentInventory.gridItems.filter(i => i.id !== item.id);
-    } else if (source === 'tray') {
-      newTrayItems = currentInventory.trayItems.filter(i => i.id !== item.id);
+      updatePayload.gridItems = currentContainer.gridItems.filter(i => i.id !== item.id);
+    } else {
+      updatePayload.trayItems = currentContainer.trayItems.filter(i => i.id !== item.id);
     }
 
-    setInventories(prev => ({
-      ...prev,
-      [playerId]: {
-        gridItems: newGridItems,
-        trayItems: newTrayItems,
-      }
-    }));
-
-    await updateDoc(inventoryDocRef, {
-      gridItems: newGridItems,
-      trayItems: newTrayItems,
-    });
+    await updateDoc(containerDocRef, updatePayload);
   };
 
-  const handleStartEdit = (item, playerId) => {
+  const handleStartEdit = (item, playerId, containerId) => {
     if (!item) return;
-    setItemToEdit({ item, playerId });
+    setItemToEdit({ item, playerId, containerId });
     setShowAddItem(true);
   };
 
-  const handleAddItem = async (itemData) => {
-    const finalPlayerId = itemToEdit ? itemToEdit.playerId : user.uid;
-    if (!campaignId || !finalPlayerId) return;
-
-    const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", finalPlayerId);
-    const currentInventory = inventories[finalPlayerId] || { gridItems: [], trayItems: [] };
+  const handleAddItem = async (itemData, targetPlayerId) => {
+    // THIS IS THE FIX: The logic for determining the target player is now clearer and more accurate.
+    let finalPlayerId;
 
     if (itemToEdit) {
-      // --- THIS IS THE NEW LOGIC FOR AUTO-SPLITTING ---
-      const originalItem = itemToEdit.item;
-      const originalQuantity = originalItem.quantity;
-      const newMaxStack = itemData.maxStack;
-
-      if (itemData.stackable && newMaxStack > 0 && originalQuantity > newMaxStack) {
-        // Condition met: The stack needs to be split.
-        const remainderQuantity = originalQuantity - newMaxStack;
-
-        // 1. The original item, updated with the new max stack size as its quantity.
-        const updatedOriginalItem = { ...originalItem, ...itemData, quantity: newMaxStack };
-
-        // 2. The new item for the remainder.
-        const remainderItem = {
-          ...originalItem,
-          ...itemData,
-          id: crypto.randomUUID(),
-          quantity: remainderQuantity,
-        };
-
-        let finalGridItems = currentInventory.gridItems.map(i =>
-          i.id === originalItem.id ? updatedOriginalItem : i
-        );
-        let finalTrayItems = [...currentInventory.trayItems];
-
-        // 3. Find a place for the remainder stack.
-        const availableSlot = findFirstAvailableSlot(finalGridItems, remainderItem, currentInventory.gridWidth, currentInventory.gridHeight);
-
-        if (availableSlot) {
-          remainderItem.x = availableSlot.x;
-          remainderItem.y = availableSlot.y;
-          finalGridItems.push(remainderItem);
-          toast.success("Stack size reduced, remainder placed in inventory.");
-        } else {
-          const { x, y, ...trayItem } = remainderItem;
-          finalTrayItems.push(trayItem);
-          toast.success("Stack size reduced, remainder placed in tray.");
-        }
-
-        setInventories(prev => ({
-          ...prev,
-          [finalPlayerId]: { ...prev[finalPlayerId], gridItems: finalGridItems, trayItems: finalTrayItems },
-        }));
-
-        await updateDoc(inventoryDocRef, { gridItems: finalGridItems, trayItems: finalTrayItems });
-
-      } else {
-        // --- Standard Edit Logic (No splitting needed) ---
-        const newGridItems = currentInventory.gridItems.map((i) =>
-          i.id === originalItem.id ? { ...originalItem, ...itemData } : i
-        );
-        const newTrayItems = currentInventory.trayItems.map((i) =>
-          i.id === originalItem.id ? { ...originalItem, ...itemData } : i
-        );
-
-        setInventories((prev) => ({
-          ...prev,
-          [finalPlayerId]: { ...prev[finalPlayerId], gridItems: newGridItems, trayItems: newTrayItems },
-        }));
-        await updateDoc(inventoryDocRef, { gridItems: newGridItems, trayItems: newTrayItems });
-      }
-
+      // Case 1: We are editing an existing item. The owner is fixed.
+      finalPlayerId = itemToEdit.playerId;
+    } else if (targetPlayerId && isDM) {
+      // Case 2: The DM is adding an item from the compendium to a specific player.
+      finalPlayerId = targetPlayerId;
     } else {
-      // --- Standard Add New Item Logic (to the tray) ---
-      const newTrayItems = [...currentInventory.trayItems, itemData];
-      setInventories(prev => ({ ...prev, [finalPlayerId]: { ...prev[finalPlayerId], trayItems: newTrayItems } }));
-      await updateDoc(inventoryDocRef, { trayItems: newTrayItems });
+      // Case 3: A player is creating a new item for themselves, OR the DM is creating one for themself.
+      finalPlayerId = user.uid;
+    }
+
+    if (!campaignId || !finalPlayerId) {
+      toast.error("Could not determine the target player.");
+      return;
+    }
+
+    const playerInventory = inventories[finalPlayerId];
+    const isTargetDM = campaign?.dmId === finalPlayerId;
+
+    // --- Item Editing Logic ---
+    if (itemToEdit) {
+      const { item, containerId } = itemToEdit;
+      if (!containerId) {
+        toast.error("Cannot edit item: container information is missing.");
+        return;
+      }
+      
+      const containerDocRef = doc(db, "campaigns", campaignId, "inventories", finalPlayerId, "containers", containerId);
+      const container = playerInventory.containers[containerId];
+
+      const newGridItems = (container.gridItems || []).map(i => i.id === item.id ? { ...i, ...itemData } : i);
+      const newTrayItems = (container.trayItems || []).map(i => i.id === item.id ? { ...i, ...itemData } : i);
+
+      await updateDoc(containerDocRef, { 
+        gridItems: newGridItems,
+        trayItems: newTrayItems,
+      });
+      toast.success(`Updated ${itemData.name}.`);
+    } 
+    // --- Item Creation Logic ---
+    else {
+      if (isTargetDM) {
+        // If the target is the DM, add to their first container's tray.
+        const defaultContainer = Object.values(playerInventory.containers || {})[0];
+        if (!defaultContainer) {
+          toast.error("DM has no containers to add items to!");
+          return;
+        }
+        const containerDocRef = doc(db, "campaigns", campaignId, "inventories", finalPlayerId, "containers", defaultContainer.id);
+        const currentTray = defaultContainer.trayItems || [];
+        await updateDoc(containerDocRef, { trayItems: [...currentTray, itemData] });
+      } else {
+        // If the target is a player, add to their main shared tray.
+        const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", finalPlayerId);
+        const currentTray = playerInventory?.trayItems || [];
+        await setDoc(inventoryDocRef, { trayItems: [...currentTray, itemData] }, { merge: true });
+      }
+      
+      const targetName = playerInventory?.characterName || playerProfiles[finalPlayerId]?.displayName;
+      toast.success(`Added ${itemData.name} to ${targetName}'s inventory.`);
     }
 
     setItemToEdit(null);
-    setShowAddItem(false);
   };
 
   const handleSplitStack = async (splitAmount) => {
     if (!splittingItem) return;
 
-    const { item: originalItem, playerId } = splittingItem;
+    const { item: originalItem, playerId, containerId } = splittingItem;
     const amount = parseInt(splitAmount, 10);
 
     if (isNaN(amount) || amount <= 0 || amount >= originalItem.quantity) return;
 
-    const currentInventory = inventories[playerId];
-    const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", playerId);
+    const container = inventories[playerId].containers[containerId];
+    const containerDocRef = doc(db, "campaigns", campaignId, "inventories", playerId, "containers", containerId);
 
-    const updatedOriginalItem = {
-      ...originalItem,
-      quantity: originalItem.quantity - amount,
-    };
+    const updatedOriginalItem = { ...originalItem, quantity: originalItem.quantity - amount };
+    const newItem = { ...originalItem, id: crypto.randomUUID(), quantity: amount };
 
-    const newItem = {
-      ...originalItem,
-      id: crypto.randomUUID(),
-      quantity: amount,
-    };
+    const itemsForCollisionCheck = container.gridItems.map(i => i.id === originalItem.id ? updatedOriginalItem : i);
+    const availableSlot = findFirstAvailableSlot(itemsForCollisionCheck, newItem, container.gridWidth, container.gridHeight);
 
-    // for the collision check. This includes all other items plus the updated original stack.
-    const itemsForCollisionCheck = currentInventory.gridItems.map(i => 
-        i.id === originalItem.id ? updatedOriginalItem : i
-    );
-
-    const availableSlot = findFirstAvailableSlot(
-      itemsForCollisionCheck,
-      newItem,
-      currentInventory.gridWidth,
-      currentInventory.gridHeight
-    );
-
-    let finalGridItems = [...itemsForCollisionCheck];
-    let finalTrayItems = [...currentInventory.trayItems];
+    let finalGridItems = itemsForCollisionCheck;
+    let finalTrayItems = [...(container.trayItems || [])];
 
     if (availableSlot) {
-      // If a slot is found, add the new item to the grid.
-      newItem.x = availableSlot.x;
-      newItem.y = availableSlot.y;
-      finalGridItems.push(newItem);
-      toast.success("Split stack and placed it in the inventory.");
+      finalGridItems.push({ ...newItem, ...availableSlot });
     } else {
-      // If no slot is found, add the new item to the tray.
       const { x, y, ...trayItem } = newItem;
       finalTrayItems.push(trayItem);
-      toast.success("Inventory is full. Split stack placed in the tray.");
+    }
+    
+    const originalItemInGrid = container.gridItems.some(i => i.id === originalItem.id);
+    if(originalItemInGrid) {
+        finalGridItems = finalGridItems.map(i => i.id === originalItem.id ? updatedOriginalItem : i)
+    } else {
+        finalTrayItems = finalTrayItems.map(i => i.id === originalItem.id ? updatedOriginalItem : i)
     }
 
-    setInventories((prev) => ({
-      ...prev,
-      [playerId]: { ...prev[playerId], gridItems: finalGridItems, trayItems: finalTrayItems },
-    }));
-
-    await updateDoc(inventoryDocRef, {
+    await updateDoc(containerDocRef, {
       gridItems: finalGridItems,
       trayItems: finalTrayItems,
     });
+    setSplittingItem(null);
   };
 
   const handleDragStart = (event) => {
     const { active } = event;
-    const ownerId = active.data.current?.ownerId;
     const item = active.data.current?.item;
     const source = active.data.current?.source;
+    const containerId = active.data.current?.containerId;
 
     if (!item) return;
 
-    // If the item comes from the grid, calculate its size dynamically
-    if (source === 'grid') {
-      const gridElement = gridRefs.current[ownerId];
-      if (!gridElement) return;
+    let dimensions = { width: 80, height: 80 }; // Default size for tray items
 
-      const playerInventory = inventories[ownerId];
-      const gridWidth = playerInventory?.gridWidth || 30;
-      const gridHeight = playerInventory?.gridHeight || 10;
+    if (source === 'grid' && containerId && gridRefs.current[containerId]) {
+      const gridElement = gridRefs.current[containerId];
+      const ownerId = active.data.current?.ownerId;
+      const container = inventories[ownerId]?.containers[containerId];
       
-      const cellSize = {
-        width: gridElement.offsetWidth / gridWidth,
-        height: gridElement.offsetHeight / gridHeight,
-      };
-
-      setActiveItem({
-        item: item,
-        dimensions: {
+      if (container) {
+        const cellSize = {
+          width: gridElement.offsetWidth / container.gridWidth,
+          height: gridElement.offsetHeight / container.gridHeight,
+        };
+        dimensions = {
           width: item.w * cellSize.width,
           height: item.h * cellSize.height,
-        },
-      });
-    } 
-    // If the item comes from the tray, use its fixed size
-    else if (source === 'tray') {
-      setActiveItem({
-        item: item,
-        dimensions: {
-          width: 80, // w-20 in Tailwind is 5rem = 80px
-          height: 80, // h-20 in Tailwind is 5rem = 80px
-        },
-      });
+        };
+      }
     }
+
+    setActiveItem({ item, dimensions });
   };
 
   const handleDragCancel = () => {
@@ -442,346 +464,209 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
 
   const handleDragEnd = async (event) => {
     setActiveItem(null);
-    const { active, over, delta } = event;
+    const { active, over } = event;
 
-    if (!over) return;
-
-    const startSource = active.data.current?.source;
-    const startPlayerId = active.data.current?.ownerId;
-    const item = active.data.current?.item;
-
-    // --- STACKING LOGIC ---
-    const passiveItem = over.data.current?.item;
-    if (passiveItem && item && item.id !== passiveItem.id) {
-        const endPlayerId = over.data.current?.ownerId;
-
-        if (
-            startPlayerId === endPlayerId &&
-            item.stackable &&
-            passiveItem.stackable &&
-            item.name.toLowerCase() === passiveItem.name.toLowerCase()
-        ) {
-            const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", startPlayerId);
-            const currentInventory = inventories[startPlayerId];
-            
-            // **THIS IS THE NEW LOGIC**: Calculate stack limits
-            const maxStack = passiveItem.maxStack || 20;
-            const roomInStack = maxStack - passiveItem.quantity;
-            const amountToTransfer = Math.min(item.quantity, roomInStack);
-
-            if (amountToTransfer <= 0) {
-                toast.error("Stack is already full.");
-                return; // Exit if there's no room
-            }
-
-            let finalGridItems = [...currentInventory.gridItems];
-            let finalTrayItems = [...currentInventory.trayItems];
-
-            // Update the target item (either in grid or tray)
-            const targetLocation = over.data.current?.source;
-            if (targetLocation === 'grid') {
-                finalGridItems = finalGridItems.map(i => 
-                    i.id === passiveItem.id 
-                        ? { ...i, quantity: i.quantity + amountToTransfer } 
-                        : i
-                );
-            } else { // tray
-                finalTrayItems = finalTrayItems.map(i => 
-                    i.id === passiveItem.id 
-                        ? { ...i, quantity: i.quantity + amountToTransfer } 
-                        : i
-                );
-            }
-
-            // Update the source item (dragged item)
-            const remainingQuantity = item.quantity - amountToTransfer;
-
-            if (remainingQuantity <= 0) {
-                // If the whole stack was transferred, remove the source item
-                if (startSource === 'grid') {
-                    finalGridItems = finalGridItems.filter(i => i.id !== item.id);
-                } else {
-                    finalTrayItems = finalTrayItems.filter(i => i.id !== item.id);
-                }
-            } else {
-                // Otherwise, update the source item's quantity
-                if (startSource === 'grid') {
-                    finalGridItems = finalGridItems.map(i => 
-                        i.id === item.id 
-                            ? { ...i, quantity: remainingQuantity } 
-                            : i
-                    );
-                } else {
-                    finalTrayItems = finalTrayItems.map(i => 
-                        i.id === item.id 
-                            ? { ...i, quantity: remainingQuantity } 
-                            : i
-                    );
-                }
-            }
-            
-            setInventories(prev => ({
-                ...prev,
-                [startPlayerId]: { ...prev[startPlayerId], gridItems: finalGridItems, trayItems: finalTrayItems },
-            }));
-            
-            await updateDoc(inventoryDocRef, { gridItems: finalGridItems, trayItems: finalTrayItems });
-            toast.success(`Moved ${amountToTransfer} ${item.name}.`);
-            return;
-        }
+    if (!over) {
+      return;
     }
-    
-    // --- REGULAR DRAG AND DROP LOGIC ---
-    let endPlayerId, endDestination;
-    
+
+    // --- 1. Get Data ---
+    const item = active.data.current?.item;
+    const startPlayerId = active.data.current?.ownerId;
+    const startContainerId = active.data.current?.containerId;
+    const startSource = active.data.current?.source;
+
+    let endPlayerId, endContainerId, endDestination;
     if (over.data.current?.item) {
         endPlayerId = over.data.current.ownerId;
-        endDestination = over.data.current.source; 
-    } else { 
-        const endDroppableId = over.id.toString();
-        endPlayerId = endDroppableId.replace('-tray', '');
-        endDestination = endDroppableId.includes('-tray') ? 'tray' : 'grid';
+        endContainerId = over.data.current.containerId;
+        endDestination = over.data.current.source;
+    } else {
+        const endIdParts = over.id.toString().split('|');
+        endPlayerId = endIdParts[0];
+        endContainerId = endIdParts[1];
+        endDestination = endIdParts[2];
     }
 
-    if (!startPlayerId || !endPlayerId || !item) return;
-
-    const startInventory = inventories[startPlayerId];
-    const endInventory = inventories[endPlayerId];
-
-    if (startSource === "grid") {
-      if (endDestination === "tray") {
-        const newStartGridItems = startInventory.gridItems.filter(i => i.id !== item.id);
-        const {x, y, ...trayItem} = item;
-        const newEndTrayItems = [...endInventory.trayItems, trayItem];
-        
-        setInventories(prev => ({ ...prev, 
-          [startPlayerId]: { ...prev[startPlayerId], gridItems: newStartGridItems },
-          [endPlayerId]: { ...prev[endPlayerId], trayItems: newEndTrayItems }
-        }));
-        
-        const batch = writeBatch(db);
-        batch.update(doc(db, "campaigns", campaignId, "inventories", startPlayerId), { gridItems: newStartGridItems });
-        batch.update(doc(db, "campaigns", campaignId, "inventories", endPlayerId), { trayItems: newEndTrayItems });
-        await batch.commit();
-      }
-      else {
-        if (startPlayerId === endPlayerId) {
-          const gridElement = gridRefs.current[startPlayerId];
-          if (!gridElement) return;
-
-          const gridWidth = startInventory.gridWidth;
-          const gridHeight = startInventory.gridHeight;
-          const currentGridItems = startInventory.gridItems || [];
-
-          const cellSize = {
-            width: gridElement.offsetWidth / gridWidth,
-            height: gridElement.offsetHeight / gridHeight,
-          };
-
-          const newX = Math.round((item.x * cellSize.width + delta.x) / cellSize.width);
-          const newY = Math.round((item.y * cellSize.height + delta.y) / cellSize.height);
-
-          if (outOfBounds(newX, newY, item, gridWidth, gridHeight)) return;
-          const isColliding = currentGridItems.some(other => (other.id !== item.id) && onOtherItem(newX, newY, item, other));
-          if (isColliding) return;
-          
-          const newGridItems = currentGridItems.map(i => (i.id === item.id ? { ...i, x: newX, y: newY } : i));
-          
-          setInventories(prev => ({ ...prev, [startPlayerId]: { ...prev[startPlayerId], gridItems: newGridItems } }));
-          await updateDoc(doc(db, "campaigns", campaignId, "inventories", startPlayerId), { gridItems: newGridItems });
-        }
-        else {
-          const endGridWidth = endInventory.gridWidth;
-          const endGridHeight = endInventory.gridHeight;
-          const startGridItems = startInventory.gridItems || [];
-          const endGridItems = endInventory.gridItems || [];
-          const endGridElement = gridRefs.current[endPlayerId];
-          if (!endGridElement) return;
-
-          const endCellSize = {
-            width: endGridElement.offsetWidth / endGridWidth,
-            height: endGridElement.offsetHeight / endGridHeight,
-          };
-          
-          const endGridRect = endGridElement.getBoundingClientRect();
-          const dropX = active.rect.current.translated.left - endGridRect.left;
-          const dropY = active.rect.current.translated.top - endGridRect.top;
-          
-          let newX = Math.round(dropX / endCellSize.width);
-          let newY = Math.round(dropY / endCellSize.height);
-          let finalPosition = { x: newX, y: newY };
-          
-          if (outOfBounds(newX, newY, item, endGridWidth, endGridHeight) || endGridItems.some(other => onOtherItem(newX, newY, item, other))) {
-            finalPosition = findFirstAvailableSlot(endGridItems, item, endGridWidth, endGridHeight);
-          }
-
-          if (finalPosition === null) {
-            toast.error("Destination inventory is full!");
-            return;
-          }
-
-          const newItem = { ...item, x: finalPosition.x, y: finalPosition.y };
-          const newStartGridItems = startGridItems.filter(i => i.id !== item.id);
-          const newEndGridItems = [...endGridItems, newItem];
-
-          setInventories(prev => ({
-            ...prev,
-            [startPlayerId]: { ...prev[startPlayerId], gridItems: newStartGridItems },
-            [endPlayerId]: { ...prev[endPlayerId], gridItems: newEndGridItems },
-          }));
-
-          const batch = writeBatch(db);
-          batch.update(doc(db, "campaigns", campaignId, "inventories", startPlayerId), { gridItems: newStartGridItems });
-          batch.update(doc(db, "campaigns", campaignId, "inventories", endPlayerId), { gridItems: newEndGridItems });
-          await batch.commit();
-        }
-      }
+    if (!item || !startPlayerId || !endPlayerId) {
+        return;
     }
-    else if (startSource === "tray") {
-      if (endDestination === "grid") {
-        const gridWidth = endInventory.gridWidth;
-        const gridHeight = endInventory.gridHeight;
+
+    // --- 2. Optimistic Update ---
+    const newInventories = JSON.parse(JSON.stringify(inventories));
+    let movedItem = null;
+
+    const startPlayerInv = newInventories[startPlayerId];
+    const endPlayerInv = newInventories[endPlayerId];
+
+    if (!startPlayerInv || !endPlayerInv) {
+        return;
+    }
+
+    const isStartDM = startPlayerInv.characterName === 'DM';
+    const isEndDM = endPlayerInv.characterName === 'DM';
+
+    // --- Remove from source ---
+    if (startSource === 'grid') {
+        const sourceContainer = startPlayerInv.containers?.[startContainerId];
+        if (!sourceContainer?.gridItems) return;
+        const itemIndex = sourceContainer.gridItems.findIndex(i => i.id === item.id);
+        if (itemIndex > -1) [movedItem] = sourceContainer.gridItems.splice(itemIndex, 1);
+    } else { // 'tray'
+        const sourceTray = isStartDM
+            ? startPlayerInv.containers?.[startContainerId]?.trayItems
+            : startPlayerInv.trayItems;
+        if (!sourceTray) return;
+        const itemIndex = sourceTray.findIndex(i => i.id === item.id);
+        if (itemIndex > -1) [movedItem] = sourceTray.splice(itemIndex, 1);
+    }
+
+    if (!movedItem) {
+        return;
+    }
+
+    // --- Add to destination ---
+    if (endDestination === 'grid') {
+        const endContainer = endPlayerInv.containers?.[endContainerId];
+        if (!endContainer) return;
+        const gridElement = gridRefs.current[endContainerId];
+        if (!gridElement) return;
+
+        const { gridWidth, gridHeight } = endContainer;
+        const cellSize = { width: gridElement.offsetWidth / gridWidth, height: gridElement.offsetHeight / gridHeight };
+        const rect = gridElement.getBoundingClientRect();
+        const dropX = active.rect.current.translated.left - rect.left;
+        const dropY = active.rect.current.translated.top - rect.top;
         
-        const position = findFirstAvailableSlot(endInventory.gridItems, item, gridWidth, gridHeight);
-        if (position === null) {
-          toast.error("Destination grid is full!");
-          return;
+        let finalPos = { x: Math.round(dropX / cellSize.width), y: Math.round(dropY / cellSize.height) };
+        if (outOfBounds(finalPos.x, finalPos.y, movedItem, gridWidth, gridHeight) || endContainer.gridItems.some(other => onOtherItem(finalPos.x, finalPos.y, movedItem, other))) {
+            finalPos = findFirstAvailableSlot(endContainer.gridItems, movedItem, gridWidth, gridHeight);
         }
-        
-        const newItem = { ...item, x: position.x, y: position.y };
-        const newStartTrayItems = startInventory.trayItems.filter(i => i.id !== item.id);
-        const newEndGridItems = [...endInventory.gridItems, newItem];
+        if (finalPos) {
+            endContainer.gridItems.push({ ...movedItem, ...finalPos });
+        } else {
+            toast.error("No space in destination!");
+            const sourceTray = isStartDM ? startPlayerInv.containers[startContainerId].trayItems : startPlayerInv.trayItems;
+            sourceTray.push(movedItem);
+        }
+    } else { // 'tray'
+        const { x, y, ...trayItem } = movedItem;
+        if (isEndDM) {
+            const destContainer = endPlayerInv.containers?.[endContainerId];
+            if (!destContainer) {
+                return;
+            }
+            if (!destContainer.trayItems) destContainer.trayItems = [];
+            destContainer.trayItems.push(trayItem);
+        } else {
+            if (!endPlayerInv.trayItems) endPlayerInv.trayItems = [];
+            endPlayerInv.trayItems.push(trayItem);
+        }
+    }
+    setInventories(newInventories);
 
-        setInventories(prev => ({ ...prev, 
-          [startPlayerId]: { ...prev[startPlayerId], trayItems: newStartTrayItems },
-          [endPlayerId]: { ...prev[endPlayerId], gridItems: newEndGridItems }
-        }));
+    // --- 3. Firestore Update ---
+    const batch = writeBatch(db);
+    let sourceRef, destRef, sourcePayload, destPayload;
 
-        const batch = writeBatch(db);
-        batch.update(doc(db, "campaigns", campaignId, "inventories", startPlayerId), { trayItems: newStartTrayItems });
-        batch.update(doc(db, "campaigns", campaignId, "inventories", endPlayerId), { gridItems: newEndGridItems });
+    if (startSource === 'grid') {
+        sourceRef = doc(db, "campaigns", campaignId, "inventories", startPlayerId, "containers", startContainerId);
+        sourcePayload = { gridItems: newInventories[startPlayerId].containers[startContainerId].gridItems };
+    } else {
+        sourceRef = isStartDM
+            ? doc(db, "campaigns", campaignId, "inventories", startPlayerId, "containers", startContainerId)
+            : doc(db, "campaigns", campaignId, "inventories", startPlayerId);
+        sourcePayload = { trayItems: isStartDM ? newInventories[startPlayerId].containers[startContainerId].trayItems : newInventories[startPlayerId].trayItems };
+    }
+
+    if (endDestination === 'grid') {
+        destRef = doc(db, "campaigns", campaignId, "inventories", endPlayerId, "containers", endContainerId);
+        destPayload = { gridItems: newInventories[endPlayerId].containers[endContainerId].gridItems };
+    } else {
+        destRef = isEndDM
+            ? doc(db, "campaigns", campaignId, "inventories", endPlayerId, "containers", endContainerId)
+            : doc(db, "campaigns", campaignId, "inventories", endPlayerId);
+        destPayload = { trayItems: isEndDM ? newInventories[endPlayerId].containers[endContainerId].trayItems : newInventories[endPlayerId].trayItems };
+    }
+
+    if (sourceRef.path === destRef.path) {
+        batch.update(sourceRef, { ...sourcePayload, ...destPayload });
+    } else {
+        batch.update(sourceRef, sourcePayload);
+        batch.update(destRef, destPayload);
+    }
+    
+    try {
         await batch.commit();
-      }
-      else {
-        if (startPlayerId === endPlayerId) return;
-
-        const newStartTrayItems = startInventory.trayItems.filter(i => i.id !== item.id);
-        const newEndTrayItems = [...endInventory.trayItems, item];
-
-        setInventories(prev => ({ ...prev, 
-          [startPlayerId]: { ...prev[startPlayerId], trayItems: newStartTrayItems },
-          [endPlayerId]: { ...prev[endPlayerId], trayItems: newEndTrayItems }
-        }));
-
-        const batch = writeBatch(db);
-        batch.update(doc(db, 'campaigns', campaignId, 'inventories', startPlayerId), { trayItems: newStartTrayItems });
-        batch.update(doc(db, 'campaigns', campaignId, 'inventories', endPlayerId), { trayItems: newEndTrayItems });
-        await batch.commit();
-      }
+    } catch (error) {
+        toast.error("Failed to move item. Reverting changes.");
+        setInventories(inventories);
     }
   };
 
-  const handleSendItem = async (item, source, sourcePlayerId, targetPlayerId) => {
-
-    if (!item || !source || !sourcePlayerId || !targetPlayerId) {
-      return;
-    }
+  const handleSendItem = async (item, source, sourcePlayerId, targetPlayerId, sourceContainerId) => {
+    if (!item || !source || !sourcePlayerId || !targetPlayerId || !sourceContainerId) return;
 
     const sourceInventory = inventories[sourcePlayerId];
     const targetInventory = inventories[targetPlayerId];
+    if (!sourceInventory || !targetInventory) return;
 
-    if (!sourceInventory || !targetInventory) {
-      return;
-    }
+    const sourceContainer = sourceInventory.containers[sourceContainerId];
+    const targetContainer = Object.values(targetInventory.containers || {})[0];
+    if (!sourceContainer || !targetContainer) return;
 
-    let newSourceGridItems = sourceInventory.gridItems || [];
-    let newSourceTrayItems = sourceInventory.trayItems || [];
-
-    if (source === 'grid') {
-      newSourceGridItems = newSourceGridItems.filter(i => i.id !== item.id);
-    } else {
-      newSourceTrayItems = newSourceTrayItems.filter(i => i.id !== item.id);
-    }
-
-    const { x, y, ...itemForTray } = item;
-    const newTargetTrayItems = [...(targetInventory.trayItems || []), itemForTray];
+    const batch = writeBatch(db);
+    const sourceContainerRef = doc(db, 'campaigns', campaignId, 'inventories', sourcePlayerId, 'containers', sourceContainer.id);
+    const targetContainerRef = doc(db, 'campaigns', campaignId, 'inventories', targetPlayerId, 'containers', targetContainer.id);
     
-    // Update local state
-    setInventories(prev => ({ ...prev, 
-      [sourcePlayerId]: { ...prev[sourcePlayerId], gridItems: newSourceGridItems, trayItems: newSourceTrayItems },
-      [targetPlayerId]: { ...prev[targetPlayerId], trayItems: newTargetTrayItems }
-    }));
-
-    // Update Firestore
-    try {
-      const batch = writeBatch(db);
-      batch.update(doc(db, 'campaigns', campaignId, 'inventories', sourcePlayerId), { gridItems: newSourceGridItems, trayItems: newSourceTrayItems });
-      batch.update(doc(db, 'campaigns', campaignId, 'inventories', targetPlayerId), { trayItems: newTargetTrayItems });
-      await batch.commit();
-      
-      toast.success(`Sent ${item.name} to ${playerProfiles[targetPlayerId]?.displayName}.`);
-    } catch (error) {
-      toast.error("Failed to send item.");
+    if (source === 'grid') {
+      batch.update(sourceContainerRef, { gridItems: sourceContainer.gridItems.filter(i => i.id !== item.id) });
+    } else {
+      batch.update(sourceContainerRef, { trayItems: sourceContainer.trayItems.filter(i => i.id !== item.id) });
     }
+    
+    const { x, y, ...itemForTray } = item;
+    batch.update(targetContainerRef, { trayItems: [...(targetContainer.trayItems || []), itemForTray] });
+
+    await batch.commit();
+    const targetName = targetInventory.characterName || playerProfiles[targetPlayerId]?.displayName;
+    toast.success(`Sent ${item.name} to ${targetName}.`);
   };
 
-  const handleDuplicateItem = async (item, playerId) => {
-    if (!item || !playerId) return;
+  const handleDuplicateItem = async (item, playerId, containerId) => {
+    if (!item || !playerId || !containerId) return;
 
-    // Create a copy of the item with a new unique ID
     const newItem = {
       ...item,
       id: crypto.randomUUID(),
     };
-    
-    const currentInventory = inventories[playerId] || { gridItems: [], trayItems: [] };
-    const newTrayItems = [...currentInventory.trayItems, newItem];
 
-    // Update local state for an instant UI change
-    setInventories(prev => ({
-      ...prev,
-      [playerId]: {
-        ...prev[playerId],
-        trayItems: newTrayItems,
-      }
-    }));
+    const container = inventories[playerId]?.containers[containerId];
+    if (!container) {
+        toast.error("Could not find the container to add the item to.");
+        return;
+    }
 
-    // Save the updated tray to Firestore
-    const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', playerId);
-    await updateDoc(inventoryDocRef, { trayItems: newTrayItems });
+    const newTrayItems = [...(container.trayItems || []), newItem];
+
+    const containerDocRef = doc(db, 'campaigns', campaignId, 'inventories', playerId, 'containers', containerId);
+    await updateDoc(containerDocRef, { trayItems: newTrayItems });
     toast.success(`Duplicated ${item.name}.`);
   };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // For mouse
+        distance: 8,
       },
     }),
     useSensor(TouchSensor, {
-      // Require a 250ms press delay before a drag starts on touch
       activationConstraint: {
         delay: 250,
         tolerance: 5,
       },
     })
   );
-
-  const toggleInventory = (playerId) => {
-    setOpenInventories((prev) => ({
-      // To only allow one open at a time, you could clear the state: {}
-      // To allow multiple open, we use the previous state: ...prev
-      ...prev,
-      [playerId]: !prev[playerId],
-    }));
-  };
-  
-  const toggleTray = (playerId) => {
-    setOpenTrays((prev) => ({
-      ...prev,
-      [playerId]: !prev[playerId],
-    }));
-  };
 
   if (isLoading) {
     return <Spinner />;
@@ -796,10 +681,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         <p className="mt-2">
           No player inventories have been created here yet.
         </p>
-        <p>
-          As the DM, use the "Add Item" button to create an inventory for
-          yourself to get started.
-        </p>
       </div>
     );
   }
@@ -807,14 +688,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   return (
     <div className="w-full flex flex-col items-center flex-grow">
       {/* --- Modals --- */}
-      {showLayoutSettings && (
-        <CampaignLayout
-          campaign={{ id: campaignId, ...campaign }}
-          inventories={inventories}
-          playerProfiles={playerProfiles}
-          onClose={() => setShowLayoutSettings(false)}
-        />
-      )}
       {activeTrade && (
         <Trade
           tradeId={activeTrade.id}
@@ -840,10 +713,10 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
       {showCompendium && (
         <AddFromCompendium
           onClose={() => setShowCompendium(false)}
-          onAddItem={handleAddItem}
           players={Object.keys(inventories)}
           dmId={campaign?.dmId}
           playerProfiles={playerProfiles}
+          onAddItem={handleAddItem}
         />
       )}
 
@@ -857,13 +730,21 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         />
       )}
 
+      {showLayoutSettings && (
+        <CampaignLayout
+          campaign={{ id: campaignId, ...campaign }}
+          inventories={inventories}
+          playerProfiles={playerProfiles}
+          onClose={() => setShowLayoutSettings(false)}
+        />
+      )}
+
       {splittingItem && (
         <SplitStack
           item={splittingItem.item}
           onClose={() => setSplittingItem(null)}
           onSplit={(splitAmount) => {
             handleSplitStack(splitAmount);
-            setSplittingItem(null);
           }}
         />
       )}
@@ -890,8 +771,11 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
 
       {/* --- DM-Only Button --- */}
       {campaign?.dmId === user?.uid && (
-        <div className="w-full flex justify-end mb-4 px-4">
-            <button onClick={() => setShowLayoutSettings(true)} className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors text-sm">
+        <div className="w-full max-w-4xl flex justify-end mb-4 px-4">
+            <button 
+                onClick={() => setShowLayoutSettings(true)} 
+                className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors text-sm"
+            >
                 Manage Layout
             </button>
         </div>
@@ -903,116 +787,29 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
-        modifiers={(() => {
-          const isDM = campaign?.dmId === user?.uid;
-          return isDM ? [restrictToWindowEdges] : [restrictToParentElement];
-        })()}
         collisionDetection={pointerWithin}
+        dropAnimation={{
+            duration: 150,
+            easing: 'cubic-bezier(0.18, 1, 0.4, 1)',
+        }}
       >
         <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24 overscroll-contain">
-          {/* Use the new sorted and filtered array to render the inventories */}
-          {orderedAndVisibleInventories.map(([playerId, inventoryData]) => {
-            if (!inventoryData) return null; // Safeguard
-            const gridWidth = inventoryData.gridWidth;
-            const gridHeight = inventoryData.gridHeight;
-            const isPlayerDM = campaign?.dmId === playerId;
-            const isMyInventory = user.uid === playerId;
-
-            return (
-              <div
-                key={playerId}
-                className="bg-surface rounded-lg shadow-lg shadow-accent/10 border border-accent/20 overflow-hidden"
-              >
-                <div className="w-full p-2 text-left bg-surface/80 flex justify-between items-center transition-colors duration-200">
-                  <div className="flex-grow flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <button onClick={() => toggleInventory(playerId)} className="flex items-center space-x-2">
-                        <h2 className="text-xl font-bold text-accent font-fantasy tracking-wider">
-                          {inventoryData.characterName || playerProfiles[playerId]?.displayName}
-                        </h2>
-                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-text-base transition-transform duration-200 ${openInventories[playerId] ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                      {!isPlayerDM && (
-                        <WeightCounter
-                          items={inventoryData.gridItems || []}
-                          maxWeight={inventoryData.maxWeight || 0}
-                          unit={inventoryData.weightUnit || 'lbs'}
-                        />
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {isMyInventory && (
-                        <button
-                          onClick={() => setEditingSettings({ playerId: playerId, currentSettings: inventoryData, isDMInventory: isPlayerDM })}
-                          className="p-2 rounded-full hover:bg-background transition-colors"
-                          aria-label="Edit character and inventory settings"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                            <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {openInventories[playerId] && (
-                  <div className="p-2 bg-background/50">
-                    {isPlayerDM ? (
-                      <ItemTray
-                        campaignId={campaignId}
-                        playerId={playerId}
-                        items={inventoryData.trayItems}
-                        onContextMenu={handleContextMenu}
-                        isDM={campaign?.dmId === user?.uid}
-                      />
-                    ) : (
-                      <>
-                        <div className="relative">
-                          <PlayerInventoryGrid
-                            campaignId={campaignId}
-                            playerId={playerId}
-                            items={inventoryData.gridItems}
-                            onContextMenu={handleContextMenu}
-                            setGridRef={(node) =>
-                              (gridRefs.current[playerId] = node)
-                            }
-                            isDM={campaign?.dmId === user?.uid}
-                            gridWidth={gridWidth}
-                            gridHeight={gridHeight}
-                            cellSize={cellSizes[playerId]}
-                          />
-                        </div>
-                        <div className="mt-2">
-                          <button
-                            onClick={() => toggleTray(playerId)}
-                            className="w-full p-2 text-left bg-surface/50 hover:bg-surface/30 rounded-t-lg flex justify-between items-center transition-colors"
-                          >
-                            <span className="font-bold font-fantasy text-text-muted">Tray</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-text-base transition-transform duration-200 ${openTrays[playerId] ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                          {openTrays[playerId] && (
-                            <ItemTray
-                              campaignId={campaignId}
-                              playerId={playerId}
-                              items={inventoryData.trayItems}
-                              onContextMenu={handleContextMenu}
-                              isDM={campaign?.dmId === user?.uid}
-                            />
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {orderedAndVisibleInventories.map(([playerId, inventoryData]) => (
+            <PlayerInventory
+              key={playerId}
+              playerId={playerId}
+              inventoryData={inventoryData}
+              campaign={campaign}
+              playerProfiles={playerProfiles}
+              user={user}
+              setEditingSettings={setEditingSettings}
+              cellSizes={cellSizes}
+              gridRefs={gridRefs}
+              onContextMenu={handleContextMenu}
+              openTrays={openTrays}
+              setOpenTrays={setOpenTrays}
+            />
+          ))}
         </div>
         <DragOverlay>
           {activeItem ? (
@@ -1021,11 +818,11 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
                 width: activeItem.dimensions.width,
                 height: activeItem.dimensions.height,
               }}
-              className={`${getColorForItemType(activeItem.item.type)} rounded-lg text-text-base font-bold p-1 text-center text-xs sm:text-sm flex items-center justify-center shadow-lg`}
+              className={`${getColorForItemType(activeItem.item.type)} rounded-lg text-text-base font-bold p-1 text-center text-xs sm:text-sm flex items-center justify-center shadow-2xl scale-105`}
             >
               {activeItem.item.name}
               {activeItem.item.stackable && activeItem.item.quantity > 1 && (
-                <span className="absolute bottom-0 right-1 text-lg font-black" style={{ WebkitTextStroke: "1px black" }}>
+                <span className="absolute bottom-0 right-1 text-lg font-black" style={{ WebkitTextStroke: '1px black' }}>
                   {activeItem.item.quantity}
                 </span>
               )}
@@ -1034,7 +831,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         </DragOverlay>
       </DndContext>
       
-      {/* --- Floating Action Button --- */}
+      {/* --- Floating Action Buttons --- */}
       <div className="fixed z-30 bottom-8 right-8 flex flex-col space-y-2">
         <button
           onClick={() => setShowCompendium(true)}

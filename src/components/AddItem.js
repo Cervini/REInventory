@@ -25,6 +25,8 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
   const [damage, setDamage] = useState(isEditMode ? itemBeingEdited.weaponStats?.damage : '');
   const [damageType, setDamageType] = useState(isEditMode ? itemBeingEdited.weaponStats?.damageType : '');
   const [properties, setProperties] = useState(isEditMode ? itemBeingEdited.weaponStats?.properties : '');
+  const [isContainer, setIsContainer] = useState(isEditMode ? itemBeingEdited.isContainer ?? false : false);
+  const [capacity, setCapacity] = useState(isEditMode ? itemBeingEdited.capacity ?? 0 : 0);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -42,6 +44,8 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
         stackable,
         maxStack: stackable ? parseInt(maxStack, 10) : null,
         quantity: parseInt(quantity, 10),
+        capacity: isContainer ? Number(capacity) : null,
+        containedItems: isContainer ? (itemToEdit ? itemBeingEdited.containedItems : []) : null,
         cost,
         weight,
         description,
@@ -117,6 +121,20 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
               <div className="w-1/3">
                 <label className="block text-sm font-bold mb-2 text-text-muted">Max Stack</label>
                 <input type="number" min="1" value={maxStack} onChange={(e) => setMaxStack(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent" />
+              </div>
+            )}
+          </fieldset>
+
+          {/* --- CONTAINER FIELDS --- */}
+          <fieldset className="flex items-end space-x-4 border-t border-surface/50 pt-4">
+            <div className="flex items-center">
+              <input id="isContainer" type="checkbox" checked={isContainer} onChange={(e) => setIsContainer(e.target.checked)} className="w-4 h-4 text-primary bg-background border-surface/50 rounded focus:ring-accent" />
+              <label htmlFor="isContainer" className="ml-2 text-sm font-medium text-text-muted">Is Container</label>
+            </div>
+            {isContainer && (
+              <div className="flex-grow">
+                <label className="block text-sm font-bold mb-2 text-text-muted">Capacity (Weight)</label>
+                <input type="number" min="0" value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="e.g., 30" className="w-full p-2 bg-background border border-surface/50 rounded-md" />
               </div>
             )}
           </fieldset>

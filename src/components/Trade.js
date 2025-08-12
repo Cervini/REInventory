@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { db, auth } from '../firebase';
-import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { doc, onSnapshot, updateDoc, getDoc, getDocs, collection, writeBatch, deleteDoc } from 'firebase/firestore';
 import Spinner from './Spinner';
+import { useDmStatus } from '../hooks/useDmStatus'
 
 // A simple, clickable list item for display
 function ItemListItem({ item, onClick }) {
@@ -46,25 +47,36 @@ function TradeOffer({ items, onItemClick }) {
     );
 }
 
-export default function Trade({ onClose, tradeId, user, playerProfiles }) {
+export default function Trade({ onClose, tradeId, user, playerProfiles, campaign }) {
     const [tradeData, setTradeData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isFinalizing, setIsFinalizing] = useState(false);
 
-    // Local state for the user's available inventory and current offer
     const [localInventory, setLocalInventory] = useState([]);
     const [localOffer, setLocalOffer] = useState([]);
     const [otherPlayerOffer, setOtherPlayerOffer] = useState([]);
     const [isInventoryLoaded, setIsInventoryLoaded] = useState(false);
     
-    // **THIS IS THE FIX**: A ref to hold the unsubscribe function
     const snapshotUnsubscribe = useRef(null);
+
+    const dmId = campaign?.dmId;
+    // Use the hook to track the DM's status in real-time
+    const isDmOnline = useDmStatus(dmId);
+
+    // This new useEffect will run whenever the DM's online status changes.
+    useEffect(() => {
+        // If the DM is involved in this trade and their status changes to offline...
+        if (tradeData && (tradeData.playerA === dmId || tradeData.playerB === dmId) && !isDmOnline) {
+            toast.error("The DM has gone offline. The trade has been cancelled.");
+            // We can simply delete the trade document, which will trigger the main listener to close the window.
+            deleteDoc(doc(db, 'trades', tradeId));
+        }
+    }, [isDmOnline, tradeData, dmId, tradeId]);
 
     // This effect listens for REAL-TIME changes to the trade document
     useEffect(() => {
         const tradeDocRef = doc(db, 'trades', tradeId);
-        // Store the unsubscribe function in the ref
         snapshotUnsubscribe.current = onSnapshot(tradeDocRef, (doc) => {
             if (!doc.exists()) {
                 onClose();
@@ -82,7 +94,6 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
         });
 
         return () => {
-            // The cleanup function now uses the ref
             if (snapshotUnsubscribe.current) {
                 snapshotUnsubscribe.current();
             }
@@ -95,69 +106,125 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
 
         const fetchInitialInventory = async () => {
             setIsLoading(true);
-            const inventoryDocRef = doc(db, 'campaigns', tradeData.campaignId, 'inventories', user.uid);
-            const docSnap = await getDoc(inventoryDocRef);
+            try {
+                const inventoryDocRef = doc(db, 'campaigns', tradeData.campaignId, 'inventories', user.uid);
+                const inventorySnap = await getDoc(inventoryDocRef);
 
-            if (docSnap.exists()) {
-                const inventory = docSnap.data();
-                const allItems = [...(inventory.gridItems || []), ...(inventory.trayItems || [])];
-                const offerIds = new Set(localOffer.map(i => i.id));
-                setLocalInventory(allItems.filter(i => !offerIds.has(i.id)));
-                setIsInventoryLoaded(true);
+                if (inventorySnap.exists()) {
+                    const inventoryData = inventorySnap.data();
+                    let allItems = [...(inventoryData.trayItems || [])];
+
+                    const containersColRef = collection(inventoryDocRef, 'containers');
+                    const containersSnapshot = await getDocs(containersColRef);
+
+                    containersSnapshot.forEach(doc => {
+                        const containerData = doc.data();
+                        if (containerData.gridItems) allItems = [...allItems, ...containerData.gridItems];
+                        if (containerData.trayItems) allItems = [...allItems, ...containerData.trayItems];
+                    });
+                    
+                    const offerIds = new Set(localOffer.map(i => i.id));
+                    setLocalInventory(allItems.filter(i => !offerIds.has(i.id)));
+                    setIsInventoryLoaded(true);
+                }
+            } catch (error) {
+                console.error("Failed to fetch full inventory for trade:", error);
+                toast.error("Could not load your inventory.");
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         };
 
         fetchInitialInventory();
     }, [tradeData, user.uid, localOffer, isInventoryLoaded]);
 
-
     // This effect FINALIZES the trade when both players have accepted
     useEffect(() => {
+        // Only run if the trade data is loaded, both players have accepted, and we aren't already finalizing
         if (tradeData && tradeData.acceptedA && tradeData.acceptedB && !isFinalizing) {
-            if (user.uid === tradeData.playerA) {
-                setIsFinalizing(true);
-                const finalize = async () => {
+            
+            // Determine if the current user is the Dungeon Master for this campaign.
+            // We need the campaign object passed in as a prop for this check.
+            const isUserDM = user.uid === campaign?.dmId;
+
+            // The finalization should only be executed by the DM if they are one of the traders.
+            // This is the only way to guarantee write permissions for both inventories.
+            if (isUserDM && (user.uid === tradeData.playerA || user.uid === tradeData.playerB)) {
+                
+                setIsFinalizing(true); // Prevent this from running multiple times
+                
+                const finalizeTradeOnClient = async () => {
                     try {
-                        const currentUser = auth.currentUser;
-                        if (!currentUser) { throw new Error("Authentication not ready."); }
-                        
-                        const token = await currentUser.getIdToken(true);
-                        const FIREBASE_REGION = 'us-central1';
-                        const functionUrl = `https://${FIREBASE_REGION}-re-inventory-v2.cloudfunctions.net/finalizeTrade`;
+                        const { campaignId, playerA, playerB, offerA, offerB } = tradeData;
+                        const batch = writeBatch(db);
 
-                        const response = await fetch(functionUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ data: { tradeId: tradeId } })
-                        });
+                        // Helper function to process one side of the trade
+                        const processPlayer = async (playerId, itemsToRemove, itemsToAdd) => {
+                            const invRef = doc(db, 'campaigns', campaignId, 'inventories', playerId);
+                            const invSnap = await getDoc(invRef);
+                            if (!invSnap.exists()) throw new Error(`${playerProfiles[playerId]?.characterName}'s inventory not found.`);
+                            
+                            const invData = invSnap.data();
+                            const isDM = invData.characterName === "DM";
+                            const itemsToRemoveIds = new Set(itemsToRemove.map(i => i.id));
 
-                        const result = await response.json();
-                        if (!response.ok) {
-                            throw new Error(result.error.message || 'Failed to finalize trade.');
-                        }
-                        
-                        // **THIS IS THE FIX**: Manually unsubscribe before closing.
+                            // Remove items from the player's inventory
+                            let newPlayerTray = (invData.trayItems || []).filter(i => !itemsToRemoveIds.has(i.id));
+                            batch.update(invRef, { trayItems: newPlayerTray });
+
+                            const containersRef = collection(invRef, 'containers');
+                            const containersSnap = await getDocs(containersRef);
+                            containersSnap.forEach(containerDoc => {
+                                const containerData = containerDoc.data();
+                                const newGrid = (containerData.gridItems || []).filter(i => !itemsToRemoveIds.has(i.id));
+                                const newTray = (containerData.trayItems || []).filter(i => !itemsToRemoveIds.has(i.id));
+                                batch.update(containerDoc.ref, { gridItems: newGrid, trayItems: newTray });
+                            });
+
+                            // Add new items to the player's inventory
+                            const itemsWithStrippedCoords = itemsToAdd.map(({x, y, ...item}) => item);
+                            if (isDM) {
+                                // Add to the DM's first container tray
+                                if (containersSnap.docs.length > 0) {
+                                    const firstContainerRef = containersSnap.docs[0].ref;
+                                    const firstContainerData = containersSnap.docs[0].data();
+                                    const updatedTray = [...(firstContainerData.trayItems || []), ...itemsWithStrippedCoords];
+                                    batch.update(firstContainerRef, { trayItems: updatedTray });
+                                }
+                            } else {
+                                // Add to the player's main tray
+                                const updatedTray = [...newPlayerTray, ...itemsWithStrippedCoords];
+                                batch.update(invRef, { trayItems: updatedTray });
+                            }
+                        };
+
+                        // Process both sides of the trade transaction
+                        await processPlayer(playerA, offerA, offerB);
+                        await processPlayer(playerB, offerB, offerA);
+
+                        // Delete the trade document now that it's complete
+                        batch.delete(doc(db, 'trades', tradeId));
+
+                        await batch.commit();
+
                         if (snapshotUnsubscribe.current) {
                             snapshotUnsubscribe.current();
                         }
-                        
-                        toast.success(result.data.message);
+                        toast.success("Trade successful!");
                         onClose();
 
                     } catch (error) {
-                        toast.error(error.message);
+                        toast.error(error.message || "Failed to finalize trade.");
+                        // If something goes wrong, reset the accept status on the trade to allow a retry
                         await updateDoc(doc(db, 'trades', tradeId), { acceptedA: false, acceptedB: false });
                         setIsFinalizing(false);
                     }
                 };
-                finalize();
+                
+                finalizeTradeOnClient();
             }
         }
-    }, [tradeData, user.uid, tradeId, onClose, isFinalizing]);
+    }, [tradeData, user.uid, tradeId, onClose, isFinalizing, playerProfiles, campaign]);
 
 
     const handleItemClick = async (item, source) => {
@@ -184,15 +251,9 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
 
     const handleAcceptTrade = async () => {
         setIsSubmitting(true);
-        const userOfferField = user.uid === tradeData.playerA ? 'offerA' : 'offerB';
         const userAcceptField = user.uid === tradeData.playerA ? 'acceptedA' : 'acceptedB';
-
         try {
-            await updateDoc(doc(db, 'trades', tradeId), {
-                [userOfferField]: localOffer,
-                [userAcceptField]: true,
-            });
-            toast.success("You have accepted the trade.");
+            await updateDoc(doc(db, 'trades', tradeId), { [userAcceptField]: true, });
         } catch(error) {
             toast.error("Failed to accept trade.");
         } finally {
@@ -203,21 +264,9 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
     const handleCancelTrade = async () => {
         setIsSubmitting(true);
         try {
-            const currentUser = auth.currentUser;
-            if (!currentUser) { throw new Error("Authentication not ready."); }
-            
-            const token = await currentUser.getIdToken(true);
-            const FIREBASE_REGION = 'us-central1';
-            const functionUrl = `https://${FIREBASE_REGION}-re-inventory-v2.cloudfunctions.net/cancelTrade`;
-
-            await fetch(functionUrl, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ data: { tradeId: tradeId } })
-            });
+            await deleteDoc(doc(db, 'trades', tradeId));
+            toast.error("Trade cancelled.");
+            onClose();
         } catch (error) {
             toast.error(error.message);
         } finally {
@@ -241,13 +290,13 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
                   <div className="flex flex-col space-y-4 md:w-1/3">
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                          <h4 className="font-bold text-lg">{playerProfiles[yourData.id]?.displayName || 'Your'} Offer</h4>
+                          <h4 className="font-bold text-lg">{playerProfiles[yourData.id]?.characterName || 'Your'} Offer</h4>
                       </div>
                       <TradeOffer items={localOffer} onItemClick={(item) => handleItemClick(item, 'offer')} />
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                          <h4 className="font-bold text-lg">{playerProfiles[otherPlayer.id]?.displayName}'s Offer</h4>
+                          <h4 className="font-bold text-lg">{playerProfiles[otherPlayer.id]?.characterName}'s Offer</h4>
                           {otherPlayer.accepted && (
                             <span className="bg-green-800/80 text-text-base text-xs font-bold px-2 py-1 rounded-md">
                               Accepted
@@ -258,7 +307,7 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
                     </div>
                   </div>
                   <div className="flex flex-col space-y-2 flex-grow md:w-2/3 min-h-0">
-                    <h4 className="font-bold text-lg">Your Inventory</h4>
+                    <h4 className="font-bold text-lg">Your Available Items</h4>
                     <div className="flex-grow overflow-auto border border-surface/50 rounded-lg p-2 space-y-2">
                         {localInventory.map(item => (
                             <ItemListItem
@@ -271,11 +320,11 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
                   </div>
                 </div>
                 <div className="flex justify-between items-center pt-4">
-                    <button onClick={handleCancelTrade} disabled={isSubmitting} className="bg-destructive/80 hover:bg-destructive text-text-base font-bold py-2 px-4 rounded transition-colors disabled:opacity-50">
+                    <button onClick={handleCancelTrade} disabled={isSubmitting || isFinalizing} className="bg-destructive/80 hover:bg-destructive text-text-base font-bold py-2 px-4 rounded transition-colors disabled:opacity-50">
                         {isSubmitting ? '...' : 'Cancel Trade'}
                     </button>
-                    <button onClick={handleAcceptTrade} disabled={yourData.accepted || isSubmitting} className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded transition-colors disabled:opacity-50">
-                        {isSubmitting ? '...' : (yourData.accepted ? 'Waiting...' : 'Accept Trade')}
+                    <button onClick={handleAcceptTrade} disabled={yourData.accepted || isSubmitting || isFinalizing} className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded transition-colors disabled:opacity-50">
+                        {isFinalizing ? 'Finalizing...' : (isSubmitting ? '...' : (yourData.accepted ? 'Waiting...' : 'Accept Trade'))}
                     </button>
                 </div>
             </div>
