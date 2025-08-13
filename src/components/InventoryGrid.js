@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { doc, onSnapshot, updateDoc, writeBatch, where, collection, query, setDoc } from "firebase/firestore";
+import { doc, updateDoc, writeBatch, setDoc, collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from '../firebase';
 import { DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
 import PlayerInventoryGrid from './PlayerInventoryGrid';
@@ -184,27 +184,35 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
 
   }, [campaign, inventories, user, isDM]);
 
-  // Listen for active trades
+  const handleTradeStarted = (trade) => {
+    setActiveTrade(trade);
+  };
+
   useEffect(() => {
     if (!user || !campaignId) return;
 
     const tradesRef = collection(db, 'trades');
+    
+    // Create a query that looks for trades in this campaign where:
+    // 1. The current user is the one being invited (playerB).
+    // 2. The trade has just become 'active'.
     const q = query(
       tradesRef,
       where('campaignId', '==', campaignId),
-      where('players', 'array-contains', user.uid),
+      where('playerB', '==', user.uid),
       where('status', '==', 'active')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      // If a trade matching this query appears, it means we just accepted an invitation.
       if (!snapshot.empty) {
         const tradeDoc = snapshot.docs[0];
+        // Set this as the active trade, which will open the trade window UI.
         setActiveTrade({ id: tradeDoc.id, ...tradeDoc.data() });
-      } else {
-        setActiveTrade(null);
       }
     });
 
+    // Clean up the listener when the component unmounts
     return () => unsubscribe();
   }, [campaignId, user]);
 
@@ -707,6 +715,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
           user={user}
           playerProfiles={playerProfiles}
           inventories={inventories}
+          onTradeStarted={handleTradeStarted}
         />
       )}
       

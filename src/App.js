@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { ref, onValue, set, onDisconnect, serverTimestamp } from "firebase/database";
 import { doc, onSnapshot } from 'firebase/firestore';
-import { rtdb } from './firebase';
 import { Tooltip } from 'react-tooltip';
 import { Toaster } from 'react-hot-toast';
 import { auth, db } from './firebase';
@@ -31,36 +29,6 @@ export default function App() {
   
   // State to manage which "page" is visible
   const [currentPage, setCurrentPage] = useState('main'); // 'main', 'privacy', 'cookies', 'compendium'
-
-   useEffect(() => {
-    if (!user) return;
-
-    // A reference to this user's specific location in the Realtime Database
-    const userStatusDatabaseRef = ref(rtdb, '/status/' + user.uid);
-
-    // A reference to the special '.info/connected' path, which is a boolean
-    // provided by Firebase that is true when the client is connected.
-    const connectedRef = ref(rtdb, '.info/connected');
-
-    onValue(connectedRef, (snap) => {
-      if (snap.val() === true) {
-        // We're connected. Set the user's status to online.
-        set(userStatusDatabaseRef, {
-          isOnline: true,
-          lastSeen: serverTimestamp(),
-        });
-
-        // When the client disconnects, set their status to offline.
-        // This is the magic of onDisconnect!
-        onDisconnect(userStatusDatabaseRef).set({
-          isOnline: false,
-          lastSeen: serverTimestamp(),
-        });
-      }
-    });
-
-    // We don't need a cleanup function in the same way, as onDisconnect handles it.
-  }, [user]);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {

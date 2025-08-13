@@ -3,7 +3,6 @@ import toast from 'react-hot-toast';
 import { db } from '../firebase';
 import { doc, onSnapshot, updateDoc, getDoc, getDocs, collection, writeBatch, deleteDoc } from 'firebase/firestore';
 import Spinner from './Spinner';
-import { useDmStatus } from '../hooks/useDmStatus'
 
 // A simple, clickable list item for display
 function ItemListItem({ item, onClick }) {
@@ -59,20 +58,6 @@ export default function Trade({ onClose, tradeId, user, playerProfiles, campaign
     const [isInventoryLoaded, setIsInventoryLoaded] = useState(false);
     
     const snapshotUnsubscribe = useRef(null);
-
-    const dmId = campaign?.dmId;
-    // Use the hook to track the DM's status in real-time
-    const isDmOnline = useDmStatus(dmId);
-
-    // This new useEffect will run whenever the DM's online status changes.
-    useEffect(() => {
-        // If the DM is involved in this trade and their status changes to offline...
-        if (tradeData && (tradeData.playerA === dmId || tradeData.playerB === dmId) && !isDmOnline) {
-            toast.error("The DM has gone offline. The trade has been cancelled.");
-            // We can simply delete the trade document, which will trigger the main listener to close the window.
-            deleteDoc(doc(db, 'trades', tradeId));
-        }
-    }, [isDmOnline, tradeData, dmId, tradeId]);
 
     // This effect listens for REAL-TIME changes to the trade document
     useEffect(() => {
@@ -138,37 +123,27 @@ export default function Trade({ onClose, tradeId, user, playerProfiles, campaign
         fetchInitialInventory();
     }, [tradeData, user.uid, localOffer, isInventoryLoaded]);
 
-    // This effect FINALIZES the trade when both players have accepted
+    // It will now succeed for player-to-player trades.
     useEffect(() => {
-        // Only run if the trade data is loaded, both players have accepted, and we aren't already finalizing
         if (tradeData && tradeData.acceptedA && tradeData.acceptedB && !isFinalizing) {
-            
-            // Determine if the current user is the Dungeon Master for this campaign.
-            // We need the campaign object passed in as a prop for this check.
-            const isUserDM = user.uid === campaign?.dmId;
-
-            // The finalization should only be executed by the DM if they are one of the traders.
-            // This is the only way to guarantee write permissions for both inventories.
-            if (isUserDM && (user.uid === tradeData.playerA || user.uid === tradeData.playerB)) {
-                
-                setIsFinalizing(true); // Prevent this from running multiple times
+            // The trade initiator (Player A) is responsible for the transaction.
+            if (user.uid === tradeData.playerA) {
+                setIsFinalizing(true);
                 
                 const finalizeTradeOnClient = async () => {
                     try {
                         const { campaignId, playerA, playerB, offerA, offerB } = tradeData;
                         const batch = writeBatch(db);
 
-                        // Helper function to process one side of the trade
                         const processPlayer = async (playerId, itemsToRemove, itemsToAdd) => {
                             const invRef = doc(db, 'campaigns', campaignId, 'inventories', playerId);
                             const invSnap = await getDoc(invRef);
-                            if (!invSnap.exists()) throw new Error(`${playerProfiles[playerId]?.characterName}'s inventory not found.`);
+                            if (!invSnap.exists()) throw new Error("Inventory not found.");
                             
                             const invData = invSnap.data();
                             const isDM = invData.characterName === "DM";
                             const itemsToRemoveIds = new Set(itemsToRemove.map(i => i.id));
 
-                            // Remove items from the player's inventory
                             let newPlayerTray = (invData.trayItems || []).filter(i => !itemsToRemoveIds.has(i.id));
                             batch.update(invRef, { trayItems: newPlayerTray });
 
@@ -181,50 +156,38 @@ export default function Trade({ onClose, tradeId, user, playerProfiles, campaign
                                 batch.update(containerDoc.ref, { gridItems: newGrid, trayItems: newTray });
                             });
 
-                            // Add new items to the player's inventory
                             const itemsWithStrippedCoords = itemsToAdd.map(({x, y, ...item}) => item);
                             if (isDM) {
-                                // Add to the DM's first container tray
                                 if (containersSnap.docs.length > 0) {
                                     const firstContainerRef = containersSnap.docs[0].ref;
                                     const firstContainerData = containersSnap.docs[0].data();
-                                    const updatedTray = [...(firstContainerData.trayItems || []), ...itemsWithStrippedCoords];
-                                    batch.update(firstContainerRef, { trayItems: updatedTray });
+                                    batch.update(firstContainerRef, { trayItems: [...(firstContainerData.trayItems || []), ...itemsWithStrippedCoords] });
                                 }
                             } else {
-                                // Add to the player's main tray
-                                const updatedTray = [...newPlayerTray, ...itemsWithStrippedCoords];
-                                batch.update(invRef, { trayItems: updatedTray });
+                                batch.update(invRef, { trayItems: [...newPlayerTray, ...itemsWithStrippedCoords] });
                             }
                         };
 
-                        // Process both sides of the trade transaction
                         await processPlayer(playerA, offerA, offerB);
                         await processPlayer(playerB, offerB, offerA);
 
-                        // Delete the trade document now that it's complete
                         batch.delete(doc(db, 'trades', tradeId));
-
                         await batch.commit();
 
-                        if (snapshotUnsubscribe.current) {
-                            snapshotUnsubscribe.current();
-                        }
+                        if (snapshotUnsubscribe.current) snapshotUnsubscribe.current();
                         toast.success("Trade successful!");
                         onClose();
 
                     } catch (error) {
                         toast.error(error.message || "Failed to finalize trade.");
-                        // If something goes wrong, reset the accept status on the trade to allow a retry
                         await updateDoc(doc(db, 'trades', tradeId), { acceptedA: false, acceptedB: false });
                         setIsFinalizing(false);
                     }
                 };
-                
                 finalizeTradeOnClient();
             }
         }
-    }, [tradeData, user.uid, tradeId, onClose, isFinalizing, playerProfiles, campaign]);
+    }, [tradeData, user.uid, tradeId, onClose, isFinalizing, playerProfiles]);
 
 
     const handleItemClick = async (item, source) => {

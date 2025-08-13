@@ -22,54 +22,53 @@ export default function TradeNotifications({ campaignId }) {
                 if (change.type === 'added') {
                     const trade = { id: change.doc.id, ...change.doc.data() };
                      if (trade.status === 'pending' && trade.playerB === auth.currentUser.uid) {
-                    const requesterName = playerProfiles[trade.playerA]?.displayName || 'A player';
+                        const requesterName = playerProfiles[trade.playerA]?.displayName || 'A player';
 
-                    toast((t) => (
-                        <div className="flex flex-col items-center gap-2">
-                            <span className="text-center">
-                                <strong>{requesterName}</strong> wants to trade with you.
-                            </span>
-                            <div className="flex gap-2">
-                                <button 
-                                    onClick={() => handleDecline(t.id, trade.id)}
-                                    className="bg-destructive hover:bg-destructive/80 text-text-base font-bold py-1 px-3 rounded text-sm"
-                                >
-                                    Decline
-                                </button>
-                                <button 
-                                    onClick={() => handleAccept(t.id, trade.id)}
-                                    className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-1 px-3 rounded text-sm"
-                                >
-                                    Accept
-                                </button>
+                        toast((t) => (
+                            <div className="flex flex-col items-center gap-2">
+                                <span className="text-center">
+                                    <strong>{requesterName}</strong> wants to trade with you.
+                                </span>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => handleDecline(t.id, trade.id)}
+                                        className="bg-destructive hover:bg-destructive/80 text-text-base font-bold py-1 px-3 rounded text-sm"
+                                    >
+                                        Decline
+                                    </button>
+                                    <button 
+                                        onClick={() => handleAccept(t.id, trade.id)}
+                                        className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-1 px-3 rounded text-sm"
+                                    >
+                                        Accept
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    ), {
-                        duration: 5000,
-                    });
+                        ), {
+                            duration: 5000,
+                        });
+                    }
                 }
-            }
+            });
         });
-    });
 
-    return () => unsubscribe();
-}, [campaignId, playerProfiles]);
+        return () => unsubscribe();
+    }, [campaignId, playerProfiles]);
 
     const handleAccept = async (toastId, tradeId) => {
         toast.dismiss(toastId);
         const tradeDocRef = doc(db, 'trades', tradeId);
+        // THIS IS THE FIX: Set the status to 'active' to signal the trade can begin.
         await updateDoc(tradeDocRef, { status: 'active' });
-        // In the future, this will also open the main trading modal for both players.
         toast.success("Trade accepted! Opening trade window...");
     };
 
     const handleDecline = async (toastId, tradeId) => {
         toast.dismiss(toastId);
         const tradeDocRef = doc(db, 'trades', tradeId);
-        // We can just delete the trade document if it's declined.
         await deleteDoc(tradeDocRef);
         toast.error("Trade declined.");
     };
 
-    return null; // This component renders no visible UI itself, only toasts.
+    return null;
 }
