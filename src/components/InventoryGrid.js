@@ -99,23 +99,32 @@ const PlayerInventory = ({
             ))
         ) : (
             <>
-                {containers.map((container) => (
-                  <div key={container.id} className="bg-surface/50 rounded-lg p-2">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-bold text-text-muted">{container.name}</h3>
+                <div className="flex flex-row flex-wrap gap-4">
+                  {containers.map((container) => (
+                    // THIS IS THE FIX (Part 2): Set a dynamic width for each container
+                    // The width is based on the container's gridWidth, with min/max values.
+                    <div 
+                      key={container.id} 
+                      className="bg-surface/50 rounded-lg p-2 flex-grow"
+                      style={{ flexBasis: `${container.gridWidth * 3.5}rem`, minWidth: '12rem' }}
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-bold text-text-muted">{container.name}</h3>
+                      </div>
+                      <PlayerInventoryGrid
+                        items={container.gridItems || []}
+                        gridWidth={container.gridWidth}
+                        gridHeight={container.gridHeight}
+                        containerId={container.id}
+                        onContextMenu={onContextMenu}
+                        playerId={playerId}
+                        setGridRef={(node) => (gridRefs.current[container.id] = node)}
+                        cellSize={cellSizes[container.id]}
+                      />
                     </div>
-                    <PlayerInventoryGrid
-                      items={container.gridItems || []}
-                      gridWidth={container.gridWidth}
-                      gridHeight={container.gridHeight}
-                      containerId={container.id}
-                      onContextMenu={onContextMenu}
-                      playerId={playerId}
-                      setGridRef={(node) => (gridRefs.current[container.id] = node)}
-                      cellSize={cellSizes[container.id]}
-                    />
-                  </div>
-                ))}
+                  ))}
+                </div>
+
                 <div className="mt-2">
                     <h3 className="font-bold font-fantasy text-text-muted p-2">Floor / Ground</h3>
                     <ItemTray

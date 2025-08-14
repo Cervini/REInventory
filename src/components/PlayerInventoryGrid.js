@@ -22,6 +22,7 @@ export default function PlayerInventoryGrid({ items, gridWidth, gridHeight, cont
   };
 
   return (
+    // The unnecessary wrapper div has been removed.
     <div
       ref={combinedRef}
       style={gridStyle}
@@ -35,11 +36,10 @@ export default function PlayerInventoryGrid({ items, gridWidth, gridHeight, cont
       
       {items?.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center text-text-muted pointer-events-none z-10">
-          <p className="font-fantasy italic text-lg">Inventory is empty.</p>
+          <p className="font-fantasy italic text-lg">Empty.</p>
         </div>
       )}
       
-      {/* The inventory items will render on top of the background grid */}
       {items?.map(item => (
         <InventoryItem
           key={item.id}

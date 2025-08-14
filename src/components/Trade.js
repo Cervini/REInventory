@@ -145,8 +145,7 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
             const { campaignId, playerA, playerB, offerA, offerB } = finalTradeData;
             const batch = writeBatch(db);
 
-            // THIS IS THE FIX: The processPlayer function has been rewritten to
-            // handle removals and additions in separate, non-conflicting steps.
+            // Handle removals and additions in separate, non-conflicting steps.
             const processPlayer = async (playerId, itemsToRemove, itemsToAdd) => {
                 const invRef = doc(db, 'campaigns', campaignId, 'inventories', playerId);
                 const invSnap = await getDoc(invRef);
