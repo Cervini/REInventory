@@ -278,9 +278,9 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
       const otherPlayers = Object.keys(playerProfiles).filter(id => id !== playerId);
       if (otherPlayers.length > 0) {
         availableActions.push({
-          label: 'Send to Player...',
+          label: 'Send to...',
           submenu: otherPlayers.map(targetId => ({
-            label: playerProfiles[targetId]?.displayName || targetId,
+            label: playerProfiles[targetId]?.characterName || playerProfiles[targetId]?.displayName || targetId,
             onClick: () => handleSendItem(item, source, playerId, targetId, containerId),
           })),
         });

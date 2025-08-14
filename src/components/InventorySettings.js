@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { db } from '../firebase';
-import { doc, writeBatch } from "firebase/firestore";
+import { doc, writeBatch, getDoc, getDocs, collection } from "firebase/firestore";
 
 const LBS_TO_KG = 0.453592;
 const KG_TO_LBS = 2.20462;
@@ -52,7 +52,6 @@ export default function InventorySettings({ onClose, campaignId, userId, current
         setContainersToDelete(prev => [...prev, containerId]);
     }
   };
-
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -105,6 +104,48 @@ export default function InventorySettings({ onClose, campaignId, userId, current
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLeaveCampaign = async () => {
+        if (!window.confirm("Are you sure you want to leave this campaign? Your inventory will be permanently deleted.")) {
+            return;
+        }
+        setLoading(true);
+        try {
+            const batch = writeBatch(db);
+            const campaignDocRef = doc(db, 'campaigns', campaignId);
+            const campaignSnap = await getDoc(campaignDocRef);
+            const campaignData = campaignSnap.data();
+
+            // 1. Delete the user's inventory and containers
+            const inventoryRef = doc(db, 'campaigns', campaignId, 'inventories', userId);
+            const containersRef = collection(inventoryRef, 'containers');
+            const containersSnap = await getDocs(containersRef);
+            containersSnap.forEach(doc => batch.delete(doc.ref));
+            batch.delete(inventoryRef);
+
+            // 2. Update the campaign document to remove the user
+            const newPlayers = campaignData.players.filter(p => p !== userId);
+            const newOrder = campaignData.layout?.order.filter(p => p !== userId);
+            const newVisible = { ...campaignData.layout?.visible };
+            delete newVisible[userId];
+
+            batch.update(campaignDocRef, {
+                players: newPlayers,
+                'layout.order': newOrder,
+                'layout.visible': newVisible,
+            });
+
+            await batch.commit();
+            toast.success("You have left the campaign.");
+            // Force a reload to go back to the campaign selection screen
+            window.location.reload();
+
+        } catch (error) {
+            toast.error("Failed to leave campaign.");
+            console.error(error);
+            setLoading(false);
+        }
   };
 
   return (
@@ -188,6 +229,21 @@ export default function InventorySettings({ onClose, campaignId, userId, current
               + Add New Container
             </button>
           </div>
+
+          {!isDMInventory && (
+              <div className="border-t border-destructive/20 mt-8 pt-4">
+                  <h4 className="text-lg font-bold text-destructive mb-2">Danger Zone</h4>
+                  <p className="text-sm text-text-muted mb-4">Leaving the campaign will permanently delete your character and their inventory for this campaign.</p>
+                  <button 
+                      type="button" 
+                      onClick={handleLeaveCampaign} 
+                      disabled={loading} 
+                      className="w-full bg-destructive/80 hover:bg-destructive text-text-base font-bold py-2 px-4 rounded transition-colors duration-200"
+                  >
+                    {loading ? 'Leaving...' : 'Leave Campaign'}
+                  </button>
+              </div>
+          )}
           
           <div className="flex justify-end space-x-4 pt-4">
             <button type="button" onClick={onClose} disabled={loading} className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors">Cancel</button>

@@ -1,8 +1,6 @@
-// src/hooks/usePlayerProfiles.js
-
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, documentId, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, documentId, getDocs, doc, onSnapshot, getDoc } from 'firebase/firestore';
 
 export function usePlayerProfiles(campaignId) {
     const [playerProfiles, setPlayerProfiles] = useState({});
@@ -14,24 +12,28 @@ export function usePlayerProfiles(campaignId) {
             return;
         }
 
-        const fetchProfiles = async () => {
-            setIsLoading(true);
-            try {
-                const campaignDocRef = doc(db, 'campaigns', campaignId);
-                const campaignSnap = await getDoc(campaignDocRef);
+        setIsLoading(true);
 
-                if (campaignSnap.exists()) {
-                    const campaignData = campaignSnap.data();
-                    if (campaignData.players && campaignData.players.length > 0) {
-                        
-                        const profilesQuery = query(collection(db, "users"), where(documentId(), "in", campaignData.players));
+        // THIS IS THE FIX: We now use onSnapshot to listen for real-time changes
+        // to the campaign document, such as players joining or leaving.
+        const campaignDocRef = doc(db, 'campaigns', campaignId);
+        const unsubscribe = onSnapshot(campaignDocRef, async (campaignSnap) => {
+            if (campaignSnap.exists()) {
+                const campaignData = campaignSnap.data();
+                const playerIds = campaignData.players || [];
+
+                if (playerIds.length > 0) {
+                    try {
+                        // Fetch the user profiles for all players in the campaign
+                        const profilesQuery = query(collection(db, "users"), where(documentId(), "in", playerIds));
                         const querySnapshot = await getDocs(profilesQuery);
                         const profiles = {};
                         querySnapshot.forEach((doc) => {
                             profiles[doc.id] = doc.data();
                         });
 
-                        const characterNamePromises = campaignData.players.map(playerId => 
+                        // Fetch the character names from their inventory documents
+                        const characterNamePromises = playerIds.map(playerId => 
                             getDoc(doc(db, 'campaigns', campaignId, 'inventories', playerId))
                         );
                         const characterNameSnapshots = await Promise.all(characterNamePromises);
@@ -43,16 +45,19 @@ export function usePlayerProfiles(campaignId) {
                         });
 
                         setPlayerProfiles(profiles);
+                    } catch (error) {
+                        console.error("Error fetching player profiles:", error);
                     }
+                } else {
+                    setPlayerProfiles({}); // No players in the campaign
                 }
-            } catch (error) {
-                console.error("Error fetching player profiles:", error);
-            } finally {
-                setIsLoading(false);
             }
-        };
+            setIsLoading(false);
+        });
 
-        fetchProfiles();
+        // Clean up the listener when the component unmounts
+        return () => unsubscribe();
+        
     }, [campaignId]);
 
     return { playerProfiles, isLoading };

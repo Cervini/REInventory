@@ -68,7 +68,7 @@ export default function App() {
   };
 
   const handleCodeMouseLeave = () => {
-    // Set a timer to close the popover after a short delay (e.g., 300ms)
+    // Timer to close the popover after a short delay
     codeCloseTimer.current = setTimeout(() => {
         setIsCodeVisible(false);
     }, 1000);
@@ -128,13 +128,9 @@ export default function App() {
         />
       )}
       <div className="w-full max-w-4xl flex flex-col flex-grow">
-        {/* The header is now only visible on the main page */}
+        {/* The header is only visible on the main page */}
         {currentPage === 'main' && (
            <div className="flex justify-between items-center w-full mb-4">
-              
-              {/* --- THIS IS THE FIX --- */}
-              {/* The left and right slots now have a fixed basis width to ensure the center is always perfect. */}
-              
               {/* Left Slot */}
               <div className="flex-1 flex justify-start items-center space-x-2">
                 {campaignId && (
