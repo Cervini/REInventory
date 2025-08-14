@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { Tooltip } from 'react-tooltip';
@@ -29,6 +29,7 @@ export default function App() {
   
   // State to manage which "page" is visible
   const [currentPage, setCurrentPage] = useState('main'); // 'main', 'privacy', 'cookies', 'compendium'
+  const codeCloseTimer = useRef(null);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
@@ -64,6 +65,13 @@ export default function App() {
 
   const handleBackToCampaigns = () => {
     setCampaignId(null);
+  };
+
+  const handleCodeMouseLeave = () => {
+    // Set a timer to close the popover after a short delay (e.g., 300ms)
+    codeCloseTimer.current = setTimeout(() => {
+        setIsCodeVisible(false);
+    }, 1000);
   };
 
   // This function now acts as our simple "router"
@@ -145,12 +153,14 @@ export default function App() {
                 )}
                 {campaignId && (
                   <div className="relative">
-                    <button onClick={() => setIsCodeVisible(prev => !prev)} className="p-2 rounded-full hover:bg-surface transition-colors duration-200">
+                    <button
+                      onClick={() => setIsCodeVisible(prev => !prev)}
+                      className="p-2 rounded-full hover:bg-surface transition-colors duration-200">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.368a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" /></svg>
                     </button>
                     {isCodeVisible && (
                       <div className="absolute left-0 mt-2 w-auto bg-gradient-to-b from-surface to-background rounded-md shadow-lg p-2 z-50 border border-accent/20"
-                        onMouseLeave={() => setIsCodeVisible(false)}>
+                        onMouseLeave={handleCodeMouseLeave}>
                         <div className="flex items-center space-x-4">
                           <span className="text-text-muted font-mono text-sm whitespace-nowrap">Code: <span className="font-bold text-text-base">{campaignId}</span></span>
                           <button onClick={handleCopy} className="bg-primary hover:bg-accent hover:text-background text-text-base text-xs font-bold py-1 px-3 rounded transition-colors duration-200">{isCopied ? 'Copied!' : 'Copy'}</button>
