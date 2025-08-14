@@ -4,7 +4,7 @@
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Available-brightgreen)](https://re-inventory-v2.web.app/)
 [![Firebase](https://img.shields.io/badge/Firebase-Hosted-orange)](https://firebase.google.com/)
-[![React](https://img.shields.io/badge/React-18+-blue)](https://reactjs.org/)
+[![React](https://img.shields.io/badge/React-19+-blue)](https://reactjs.org/)
 
 ## 🎯 Overview
 
@@ -40,9 +40,7 @@ REInventory transforms tedious inventory management into an engaging, visual exp
 
 ### 🎨 **Modern User Experience**
 - **Responsive design** works on desktop and mobile
-- **Dark theme** optimized for long gaming sessions
 - **Context menus** for quick item actions
-- **Real-time notifications** for all actions
 - **Intuitive user interface** requires no learning curve
 
 ## 🚀 Getting Started
@@ -95,7 +93,7 @@ REInventory works as a **Progressive Web App**, meaning you can install it direc
 ## 🔧 Technical Features
 
 ### **Built With**
-- **React 18** - Modern frontend framework
+- **React 19**
 - **Firebase** - Authentication, database, and hosting
 - **@dnd-kit** - Accessible drag-and-drop functionality
 - **Tailwind CSS** - Utility-first styling
@@ -149,7 +147,7 @@ We welcome contributions from the TTRPG community! Whether you're fixing bugs, a
 ### **Development Setup**
 ```bash
 # Clone the repository
-git clone https://github.com/Cervini/REInventory.git
+git clone [https://github.com/Cervini/REInventory.git](https://github.com/Cervini/REInventory.git)
 
 # Install dependencies
 npm install
