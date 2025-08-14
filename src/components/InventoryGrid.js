@@ -156,7 +156,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   const [activeItem, setActiveItem] = useState(null);
   const [openTrays, setOpenTrays] = useState({});
   const [editingSettings, setEditingSettings] = useState(null);
-  // eslint-disable-next-line
   const [cellSizes, setCellSizes] = useState({});
   const [showCompendium, setShowCompendium] = useState(false);
   const [activeTrade, setActiveTrade] = useState(null);
@@ -368,7 +367,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     if (itemToEdit) {
       const { item: originalItem, containerId } = itemToEdit;
       
-      // THIS IS THE FIX (Part 1): Check if the item is in a grid (and not the DM's special tray)
+      // Check if the item is in a grid (and not the DM's special tray)
       if (containerId && containerId !== 'tray' && !isTargetDM) {
         
         // --- Logic for items in a container's grid (with size checks) ---

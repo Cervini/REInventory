@@ -25,6 +25,10 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
   const [damage, setDamage] = useState(isEditMode ? itemBeingEdited.weaponStats?.damage : '');
   const [damageType, setDamageType] = useState(isEditMode ? itemBeingEdited.weaponStats?.damageType : '');
   const [properties, setProperties] = useState(isEditMode ? itemBeingEdited.weaponStats?.properties : '');
+  const [armorClass, setArmorClass] = useState(isEditMode ? itemBeingEdited.armorStats?.armorClass : '');
+  const [armorType, setArmorType] = useState(isEditMode ? itemBeingEdited.armorStats?.armorType : 'Light');
+  const [stealthDisadvantage, setStealthDisadvantage] = useState(isEditMode ? itemBeingEdited.armorStats?.stealthDisadvantage ?? false : false);
+  const [strengthRequirement, setStrengthRequirement] = useState(isEditMode ? itemBeingEdited.armorStats?.strengthRequirement : 0);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -33,7 +37,7 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
       return;
     }
     
-    // 2. Create the data object with all the new fields
+    // Create the data object with all the new fields
     const itemData = {
         name,
         w: parseInt(w, 10),
@@ -51,6 +55,15 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
 
     if (type === 'Weapon') {
       itemData.weaponStats = { damage, damageType, properties };
+    }
+
+    if (type === 'Armor') {
+      itemData.armorStats = { 
+        armorClass, 
+        armorType, 
+        stealthDisadvantage, 
+        strengthRequirement: Number(strengthRequirement) 
+      };
     }
 
     if (isEditMode) {
@@ -165,25 +178,54 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
         </fieldset>
 
         {type === 'Weapon' && (
-            <fieldset className="border-t border-surface/50 pt-4">
-              <legend className="text-sm font-bold mb-2 text-text-muted">Weapon Stats</legend>
-              <div className="flex space-x-4 mt-2">
-                <div className="w-1/3">
-                  <label className="block text-sm font-bold mb-2 text-text-muted">Damage</label>
-                  <input type="text" placeholder="e.g., 1d8" value={damage} onChange={(e) => setDamage(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
-                </div>
-                <div className="w-1/3">
-                  <label className="block text-sm font-bold mb-2 text-text-muted">Damage Type</label>
-                  <input type="text" placeholder="e.g., Slashing" value={damageType} onChange={(e) => setDamageType(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
-                </div>
-                <div className="w-1/3">
-                  <label className="block text-sm font-bold mb-2 text-text-muted">Properties</label>
-                  <input type="text" placeholder="e.g., Versatile" value={properties} onChange={(e) => setProperties(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
-                </div>
+          <fieldset className="border-t border-surface/50 pt-4">
+            <legend className="text-sm font-bold mb-2 text-text-muted">Weapon Stats</legend>
+            <div className="flex space-x-4 mt-2">
+              <div className="w-1/3">
+                <label className="block text-sm font-bold mb-2 text-text-muted">Damage</label>
+                <input type="text" placeholder="e.g., 1d8" value={damage} onChange={(e) => setDamage(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
               </div>
-            </fieldset>
-          )}
+              <div className="w-1/3">
+                <label className="block text-sm font-bold mb-2 text-text-muted">Damage Type</label>
+                <input type="text" placeholder="e.g., Slashing" value={damageType} onChange={(e) => setDamageType(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+              </div>
+              <div className="w-1/3">
+                <label className="block text-sm font-bold mb-2 text-text-muted">Properties</label>
+                <input type="text" placeholder="e.g., Versatile" value={properties} onChange={(e) => setProperties(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+              </div>
+            </div>
+          </fieldset>
+        )}
 
+        {type === 'Armor' && (
+          <fieldset className="border-t border-surface/50 pt-4 space-y-4">
+            <legend className="text-sm font-bold mb-2 text-text-muted">Armor Stats</legend>
+            <div className="flex space-x-4">
+              <div className="w-1/2">
+                <label className="block text-sm font-bold mb-2 text-text-muted">Armor Class (AC)</label>
+                <input type="text" placeholder="e.g., 14 + Dex (max 2)" value={armorClass} onChange={(e) => setArmorClass(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+              </div>
+              <div className="w-1/2">
+                <label className="block text-sm font-bold mb-2 text-text-muted">Armor Type</label>
+                  <select value={armorType} onChange={(e) => setArmorType(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md">
+                  <option value="Light">Light</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Heavy">Heavy</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex space-x-4 items-end">
+                <div className="w-1/2">
+                <label className="block text-sm font-bold mb-2 text-text-muted">Strength Requirement</label>
+                <input type="number" min="0" value={strengthRequirement} onChange={(e) => setStrengthRequirement(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+              </div>
+              <div className="w-1/2 flex items-center pb-2">
+                  <input id="stealthDisadvantage" type="checkbox" checked={stealthDisadvantage} onChange={(e) => setStealthDisadvantage(e.target.checked)} className="w-4 h-4 text-primary bg-background border-surface/50 rounded focus:ring-accent" />
+                  <label htmlFor="stealthDisadvantage" className="ml-2 text-sm font-medium text-text-muted">Stealth Disadvantage</label>
+              </div>
+            </div>
+          </fieldset>
+        )}
 
         {/* Action Buttons */}
         <div className="flex justify-end space-x-4 pt-4">
