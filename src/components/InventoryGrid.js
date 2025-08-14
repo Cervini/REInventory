@@ -274,6 +274,13 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     const isMyInventory = user.uid === playerId;
     const availableActions = [];
 
+    if (source === 'grid' && !item.stackable) {
+        availableActions.push({ 
+            label: 'Rotate', 
+            onClick: () => handleRotateItem(item, playerId, containerId) 
+        });
+    }
+
     if (isDM) {
       const otherPlayers = Object.keys(playerProfiles).filter(id => id !== playerId);
       if (otherPlayers.length > 0) {
@@ -336,7 +343,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   };
 
   const handleAddItem = async (itemData, targetPlayerId) => {
-    // THIS IS THE FIX: The logic for determining the target player is now clearer and more accurate.
     let finalPlayerId;
 
     if (itemToEdit) {
@@ -360,24 +366,63 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
 
     // --- Item Editing Logic ---
     if (itemToEdit) {
-      const { item, containerId } = itemToEdit;
-      if (!containerId) {
-        toast.error("Cannot edit item: container information is missing.");
-        return;
-      }
+      const { item: originalItem, containerId } = itemToEdit;
       
-      const containerDocRef = doc(db, "campaigns", campaignId, "inventories", finalPlayerId, "containers", containerId);
-      const container = playerInventory.containers[containerId];
+      // THIS IS THE FIX (Part 1): Check if the item is in a grid (and not the DM's special tray)
+      if (containerId && containerId !== 'tray' && !isTargetDM) {
+        
+        // --- Logic for items in a container's grid (with size checks) ---
+        const container = playerInventory.containers[containerId];
+        const otherItems = container.gridItems.filter(i => i.id !== originalItem.id);
+        const updatedItem = { ...originalItem, ...itemData };
 
-      const newGridItems = (container.gridItems || []).map(i => i.id === item.id ? { ...i, ...itemData } : i);
-      const newTrayItems = (container.trayItems || []).map(i => i.id === item.id ? { ...i, ...itemData } : i);
+        const canStayInPlace = !outOfBounds(updatedItem.x, updatedItem.y, updatedItem, container.gridWidth, container.gridHeight) &&
+                               !otherItems.some(other => onOtherItem(updatedItem.x, updatedItem.y, updatedItem, other));
 
-      await updateDoc(containerDocRef, { 
-        gridItems: newGridItems,
-        trayItems: newTrayItems,
-      });
-      toast.success(`Updated ${itemData.name}.`);
-    } 
+        let finalGridItems;
+        let finalTrayItems = [...(playerInventory.trayItems || [])];
+
+        if (canStayInPlace) {
+            finalGridItems = container.gridItems.map(i => i.id === originalItem.id ? updatedItem : i);
+            toast.success(`Updated ${itemData.name}.`);
+        } else {
+            const newSlot = findFirstAvailableSlot(otherItems, updatedItem, container.gridWidth, container.gridHeight);
+            if (newSlot) {
+                finalGridItems = [...otherItems, { ...updatedItem, ...newSlot }];
+                toast.success(`${itemData.name} was updated and moved to a new slot.`);
+            } else {
+                const { x, y, ...trayItem } = updatedItem;
+                finalGridItems = otherItems; // Remove from grid
+                finalTrayItems.push(trayItem);
+                toast.error(`No space for the new size. Moved ${itemData.name} to the tray.`);
+            }
+        }
+
+        const batch = writeBatch(db);
+        const playerInvRef = doc(db, 'campaigns', campaignId, 'inventories', finalPlayerId);
+        const containerRef = doc(playerInvRef, 'containers', containerId);
+        batch.update(containerRef, { gridItems: finalGridItems });
+        batch.update(playerInvRef, { trayItems: finalTrayItems });
+        await batch.commit();
+
+      } else {
+        // --- Logic for items in a tray (no size checks needed) ---
+        const isDMItem = isTargetDM && containerId;
+        if (isDMItem) {
+            // DM's items are in a container's tray
+            const container = playerInventory.containers[containerId];
+            const updatedTrayItems = (container.trayItems || []).map(i => i.id === originalItem.id ? { ...i, ...itemData } : i);
+            const containerDocRef = doc(db, "campaigns", campaignId, "inventories", finalPlayerId, "containers", containerId);
+            await updateDoc(containerDocRef, { trayItems: updatedTrayItems });
+        } else {
+            // Player's items are in the main tray
+            const updatedTrayItems = (playerInventory.trayItems || []).map(i => i.id === originalItem.id ? { ...i, ...itemData } : i);
+            const playerInvRef = doc(db, "campaigns", campaignId, "inventories", finalPlayerId);
+            await updateDoc(playerInvRef, { trayItems: updatedTrayItems });
+        }
+        toast.success(`Updated ${itemData.name}.`);
+      }
+    }  
     // --- Item Creation Logic ---
     else {
       if (isTargetDM) {
@@ -669,6 +714,59 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     const containerDocRef = doc(db, 'campaigns', campaignId, 'inventories', playerId, 'containers', containerId);
     await updateDoc(containerDocRef, { trayItems: newTrayItems });
     toast.success(`Duplicated ${item.name}.`);
+  };
+
+  const handleRotateItem = async (item, playerId, containerId) => {
+    if (!item || !playerId || !containerId) return;
+
+    const inventory = inventories[playerId];
+    const container = inventory?.containers?.[containerId];
+    if (!container) return;
+
+    // 1. Swap the item's width and height
+    const rotatedItem = { ...item, w: item.h, h: item.w };
+
+    // 2. Create a list of all *other* items in the grid for collision checking
+    const otherItems = container.gridItems.filter(i => i.id !== item.id);
+
+    // 3. Check if the rotated item can stay in its current top-left corner
+    const canStayInPlace = !outOfBounds(rotatedItem.x, rotatedItem.y, rotatedItem, container.gridWidth, container.gridHeight) &&
+                           !otherItems.some(other => onOtherItem(rotatedItem.x, rotatedItem.y, rotatedItem, other));
+
+    let finalGridItems;
+    let finalTrayItems = [...(inventory.trayItems || [])];
+
+    if (canStayInPlace) {
+      // If it fits, simply update the item in the grid
+      finalGridItems = container.gridItems.map(i => i.id === item.id ? rotatedItem : i);
+      toast.success(`Rotated ${item.name}.`);
+    } else {
+      // 4. If it can't stay, find the next available slot for the new dimensions
+      const availableSlot = findFirstAvailableSlot(otherItems, rotatedItem, container.gridWidth, container.gridHeight);
+
+      if (availableSlot) {
+        // If a new slot is found, move the rotated item there
+        const movedAndRotatedItem = { ...rotatedItem, ...availableSlot };
+        finalGridItems = [...otherItems, movedAndRotatedItem];
+        toast.success(`Rotated ${item.name} and moved it to a new slot.`);
+      } else {
+        // 5. If no slot is available, move the item to the player's tray
+        const { x, y, ...trayItem } = rotatedItem;
+        finalGridItems = otherItems; // The item is no longer in the grid
+        finalTrayItems.push(trayItem);
+        toast.error(`No space to rotate ${item.name}. Moved it to the tray.`);
+      }
+    }
+
+    // 6. Save the changes to Firestore
+    const containerDocRef = doc(db, 'campaigns', campaignId, 'inventories', playerId, 'containers', containerId);
+    const playerDocRef = doc(db, 'campaigns', campaignId, 'inventories', playerId);
+    
+    const batch = writeBatch(db);
+    batch.update(containerDocRef, { gridItems: finalGridItems });
+    // Also update the tray in case the item was moved there
+    batch.update(playerDocRef, { trayItems: finalTrayItems });
+    await batch.commit();
   };
 
   const sensors = useSensors(
