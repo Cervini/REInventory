@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { db } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -16,7 +16,7 @@ function SortablePlayer({ id, name, isVisible, onVisibilityChange }) {
     return (
         <li ref={setNodeRef} style={style} {...attributes} className="p-3 bg-background rounded-md flex items-center justify-between shadow-sm">
             <div className="flex items-center space-x-3">
-                <button {...listeners} className="cursor-grab text-text-muted hover:text-text-base">
+                <button {...listeners} className="cursor-grab text-text-muted hover:text-text-base touch-none">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                     </svg>
@@ -38,6 +38,18 @@ export default function CampaignLayout({ campaign, inventories, playerProfiles, 
     const [playerOrder, setPlayerOrder] = useState(initialOrder);
     const [visiblePlayers, setVisiblePlayers] = useState(campaign.layout?.visible || {});
     const [loading, setLoading] = useState(false);
+
+    // THIS IS THE FIX (Part 2): Configure both Pointer and Touch sensors.
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(TouchSensor, {
+            // Require a 250ms delay before a drag starts on touch devices
+            activationConstraint: {
+                delay: 250,
+                tolerance: 5,
+            },
+        })
+    );
 
     const handleDragEnd = (event) => {
         const { active, over } = event;
@@ -79,7 +91,8 @@ export default function CampaignLayout({ campaign, inventories, playerProfiles, 
             <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-6 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
                 <h3 className="text-2xl font-bold mb-4 font-fantasy text-accent">Manage Layout</h3>
                 <p className="text-text-muted mb-6 text-sm">Drag players to reorder them and use the checkbox to toggle their visibility.</p>
-                <DndContext sensors={useSensors(useSensor(PointerSensor))} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                {/* THIS IS THE FIX (Part 3): Pass the new sensors to the DndContext */}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={playerOrder} strategy={verticalListSortingStrategy}>
                         <ul className="space-y-2">
                             {playerOrder.map(playerId => (
