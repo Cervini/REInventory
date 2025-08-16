@@ -37,7 +37,7 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
       return;
     }
     
-    // Create the data object with all the new fields
+    // Create the data object with all the fields
     const itemData = {
         name,
         w: parseInt(w, 10),

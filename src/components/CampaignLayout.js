@@ -16,7 +16,7 @@ function SortablePlayer({ id, name, isVisible, onVisibilityChange, onRemovePlaye
     return (
         <li ref={setNodeRef} style={style} {...attributes} className="p-3 bg-background rounded-md flex items-center justify-between shadow-sm">
             
-            {/* This div now correctly groups the drag handle and the name */}
+            {/* Group the drag handle and the name */}
             <div className="flex items-center space-x-3">
                 <button {...listeners} className="cursor-grab text-text-muted hover:text-text-base touch-none">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -26,7 +26,7 @@ function SortablePlayer({ id, name, isVisible, onVisibilityChange, onRemovePlaye
                 <span>{name || 'Unknown Player'}</span>
             </div>
             
-            {/* This div now correctly groups the right-side controls */}
+            {/* Group the right-side controls */}
             <div className="flex items-center space-x-4">
                 <input 
                     type="checkbox"
@@ -143,7 +143,6 @@ export default function CampaignLayout({ campaign, inventories, playerProfiles, 
             <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-6 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
                 <h3 className="text-2xl font-bold mb-4 font-fantasy text-accent">Manage Layout</h3>
                 <p className="text-text-muted mb-6 text-sm">Drag players to reorder them and use the checkbox to toggle their visibility.</p>
-                {/* THIS IS THE FIX (Part 3): Pass the new sensors to the DndContext */}
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={playerOrder} strategy={verticalListSortingStrategy}>
                         <ul className="space-y-2">

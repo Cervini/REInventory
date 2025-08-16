@@ -28,7 +28,6 @@ export default function AddFromCompendiumModal({ onClose, onAddItem, players, dm
             id: crypto.randomUUID(),
             quantity: parseInt(quantity, 10),
         };
-        // The existing handleAddItem function can be reused
         onAddItem(newItem, targetPlayerId);
         onClose();
     };
@@ -37,7 +36,7 @@ export default function AddFromCompendiumModal({ onClose, onAddItem, players, dm
         item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // This is the second step of the modal: the confirmation screen
+    // Confirmation screen
     if (selectedItem) {
         return (
             <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-40 backdrop-blur-sm" onClick={onClose}>
@@ -64,7 +63,7 @@ export default function AddFromCompendiumModal({ onClose, onAddItem, players, dm
         )
     }
 
-    // This is the first step of the modal: the item browser
+    // Item browser
     return (
         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-40 backdrop-blur-sm" onClick={onClose}>
             <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-6 rounded-lg shadow-xl w-full max-w-2xl h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>

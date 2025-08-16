@@ -1,21 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
-export default function CookieBanner({ onShowPolicy }) {
-  const [showBanner, setShowBanner] = useState(false);
-
-  useEffect(() => {
-    const consent = localStorage.getItem('cookieConsent');
-    if (!consent) {
-      setShowBanner(true);
-    }
-  }, []);
-
-  const handleAccept = () => {
-    localStorage.setItem('cookieConsent', 'true');
-    setShowBanner(false);
-  };
-
-  if (!showBanner) {
+export default function CookieBanner({ isVisible, onAccept, onShowPolicy }) {
+  if (!isVisible) {
     return null;
   }
 
@@ -28,7 +14,7 @@ export default function CookieBanner({ onShowPolicy }) {
         </button>.
       </p>
       <button 
-        onClick={handleAccept}
+        onClick={onAccept}
         className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded transition-colors duration-200 flex-shrink-0"
       >
         Okay, I understand

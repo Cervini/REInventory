@@ -4,7 +4,7 @@ import { collection, addDoc, doc, setDoc, getDoc, query, where, getDocs, deleteD
 import { db, auth } from '../firebase';
 import JoinCampaign from './JoinCampaign';
 
-// This component receives a function from App.js to set the active campaign
+// Recieve a function from App.js to set the active campaign
 export default function CampaignSelector({ onCampaignSelected }) {
   const [loading, setLoading] = useState(false);
   const [campaignName, setCampaignName] = useState('');
@@ -60,19 +60,18 @@ export default function CampaignSelector({ onCampaignSelected }) {
       });
 
       const inventoryDocRef = doc(db, "campaigns", campaignDocRef.id, "inventories", currentUser.uid);
-      // THIS IS THE FIX: Add the trayItems array here for the DM
       await setDoc(inventoryDocRef, {
         characterName: "DM",
         ownerId: currentUser.uid,
-        trayItems: [], // The shared tray for the DM
+        trayItems: [],
       });
 
       const backpackRef = doc(inventoryDocRef, "containers", "backpack");
       await setDoc(backpackRef, {
         name: "Backpack",
         gridItems: [],
-        gridWidth: 30,
-        gridHeight: 10,
+        gridWidth: 10,
+        gridHeight: 5,
       });
 
       onCampaignSelected(campaignDocRef.id);

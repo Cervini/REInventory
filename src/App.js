@@ -26,11 +26,11 @@ export default function App() {
   const [isCodeVisible, setIsCodeVisible] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isTrading, setIsTrading] = useState(false);
-  
-  // State to manage which "page" is visible
   const [currentPage, setCurrentPage] = useState('main'); // 'main', 'privacy', 'cookies', 'compendium'
+  const [hasCookieConsent, setHasCookieConsent] = useState(() => !!localStorage.getItem('cookieConsent'));
+  
   const codeCloseTimer = useRef(null);
-
+  
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -68,35 +68,57 @@ export default function App() {
   };
 
   const handleCodeMouseLeave = () => {
-    // Timer to close the popover after a short delay
     codeCloseTimer.current = setTimeout(() => {
         setIsCodeVisible(false);
     }, 1000);
   };
 
+  const handleCookieConsent = () => {
+    localStorage.setItem('cookieConsent', 'true');
+    setHasCookieConsent(true);
+  };
+
   // This function now acts as our simple "router"
   const renderContent = () => {
+    // These pages are always accessible, as they are for informational purposes.
     if (currentPage === 'privacy') {
       return <PrivacyPolicy onClose={() => setCurrentPage('main')} />;
     }
     if (currentPage === 'cookies') {
       return <CookiePolicy onClose={() => setCurrentPage('main')} />;
     }
-    if (currentPage === 'compendium') {
-      return <Compendium onClose={() => setCurrentPage('main')} />;
-    }
 
-    // Standard application flow
-    if (loading && !user) {
+    // Handle the initial loading state.
+    if (loading) {
       return <div>Loading...</div>;
     }
+
+    // If there is no user, show the login/signup form.
     if (!user) {
       return <Auth onShowPolicy={() => setCurrentPage('privacy')} />;
     }
-    if (user && !campaignId) {
-      return <CampaignSelector onCampaignSelected={setCampaignId} />;
+
+    // --- Consent Check ---
+    // If we have a user, but they haven't consented, show the consent message.
+    if (!hasCookieConsent) {
+      return (
+        <div className="text-center text-text-muted mt-16 p-4">
+          <h2 className="text-2xl font-bold text-text-base">
+            Almost there!
+          </h2>
+          <p className="mt-2">
+            To access your campaigns and inventories, please accept our cookie policy by clicking the "Okay, I understand" button in the banner at the bottom of the screen.
+          </p>
+        </div>
+      );
     }
-    if (user && campaignId) {
+
+    // --- Core App Logic (Requires User AND Consent) ---
+    if (currentPage === 'compendium') {
+        return <Compendium onClose={() => setCurrentPage('main')} />;
+    }
+    
+    if (campaignId) {
       return <InventoryGrid 
         campaignId={campaignId} 
         user={user} 
@@ -104,6 +126,8 @@ export default function App() {
         isTrading={isTrading}
         setIsTrading={setIsTrading}
       />;
+    } else {
+      return <CampaignSelector onCampaignSelected={setCampaignId} />;
     }
   };
 
@@ -127,10 +151,12 @@ export default function App() {
           onClose={() => setShowSettings(false)}
         />
       )}
-      <div className="w-full max-w-4xl flex flex-col flex-grow">
-        {/* The header is only visible on the main page */}
+      <div className="w-full max-w-4xl flex flex-col flex-grow relative overflow-hidden">
+        
+        {/* The header is now only visible on the main page */}
         {currentPage === 'main' && (
            <div className="flex justify-between items-center w-full mb-4">
+              
               {/* Left Slot */}
               <div className="flex-1 flex justify-start items-center space-x-2">
                 {campaignId && (
@@ -148,15 +174,16 @@ export default function App() {
                   </button>
                 )}
                 {campaignId && (
-                  <div className="relative">
+                  <div className="relative" onMouseLeave={handleCodeMouseLeave}>
                     <button
-                      onClick={() => setIsCodeVisible(prev => !prev)}
-                      className="p-2 rounded-full hover:bg-surface transition-colors duration-200">
+                      className="p-2 rounded-full hover:bg-surface transition-colors duration-200"
+                    >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.368a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" /></svg>
                     </button>
                     {isCodeVisible && (
-                      <div className="absolute left-0 mt-2 w-auto bg-gradient-to-b from-surface to-background rounded-md shadow-lg p-2 z-50 border border-accent/20"
-                        onMouseLeave={handleCodeMouseLeave}>
+                      <div
+                        className="absolute left-0 mt-2 w-auto bg-gradient-to-b from-surface to-background rounded-md shadow-lg p-2 z-50 border border-accent/20"
+                      >
                         <div className="flex items-center space-x-4">
                           <span className="text-text-muted font-mono text-sm whitespace-nowrap">Code: <span className="font-bold text-text-base">{campaignId}</span></span>
                           <button onClick={handleCopy} className="bg-primary hover:bg-accent hover:text-background text-text-base text-xs font-bold py-1 px-3 rounded transition-colors duration-200">{isCopied ? 'Copied!' : 'Copy'}</button>
@@ -190,6 +217,13 @@ export default function App() {
                         >
                           Item Compendium
                         </button>
+                        <div className="border-t border-surface/50 my-1" />
+                        <button 
+                          onClick={() => { setCurrentPage('cookies'); setIsUserMenuOpen(false); }} 
+                          className="block w-full text-left px-4 py-2 text-sm text-text-base hover:bg-accent hover:text-background transition-colors duration-200"
+                        >
+                          Cookie Policy
+                        </button>
                       </div>
                     )}
                   </div>
@@ -198,10 +232,17 @@ export default function App() {
             </div>
         )}
         
-        {renderContent()}
+        <div className="flex-grow overflow-y-auto">
+            {renderContent()}
+            {!hasCookieConsent && <div className="h-24 flex-shrink-0" />}
+        </div>
       </div>
 
-      <CookieBanner onShowPolicy={() => setCurrentPage('cookies')} />
+      <CookieBanner 
+        isVisible={!hasCookieConsent} 
+        onAccept={handleCookieConsent}
+        onShowPolicy={() => setCurrentPage('cookies')} 
+      />
     </main>
   );
 }

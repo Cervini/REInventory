@@ -6,8 +6,7 @@ import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import Login from './Login';
 import SignUp from './SignUp';
 
-// This helper function checks if a user profile exists and creates one if not.
-// This is crucial for social logins where the user doesn't go through your manual sign-up form.
+// Check if a user profile exists and create one if not
 const checkAndCreateUserProfile = async (user) => {
   const userDocRef = doc(db, "users", user.uid);
   const docSnap = await getDoc(userDocRef);
@@ -27,12 +26,10 @@ const checkAndCreateUserProfile = async (user) => {
 export default function Auth({ onShowPolicy }) {
   const [showLogin, setShowLogin] = useState(true);
 
-  // The logic for handling the Google Sign-In popup
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
-      // After a successful login, check if we need to create a profile.
       await checkAndCreateUserProfile(result.user);
     } catch (error) {
       toast.error(error.message);
