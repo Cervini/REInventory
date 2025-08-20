@@ -25,7 +25,6 @@ const PlayerInventory = ({
   playerId, inventoryData, campaign, playerProfiles, user,
   setEditingSettings, cellSizes, gridRefs, onContextMenu
 }) => {
-  // THIS IS THE FIX: All hooks are now at the top of the component, before any returns.
   // We use optional chaining (?.) to prevent errors if inventoryData is not ready.
   const containers = useMemo(() => Object.values(inventoryData?.containers || {}), [inventoryData]);
 
@@ -301,7 +300,10 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         label: 'Edit Item', 
         onClick: () => handleStartEdit(item, playerId, containerId),
       });
-      availableActions.push({ label: 'Duplicate Item', onClick: () => handleDuplicateItem(item, playerId, containerId) });
+      availableActions.push({ 
+        label: 'Duplicate Item', 
+        onClick: () => handleDuplicateItem(item, playerId, containerId, source),
+      });
       availableActions.push({
         label: 'Delete Item',
         onClick: () => handleDeleteItem(item, playerId, source, containerId),
@@ -527,9 +529,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     setActiveItem(null);
     const { active, over } = event;
 
-    if (!over) {
-      return;
-    }
+    if (!over) return;
 
     // --- 1. Get Data ---
     const item = active.data.current?.item;
@@ -548,26 +548,89 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         endContainerId = endIdParts[1];
         endDestination = endIdParts[2];
     }
+    if (!item || !startPlayerId || !endPlayerId) return;
 
-    if (!item || !startPlayerId || !endPlayerId) {
-        return;
+    const newInventories = JSON.parse(JSON.stringify(inventories));
+    
+    // --- 2. Stacking Logic ---
+    const passiveItem = over.data.current?.item;
+    if (item && passiveItem && item.id !== passiveItem.id && passiveItem.stackable && item.name === passiveItem.name && item.type === passiveItem.type) {
+        
+        const maxStack = passiveItem.maxStack || 20;
+        const roomInStack = maxStack - passiveItem.quantity;
+        const amountToTransfer = Math.min(item.quantity, roomInStack);
+
+        if (amountToTransfer <= 0) {
+            toast.error("Stack is already full.");
+            return;
+        }
+
+        const remainingQuantity = item.quantity - amountToTransfer;
+
+        // Update target item's quantity
+        const endPlayerInv = newInventories[endPlayerId];
+        const isEndDM = endPlayerInv.characterName === "DM";
+        if (endDestination === 'grid') {
+            endPlayerInv.containers[endContainerId].gridItems.find(i => i.id === passiveItem.id).quantity += amountToTransfer;
+        } else {
+            const targetTray = isEndDM ? endPlayerInv.containers[endContainerId].trayItems : endPlayerInv.trayItems;
+            targetTray.find(i => i.id === passiveItem.id).quantity += amountToTransfer;
+        }
+
+        // Update source item (remove or decrease quantity)
+        const startPlayerInv = newInventories[startPlayerId];
+        const isStartDM = startPlayerInv.characterName === "DM";
+        if (remainingQuantity <= 0) {
+            if (startSource === 'grid') {
+                startPlayerInv.containers[startContainerId].gridItems = startPlayerInv.containers[startContainerId].gridItems.filter(i => i.id !== item.id);
+            } else {
+                if (isStartDM) {
+                    startPlayerInv.containers[startContainerId].trayItems = startPlayerInv.containers[startContainerId].trayItems.filter(i => i.id !== item.id);
+                } else {
+                    startPlayerInv.trayItems = startPlayerInv.trayItems.filter(i => i.id !== item.id);
+                }
+            }
+        } else {
+            if (startSource === 'grid') {
+                startPlayerInv.containers[startContainerId].gridItems.find(i => i.id === item.id).quantity = remainingQuantity;
+            } else {
+                const sourceTray = isStartDM ? startPlayerInv.containers[startContainerId].trayItems : startPlayerInv.trayItems;
+                sourceTray.find(i => i.id === item.id).quantity = remainingQuantity;
+            }
+        }
+        
+        setInventories(newInventories);
+        
+        // Save to Firestore
+        const batch = writeBatch(db);
+        const sourceInvRef = doc(db, 'campaigns', campaignId, 'inventories', startPlayerId);
+        const targetInvRef = doc(db, 'campaigns', campaignId, 'inventories', endPlayerId);
+
+        batch.update(sourceInvRef, { trayItems: newInventories[startPlayerId].trayItems });
+        Object.values(newInventories[startPlayerId].containers).forEach(c => batch.update(doc(sourceInvRef, 'containers', c.id), { gridItems: c.gridItems, trayItems: c.trayItems }));
+        
+        if (startPlayerId !== endPlayerId) {
+            batch.update(targetInvRef, { trayItems: newInventories[endPlayerId].trayItems });
+            Object.values(newInventories[endPlayerId].containers).forEach(c => batch.update(doc(targetInvRef, 'containers', c.id), { gridItems: c.gridItems, trayItems: c.trayItems }));
+        }
+
+        await batch.commit();
+        toast.success(`Stacked ${amountToTransfer} ${item.name}.`);
+        return; // End the function here
     }
 
-    // --- 2. Optimistic Update ---
-    const newInventories = JSON.parse(JSON.stringify(inventories));
-    let movedItem = null;
 
+    // --- 3. Movement Logic ---
+    let movedItem = null;
     const startPlayerInv = newInventories[startPlayerId];
     const endPlayerInv = newInventories[endPlayerId];
 
-    if (!startPlayerInv || !endPlayerInv) {
-        return;
-    }
+    if (!startPlayerInv || !endPlayerInv) { return; }
 
     const isStartDM = startPlayerInv.characterName === 'DM';
     const isEndDM = endPlayerInv.characterName === 'DM';
 
-    // --- Remove from source ---
+    // Remove from source
     if (startSource === 'grid') {
         const sourceContainer = startPlayerInv.containers?.[startContainerId];
         if (!sourceContainer?.gridItems) return;
@@ -581,12 +644,9 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         const itemIndex = sourceTray.findIndex(i => i.id === item.id);
         if (itemIndex > -1) [movedItem] = sourceTray.splice(itemIndex, 1);
     }
+    if (!movedItem) return;
 
-    if (!movedItem) {
-        return;
-    }
-
-    // --- Add to destination ---
+    // Add to destination
     if (endDestination === 'grid') {
         const endContainer = endPlayerInv.containers?.[endContainerId];
         if (!endContainer) return;
@@ -614,9 +674,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         const { x, y, ...trayItem } = movedItem;
         if (isEndDM) {
             const destContainer = endPlayerInv.containers?.[endContainerId];
-            if (!destContainer) {
-                return;
-            }
+            if (!destContainer) return;
             if (!destContainer.trayItems) destContainer.trayItems = [];
             destContainer.trayItems.push(trayItem);
         } else {
@@ -626,35 +684,41 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     }
     setInventories(newInventories);
 
-    // --- 3. Firestore Update ---
+    // Save to Firestore
     const batch = writeBatch(db);
-    let sourceRef, destRef, sourcePayload, destPayload;
+    const finalSourceInventory = newInventories[startPlayerId];
+    const finalEndInventory = newInventories[endPlayerId];
 
-    if (startSource === 'grid') {
-        sourceRef = doc(db, "campaigns", campaignId, "inventories", startPlayerId, "containers", startContainerId);
-        sourcePayload = { gridItems: newInventories[startPlayerId].containers[startContainerId].gridItems };
+    if (startPlayerId === endPlayerId) {
+        const playerInvRef = doc(db, "campaigns", campaignId, "inventories", startPlayerId);
+        batch.update(playerInvRef, { trayItems: finalSourceInventory.trayItems });
+        Object.values(finalSourceInventory.containers).forEach(container => {
+            const containerRef = doc(playerInvRef, 'containers', container.id);
+            batch.update(containerRef, { 
+                gridItems: container.gridItems,
+                trayItems: container.trayItems 
+            });
+        });
     } else {
-        sourceRef = isStartDM
-            ? doc(db, "campaigns", campaignId, "inventories", startPlayerId, "containers", startContainerId)
-            : doc(db, "campaigns", campaignId, "inventories", startPlayerId);
-        sourcePayload = { trayItems: isStartDM ? newInventories[startPlayerId].containers[startContainerId].trayItems : newInventories[startPlayerId].trayItems };
-    }
-
-    if (endDestination === 'grid') {
-        destRef = doc(db, "campaigns", campaignId, "inventories", endPlayerId, "containers", endContainerId);
-        destPayload = { gridItems: newInventories[endPlayerId].containers[endContainerId].gridItems };
-    } else {
-        destRef = isEndDM
-            ? doc(db, "campaigns", campaignId, "inventories", endPlayerId, "containers", endContainerId)
-            : doc(db, "campaigns", campaignId, "inventories", endPlayerId);
-        destPayload = { trayItems: isEndDM ? newInventories[endPlayerId].containers[endContainerId].trayItems : newInventories[endPlayerId].trayItems };
-    }
-
-    if (sourceRef.path === destRef.path) {
-        batch.update(sourceRef, { ...sourcePayload, ...destPayload });
-    } else {
-        batch.update(sourceRef, sourcePayload);
-        batch.update(destRef, destPayload);
+        const sourcePlayerInvRef = doc(db, "campaigns", campaignId, "inventories", startPlayerId);
+        batch.update(sourcePlayerInvRef, { trayItems: finalSourceInventory.trayItems });
+        Object.values(finalSourceInventory.containers).forEach(container => {
+            const containerRef = doc(sourcePlayerInvRef, 'containers', container.id);
+            batch.update(containerRef, {
+                 gridItems: container.gridItems,
+                 trayItems: container.trayItems 
+            });
+        });
+        
+        const endPlayerInvRef = doc(db, "campaigns", campaignId, "inventories", endPlayerId);
+        batch.update(endPlayerInvRef, { trayItems: finalEndInventory.trayItems });
+        Object.values(finalEndInventory.containers).forEach(container => {
+            const containerRef = doc(endPlayerInvRef, 'containers', container.id);
+            batch.update(containerRef, { 
+                gridItems: container.gridItems,
+                trayItems: container.trayItems
+            });
+        });
     }
     
     try {
@@ -662,6 +726,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     } catch (error) {
         toast.error("Failed to move item. Reverting changes.");
         setInventories(inventories);
+        console.error("Firestore batch write failed:", error);
     }
   };
 
@@ -694,24 +759,20 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     toast.success(`Sent ${item.name} to ${targetName}.`);
   };
 
-  const handleDuplicateItem = async (item, playerId, containerId) => {
-    if (!item || !playerId || !containerId) return;
+  const handleDuplicateItem = async (item, playerId) => {
+    if (!item || !playerId) return;
 
     const newItem = {
       ...item,
       id: crypto.randomUUID(),
     };
 
-    const container = inventories[playerId]?.containers[containerId];
-    if (!container) {
-        toast.error("Could not find the container to add the item to.");
-        return;
-    }
-
-    const newTrayItems = [...(container.trayItems || []), newItem];
-
-    const containerDocRef = doc(db, 'campaigns', campaignId, 'inventories', playerId, 'containers', containerId);
-    await updateDoc(containerDocRef, { trayItems: newTrayItems });
+    // Duplicated items are always placed in the main player tray for simplicity.
+    const playerInv = inventories[playerId];
+    const newTrayItems = [...(playerInv.trayItems || []), newItem];
+    const playerInvRef = doc(db, 'campaigns', campaignId, 'inventories', playerId);
+    
+    await updateDoc(playerInvRef, { trayItems: newTrayItems });
     toast.success(`Duplicated ${item.name}.`);
   };
 

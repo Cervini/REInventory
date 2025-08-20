@@ -8,7 +8,6 @@ export function useCampaignData(campaignId, user) {
     const [isLoading, setIsLoading] = useState(true);
     
     // Use a ref to hold the listener unsubscribe functions.
-    // This solves potential infinite loops and makes management easier.
     const containerListenersRef = useRef({});
 
     useEffect(() => {
@@ -20,13 +19,11 @@ export function useCampaignData(campaignId, user) {
 
         setIsLoading(true);
 
-        // 1. Listen to the main campaign document
         const campaignDocRef = doc(db, 'campaigns', campaignId);
         const unsubscribeCampaign = onSnapshot(campaignDocRef, (campaignDocSnap) => {
             setCampaign(campaignDocSnap.exists() ? campaignDocSnap.data() : null);
         });
 
-        // 2. Listen to the top-level inventories collection
         const inventoriesColRef = collection(db, 'campaigns', campaignId, 'inventories');
         const unsubscribeInventories = onSnapshot(inventoriesColRef, (inventoriesSnapshot) => {
             
@@ -45,7 +42,7 @@ export function useCampaignData(campaignId, user) {
                 return newInventories;
             });
 
-            // 3. Manage container listeners based on the current inventories
+            // Manage container listeners based on the current inventories
             const currentInventoryIds = inventoriesSnapshot.docs.map(doc => doc.id);
             const currentListeners = containerListenersRef.current;
 

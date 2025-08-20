@@ -80,7 +80,7 @@ export default function InventoryItem({ item, onContextMenu, playerId, source, c
       <div
         {...listeners}
         {...attributes}
-        className={`${getColorForItemType(item.type)} w-full h-full rounded-lg cursor-grab active:cursor-grabbing select-none border border-surface/50`}
+        className={`${getColorForItemType(item.type)} w-full h-full rounded-lg cursor-grab active:cursor-grabbing select-none border border-surface/50 touch-none`}
       >
         <div className="absolute inset-0 p-1 flex items-center justify-center pointer-events-none">
           {isTextVisible && (

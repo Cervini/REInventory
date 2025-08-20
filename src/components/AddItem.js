@@ -62,7 +62,7 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
         armorClass, 
         armorType, 
         stealthDisadvantage, 
-        strengthRequirement: Number(strengthRequirement) 
+        strengthRequirement: Number(strengthRequirement) || 0 
       };
     }
 
@@ -211,6 +211,7 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
                   <option value="Light">Light</option>
                   <option value="Medium">Medium</option>
                   <option value="Heavy">Heavy</option>
+                  <option value="Shield">Shield</option>
                 </select>
               </div>
             </div>
