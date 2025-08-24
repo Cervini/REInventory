@@ -6,7 +6,7 @@ import { Toaster } from 'react-hot-toast';
 import { auth, db } from './firebase';
 import './App.css';
 
-// Import all components
+// Component imports
 import InventoryGrid from './components/InventoryGrid';
 import Auth from './components/Auth';
 import CampaignSelector from './components/CampaignSelector';
@@ -31,6 +31,9 @@ export default function App() {
   
   const codeCloseTimer = useRef(null);
   
+  /**
+   * Monitor when the user logs in or logs out and set the related states accordingly
+   */
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -40,9 +43,14 @@ export default function App() {
         setLoading(false);
       }
     });
-    return () => unsubscribeAuth();
+
+    return () => unsubscribeAuth(); // cleanup function
   }, []);
 
+  /**
+   * Listens for real-time updates to the user's profile document in Firestore
+   * and updates the userProfile state accordingly.
+   */
   useEffect(() => {
     if (user) {
       const userDocRef = doc(db, 'users', user.uid);
@@ -52,33 +60,51 @@ export default function App() {
         }
         setLoading(false);
       });
+      // Clean up the Firestore listener when the component unmounts or the user changes.
       return () => unsubscribeProfile();
     }
   }, [user]);
 
+  /**
+   * Copies the current campaign ID to the clipboard and displays a confirmation state for 2 seconds.
+   */
   const handleCopy = () => {
     navigator.clipboard.writeText(campaignId).then(() => {
       setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000); 
+      setTimeout(() => setIsCopied(false), 2000); // 2000 ms
     });
   };
 
+  /**
+   * Sets current campaing to null moving the user back to the campaign selection page.
+   */
   const handleBackToCampaigns = () => {
     setCampaignId(null);
   };
 
+  /**
+   * Delays hiding the code for 1s on mouse leave to improve UX by giving the user a grace period.
+   */
   const handleCodeMouseLeave = () => {
     codeCloseTimer.current = setTimeout(() => {
         setIsCodeVisible(false);
-    }, 1000);
+    }, 1000); // 1000 ms
   };
 
+  /**
+   * Saves the user consent of the cookie policy in local storage to show
+   * the cookie banner only if the user hasn't consented
+   */
   const handleCookieConsent = () => {
     localStorage.setItem('cookieConsent', 'true');
     setHasCookieConsent(true);
   };
 
-  // This function now acts as our simple "router"
+  /**
+   * Determines which main component to render based on the application's
+   * current state (loading, auth, consent, and selected campaign).
+   * @returns {JSX.Element} The React component to be displayed.
+   */
   const renderContent = () => {
     // These pages are always accessible, as they are for informational purposes.
     if (currentPage === 'privacy') {
@@ -88,7 +114,7 @@ export default function App() {
       return <CookiePolicy onClose={() => setCurrentPage('main')} />;
     }
 
-    // Handle the initial loading state.
+    // Handle the initial loading state.S
     if (loading) {
       return <div>Loading...</div>;
     }
@@ -127,12 +153,16 @@ export default function App() {
         setIsTrading={setIsTrading}
       />;
     } else {
+      // having no current campaingId shows the CamapaignSelector component
+      // therefore setting campaignId as null load the component
       return <CampaignSelector onCampaignSelected={setCampaignId} />;
     }
   };
 
   return (
     <main className="text-text-base h-screen flex flex-col items-center p-4 font-sans">
+      
+      {/* Global components (toasts, tooltips) */}
       <Toaster 
         position="bottom-center"
         toastOptions={{
@@ -143,7 +173,15 @@ export default function App() {
           },
         }}
       />
-      <Tooltip id="item-tooltip" style={{ zIndex: 99, maxWidth: '300px' }} openOnClick={true} delayShow={200} clickable={true} />
+      <Tooltip
+        id="item-tooltip"
+        style={{ zIndex: 99, maxWidth: '300px' }}
+        openOnClick={true}
+        delayShow={200}
+        clickable={true}
+      />
+      
+      {/* Modals */}
       {showSettings && (
         <ProfileSettings 
           user={user}
@@ -151,8 +189,8 @@ export default function App() {
           onClose={() => setShowSettings(false)}
         />
       )}
+
       <div className="w-full max-w-4xl flex flex-col flex-grow relative overflow-hidden">
-        
         {/* The header is now only visible on the main page */}
         {currentPage === 'main' && (
            <div className="flex justify-between items-center w-full mb-4">
@@ -232,13 +270,15 @@ export default function App() {
               </div>
             </div>
         )}
-        
+
+        {/* Dinamically rendered page content */}
         <div className="flex-grow overflow-y-auto">
             {renderContent()}
             {!hasCookieConsent && <div className="h-24 flex-shrink-0" />}
         </div>
       </div>
-
+      
+      {/* Persistent banner */}
       <CookieBanner 
         isVisible={!hasCookieConsent} 
         onAccept={handleCookieConsent}

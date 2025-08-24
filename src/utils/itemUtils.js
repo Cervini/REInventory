@@ -10,8 +10,12 @@ export const itemTypeOptions = [
   { type: 'Other', color: 'bg-stone-700' },
 ];
 
-// This helper function remains the same, but it's more powerful now.
+/**
+ * Gives the tailwind code associated with the item type
+ * @param {string} type The type of the item
+ * @returns {string} The tailwind code for the color associated with the type of the item or `bg-stone-700` if there is no correspondence
+ */
 export function getColorForItemType(type) {
   const option = itemTypeOptions.find(opt => opt.type === type);
-  return option ? option.color : 'bg-stone-700'; // Default to a neutral color
+  return option ? option.color : 'bg-stone-700';
 }
