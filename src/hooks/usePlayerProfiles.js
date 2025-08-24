@@ -2,6 +2,17 @@ import { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, where, documentId, getDocs, doc, onSnapshot, getDoc } from 'firebase/firestore';
 
+/**
+ * Custom hook that listens for real-time changes to a campaign's player list.
+ * When the list changes, it fetches the user profile for each player from the
+ * 'users' collection and merges it with their corresponding character name from
+ * the campaign's 'inventories' sub-collection.
+ *
+ * @param {string | null} campaignId The ID of the campaign to monitor.
+ * @returns {{playerProfiles: object, isLoading: boolean}} An object containing the player profiles and the loading state.
+ * @property {object} playerProfiles - An object where keys are player UIDs and values are their merged profile data (user data + characterName).
+ * @property {boolean} isLoading - True while the campaign data and player profiles are being fetched.
+ */
 export function usePlayerProfiles(campaignId) {
     const [playerProfiles, setPlayerProfiles] = useState({});
     const [isLoading, setIsLoading] = useState(true);
@@ -14,8 +25,7 @@ export function usePlayerProfiles(campaignId) {
 
         setIsLoading(true);
 
-        // THIS IS THE FIX: We now use onSnapshot to listen for real-time changes
-        // to the campaign document, such as players joining or leaving.
+        // Listen for real-time changes to the campaign document, such as players joining or leaving.
         const campaignDocRef = doc(db, 'campaigns', campaignId);
         const unsubscribe = onSnapshot(campaignDocRef, async (campaignSnap) => {
             if (campaignSnap.exists()) {

@@ -1,7 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
 import { doc, onSnapshot, collection } from "firebase/firestore";
 import { db } from '../firebase';
-
+/**
+ * Custom hook to manage all real-time data for a specific campaign.
+ * It fetches the main campaign document, the top-level data for all player inventories,
+ * and the nested container data within each inventory.
+ *
+ * Crucially, it dynamically manages listeners for each player's containers,
+ * subscribing and unsubscribing as players join or leave the campaign.
+ *
+ * @param {string | null} campaignId The ID of the campaign to fetch data for.
+ * @param {object | null} user The currently authenticated user object.
+ * @returns {{inventories: object, setInventories: Function, campaign: object | null, isLoading: boolean}} An object containing all campaign-related data and state.
+ * @property {object} inventories - An object where keys are player UIDs (inventory IDs) and values are their complete inventory data, including nested containers.
+ * @property {Function} setInventories - The setter function for the inventories state, allowing for manual or optimistic updates from components.
+ * @property {object | null} campaign - The data from the main campaign document.
+ * @property {boolean} isLoading - True while the initial data for the campaign and inventories is being fetched.
+ */
 export function useCampaignData(campaignId, user) {
     const [inventories, setInventories] = useState({});
     const [campaign, setCampaign] = useState(null);
@@ -10,6 +25,7 @@ export function useCampaignData(campaignId, user) {
     // Use a ref to hold the listener unsubscribe functions.
     const containerListenersRef = useRef({});
 
+    // Get data about the current campaign from Firestore.
     useEffect(() => {
         if (!campaignId || !user) {
             setIsLoading(true);

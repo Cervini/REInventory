@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, getDocs } from 'firebase/firestore';
 
-// THIS IS THE FIX: A new function to manage the cached Global Compendium
+// Manage the cached Global Compendium
 const getGlobalCompendium = async () => {
     const CACHE_KEY = 'globalCompendiumCache';
     const CACHE_DURATION_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
@@ -41,35 +41,43 @@ const getGlobalCompendium = async () => {
 };
 
 
+/**
+ * Custom hook that fetches both global (cached) and user-specific
+ * custom (real-time) compendium items. It combines these lists and provides a loading state.
+ * @returns {{allItems: object[], isLoading: boolean}} An object containing the combined list and the loading state.
+ * @property {object[]} allItems - A combined array of custom and global items, with custom items appearing first.
+ * @property {boolean} isLoading - True while the initial fetch for items is in progress.
+ */
 export function useCompendium() {
-    const [globalItems, setGlobalItems] = useState([]);
-    const [customItems, setCustomItems] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const currentUser = auth.currentUser;
+  const [globalItems, setGlobalItems] = useState([]);
+  const [customItems, setCustomItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const currentUser = auth.currentUser;
 
-    useEffect(() => {
-        if (!currentUser) {
-            setIsLoading(false);
-            return;
-        };
+  useEffect(() => {
+    if (!currentUser) {
+      setIsLoading(false);
+      return;
+    }
 
-        // Fetch the global items using our new caching logic
-        getGlobalCompendium().then(items => {
-            setGlobalItems(items);
-        });
+    // Fetch the global items using cached logic
+    getGlobalCompendium().then(items => {
+      setGlobalItems(items);
+    });
 
-        // Your custom items will still be fetched in real-time
-        const customUnsubscribe = onSnapshot(collection(db, 'compendiums', currentUser.uid, 'masterItems'), (snapshot) => {
-            const items = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            setCustomItems(items);
-            setIsLoading(false); // Set loading to false after custom items are loaded
-        });
+    // Fetch custom items in real-time
+    const customUnsubscribe = onSnapshot(collection(db, 'compendiums', currentUser.uid, 'masterItems'), (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      setCustomItems(items);
+      setIsLoading(false); // Loading is complete after custom items arrive
+    });
 
-        return () => {
-            customUnsubscribe();
-        };
-    }, [currentUser]);
+    // Clean up the real-time listener on unmount
+    return () => {
+      customUnsubscribe();
+    };
+  }, [currentUser]);
 
-    // Combine both lists, ensuring custom items appear first
-    return { allItems: [...customItems, ...globalItems], isLoading };
+  // Combine both lists, ensuring custom items are prioritized
+  return { allItems: [...customItems, ...globalItems], isLoading };
 }

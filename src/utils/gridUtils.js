@@ -20,7 +20,7 @@ export function outOfBounds(X, Y, item, gridWidth, gridHeight) {
  * @param {number} Y The Y coordinate (considering the top leftest tile) where the item is placed 
  * @param {number} W The width of the item in tiles
  * @param {number} H The height of the item in tiles
- * @returns {string[]} An array containing the coordinate of all the tiles occupied by the item
+ * @returns {Set.string} A set containing the coordinate of all the tiles occupied by the item
  */
 export function occupiedTiles(X, Y, W, H) {
     let set = new Set();
@@ -39,6 +39,7 @@ export function occupiedTiles(X, Y, W, H) {
 export function onOtherItem(X, Y, activeItem, passiveItem) {
     let set1 = occupiedTiles(X, Y, activeItem.w, activeItem.h);
     let set2 = occupiedTiles(passiveItem.x, passiveItem.y, passiveItem.w, passiveItem.h);
+    // If the two sets have at least one tile in common the item are one "on top of" the other
     for (const tile of set1) { if (set2.has(tile)) return true; }
     return false;
 }
@@ -53,15 +54,19 @@ export function onOtherItem(X, Y, activeItem, passiveItem) {
  * @returns {{x: number, y: number} | null} An object with `{x, y}` coordinates for the first available slot, or `null` if no slot is found.
  */
 export function findFirstAvailableSlot(items, newItem, gridWidth, gridHeight) {
+  // Iterate through every possible top-left position for the new item.
   for (let y = 0; y <= gridHeight - newItem.h; y++) {
     for (let x = 0; x <= gridWidth - newItem.w; x++) {
-      const isColliding = items.some(existingItem => 
+      // Check if placing the new item at (x, y) would overlap with any existing item.
+      const isColliding = items.some(existingItem =>
         onOtherItem(x, y, newItem, existingItem)
       );
+      // If there's no collision, we've found our slot.
       if (!isColliding) {
         return { x, y };
       }
     }
   }
+  // If the loops complete without finding a spot, no slot is available.
   return null;
 }
