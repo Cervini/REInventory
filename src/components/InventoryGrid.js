@@ -364,19 +364,34 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
    * @param {string} containerId - The ID of the container holding the item.
    */
   const handleDeleteItem = async (item, playerId, source, containerId) => {
-    if (!item || !playerId || !source || !containerId) return;
+    if (!item || !playerId || !source) return;
 
-    const containerDocRef = doc(db, "campaigns", campaignId, "inventories", playerId, "containers", containerId);
-    const currentContainer = inventories[playerId].containers[containerId];
+    // The logic handles both container items and main tray items.
     
-    let updatePayload = {};
-    if (source === 'grid') {
-      updatePayload.gridItems = currentContainer.gridItems.filter(i => i.id !== item.id);
-    } else {
-      updatePayload.trayItems = currentContainer.trayItems.filter(i => i.id !== item.id);
-    }
+    // Case 1: The item is in a container (either grid or a DM's tray)
+    if (containerId && containerId !== 'tray') {
+        const containerDocRef = doc(db, "campaigns", campaignId, "inventories", playerId, "containers", containerId);
+        const currentContainer = inventories[playerId]?.containers?.[containerId];
+        if (!currentContainer) return;
 
-    await updateDoc(containerDocRef, updatePayload);
+        let updatePayload = {};
+        if (source === 'grid') {
+            updatePayload.gridItems = currentContainer.gridItems.filter(i => i.id !== item.id);
+        } else { // This handles the DM's container tray
+            updatePayload.trayItems = currentContainer.trayItems.filter(i => i.id !== item.id);
+        }
+        await updateDoc(containerDocRef, updatePayload);
+    
+    // Case 2: The item is in the player's main "Floor/Ground" tray
+    } else if (source === 'tray') {
+        const playerInvRef = doc(db, "campaigns", campaignId, "inventories", playerId);
+        const playerInv = inventories[playerId];
+        if (!playerInv?.trayItems) return;
+
+        const updatedTrayItems = playerInv.trayItems.filter(i => i.id !== item.id);
+        await updateDoc(playerInvRef, { trayItems: updatedTrayItems });
+    }
+    toast.success(`Deleted ${item.name}.`);
   };
 
   /**
@@ -973,6 +988,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
           dmId={campaign?.dmId}
           playerProfiles={playerProfiles}
           onAddItem={handleAddItem}
+          user={user}
         />
       )}
 

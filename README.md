@@ -12,6 +12,8 @@ REInventory transforms tedious inventory management into an engaging, visual exp
 
 This tool is perfect for **D&D 5e** and other TTRPG systems, whether you're playing online with platforms like Roll20 and Discord, or using digital tools to enhance in-person sessions.
 
+![Demo](https://github.com/Cervini/REInventory/files/demo)
+
 ## Key Features
 
 - **Visual Grid Inventory:** Organize items on a customizable, Tetris-style grid. The smart placement system automatically finds available slots.
@@ -46,17 +48,9 @@ For a native app-like experience, you can install REInventory on your device's h
 1.  Open the site and tap the **menu (⋮)**.
 2.  Select **"Install app"** or **"Add to Home screen"**.
 
-<!-- 
-    Suggestion: Add a small screenshot or graphic showing the "Install app" button in the Chrome menu on Android.
--->
-
 #### **On iOS (with Safari)**
 1.  Open the site and tap the **Share** icon (a square with an arrow).
 2.  Scroll down and select **"Add to Home Screen"**.
-
-<!-- 
-    Suggestion: Add a small screenshot or graphic showing the "Add to Home Screen" button in the Safari share sheet on iOS.
--->
 
 ## Technical Stack
 
