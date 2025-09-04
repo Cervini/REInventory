@@ -15,6 +15,12 @@ export default function JoinCampaign({ campaignId, onClose, onJoinSuccess }) {
   // Use the new hook to get the packs
   const { packs, isLoading: packsLoading } = useStarterPacks();
 
+  /**
+   * Handles the form submission for joining a campaign.
+   * It creates the player's inventory document, including a default backpack and any
+   * items from a selected starter pack, and adds the player to the campaign's roster.
+   * @param {React.FormEvent} e - The form submission event.
+   */
   const handleJoin = async (e) => {
     e.preventDefault();
     if (!characterName.trim()) {

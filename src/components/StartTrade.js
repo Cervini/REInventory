@@ -6,6 +6,11 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 export default function StartTrade({ onClose, campaign, user, playerProfiles, onTradeStarted }) {
   const otherPlayers = campaign.players.filter(pId => pId !== user.uid);
 
+  /**
+   * Initiates a trade with a target player by creating a new 'pending' trade document in Firestore.
+   * After creation, it immediately opens the trade window for the initiator.
+   * @param {string} targetPlayerId - The UID of the player to send a trade request to.
+   */
   const handleInitiateTrade = async (targetPlayerId) => {
     try {
       // Create the trade document in Firestore

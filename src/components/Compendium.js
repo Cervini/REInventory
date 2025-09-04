@@ -28,6 +28,10 @@ export default function Compendium({ onClose }) {
     if (!currentUser) return;
     setIsLoading(true);
 
+    /**
+     * Subscribes to real-time updates for both the global compendium and the user's
+     * personal custom item collection from Firestore.
+     */
     const globalUnsubscribe = onSnapshot(collection(db, 'globalCompendium'), (snapshot) => {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setGlobalItems(items);
@@ -49,6 +53,10 @@ export default function Compendium({ onClose }) {
     const sourceItems = activeTab === 'custom' ? customItems : globalItems;
     
     // 2. Apply search and filters to the selected list
+    /**
+     * Filters the items from the active tab (Custom or Global) based on the
+     * current search term and selected type/rarity filters.
+     */
     return sourceItems.filter(item => {
       const nameMatch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
       const typeMatch = !activeType || item.type === activeType;
@@ -57,6 +65,12 @@ export default function Compendium({ onClose }) {
     });
   }, [activeTab, customItems, globalItems, searchTerm, activeType, activeRarity]);
   
+  /**
+   * Handles the right-click event on an item in the "Global Compendium" tab.
+   * It displays a context menu with an option to create a customizable version of the selected item.
+   * @param {React.MouseEvent} event - The mouse event.
+   * @param {object} item - The global item that was right-clicked.
+   */
   const handleContextMenu = (event, item) => {
     event.preventDefault();
     // This feature should only work on the "Global Compendium" tab
@@ -78,6 +92,10 @@ export default function Compendium({ onClose }) {
     });
   };
 
+  /**
+   * Adds a new item to the user's personal custom item compendium in Firestore.
+   * @param {object} itemData - The data for the new custom item.
+   */
   const handleAddItem = async (itemData) => {
     const customItemsRef = collection(db, 'compendiums', currentUser.uid, 'masterItems');
     try {
@@ -88,6 +106,10 @@ export default function Compendium({ onClose }) {
     }
   };
 
+  /**
+   * Deletes an item from the user's custom item compendium after a confirmation.
+   * @param {string} itemId - The ID of the custom item to delete.
+   */
   const handleDeleteItem = async (itemId) => {
     if (!window.confirm("Are you sure?")) return;
     try {
@@ -98,6 +120,12 @@ export default function Compendium({ onClose }) {
     }
   };
 
+  /**
+   * Renders the list of items based on the current filters and active tab.
+   * It displays a loading spinner, a "no items" message, or the grid of item cards.
+   * @param {Array<object>} items - The array of items to render.
+   * @returns {JSX.Element}
+   */
   const renderItemList = (items) => {
     if (isLoading) return <Spinner />;
     if (items.length === 0) {

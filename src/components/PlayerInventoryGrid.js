@@ -2,6 +2,20 @@ import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import InventoryItem from './InventoryItem';
 
+/**
+ * Renders the droppable grid area for a single container. It displays the grid background,
+ * an "Empty" message if applicable, and all the `InventoryItem` components within it.
+ * @param {object} props - The component props.
+ * @param {Array<object>} props.items - The array of item objects in the grid.
+ * @param {number} props.gridWidth - The width of the grid in cells.
+ * @param {number} props.gridHeight - The height of the grid in cells.
+ * @param {string} props.containerId - The ID of the container this grid belongs to.
+ * @param {Function} props.onContextMenu - The context menu handler passed down from the parent.
+ * @param {string} props.playerId - The ID of the player who owns this grid.
+ * @param {Function} props.setGridRef - A function to pass the grid's DOM node ref to the parent.
+ * @param {object} props.cellSize - The calculated width and height of a single grid cell.
+ * @returns {JSX.Element}
+ */
 export default function PlayerInventoryGrid({ items, gridWidth, gridHeight, containerId, onContextMenu, playerId, setGridRef, cellSize }) {
   
   const { setNodeRef, isOver } = useDroppable({ id: `${playerId}|${containerId}|grid` });

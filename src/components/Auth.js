@@ -6,7 +6,13 @@ import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import Login from './Login';
 import SignUp from './SignUp';
 
-// Check if a user profile exists and create one if not
+/**
+ * Checks if a user profile document exists in Firestore for a given user.
+ * If the profile does not exist, it creates a new one with default settings
+ * and a default display name.
+ * @param {object} user - The Firebase Authentication user object, obtained after sign-in.
+ * @returns {Promise<void>} A promise that resolves once the check and potential creation are complete.
+ */
 const checkAndCreateUserProfile = async (user) => {
   const userDocRef = doc(db, "users", user.uid);
   const docSnap = await getDoc(userDocRef);
@@ -23,6 +29,14 @@ const checkAndCreateUserProfile = async (user) => {
   }
 };
 
+/**
+ * A component that handles the user authentication flow. It conditionally renders
+ * either a Login or a Sign-Up form and provides the logic for switching between
+ * them and for handling Google sign-in.
+ * @param {object} props - The component props.
+ * @param {Function} props.onShowPolicy - A callback function to show a policy document.
+ * @returns {JSX.Element} The Login or SignUp component, based on the current state.
+ */
 export default function Auth({ onShowPolicy }) {
   const [showLogin, setShowLogin] = useState(true);
 

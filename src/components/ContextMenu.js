@@ -11,6 +11,11 @@ export default function ContextMenu({ menuPosition, actions, onClose }) {
     left: `${menuPosition.x}px`,
   };
 
+  /**
+   * Handles the mouse entering a menu item. If the item has a submenu,
+   * it sets that submenu as active, making it visible.
+   * @param {number} index - The index of the action item being hovered over.
+   */
   const handleMouseEnter = (index) => {
     // If there's a pending timer to close a submenu, cancel it
     clearTimeout(closeTimer.current);
@@ -19,6 +24,11 @@ export default function ContextMenu({ menuPosition, actions, onClose }) {
     }
   };
 
+  /**
+   * Handles the mouse leaving the main context menu area. It sets a short
+   * timer to close any active submenu, giving the user a moment to move their
+   * cursor from the main menu to the submenu without it disappearing.
+   */
   const handleMouseLeave = () => {
     // Set a short timer to close the submenu, giving the user time to move their cursor
     closeTimer.current = setTimeout(() => {

@@ -7,6 +7,17 @@ const cors = require("cors")({ origin: true });
 admin.initializeApp();
 const db = admin.firestore();
 
+/**
+ * A Firebase Cloud Function triggered by an HTTPS request to permanently delete a user's account
+ * and all associated data across the application. It verifies the user's auth token before proceeding.
+ * It deletes:
+ * - The Firebase Auth user.
+ * - The user's document in the 'users' collection.
+ * - The user's inventory from any campaigns they were a player in.
+ * - Any campaigns owned by the user, along with all sub-collections.
+ * @param {functions.https.Request} req - The HTTPS request object.
+ * @param {functions.Response} res - The HTTPS response object.
+ */
 exports.deleteUserAccount = functions.https.onRequest((req, res) => {
   // Manually handle CORS to allow requests from your website
   cors(req, res, async () => {
@@ -60,6 +71,14 @@ exports.deleteUserAccount = functions.https.onRequest((req, res) => {
   });
 });
 
+/**
+ * A transactional Firebase Cloud Function to finalize a trade between two players.
+ * This function is designed to be called via HTTPS, ensuring atomicity. It verifies
+ * that both players have accepted the trade before swapping the items between their
+ * respective inventory documents.
+ * @param {functions.https.Request} req - The HTTPS request object, containing the tradeId.
+ * @param {functions.Response} res - The HTTPS response object.
+ */
 exports.finalizeTrade = functions.https.onRequest(async (req, res) => {
   const cors = require("cors")({ origin: true });
   cors(req, res, async () => {
@@ -143,6 +162,12 @@ exports.finalizeTrade = functions.https.onRequest(async (req, res) => {
   });
 });
 
+/**
+ * A Firebase Cloud Function to cancel an active trade.
+ * It verifies the calling user is part of the trade and then deletes the trade document.
+ * @param {functions.https.Request} req - The HTTPS request object, containing the tradeId.
+ * @param {functions.Response} res - The HTTPS response object.
+ */
 exports.cancelTrade = functions.https.onRequest(async (req, res) => {
   const cors = require("cors")({ origin: true });
   cors(req, res, async () => {

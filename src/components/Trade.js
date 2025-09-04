@@ -4,6 +4,14 @@ import { db } from '../firebase';
 import { doc, onSnapshot, updateDoc, getDoc, getDocs, collection, writeBatch, deleteDoc } from 'firebase/firestore';
 import Spinner from './Spinner';
 
+/**
+ * A simple component to render a single item in a list for the trade window.
+ * It displays the item's name and quantity and includes a detailed tooltip.
+ * @param {object} props - The component props.
+ * @param {object} props.item - The item object to display.
+ * @param {Function} props.onClick - The function to call when the item is clicked.
+ * @returns {JSX.Element}
+ */
 function ItemListItem({ item, onClick }) {
     const tooltipContent = `
         <div style="text-align: left;">
@@ -52,6 +60,13 @@ function ItemListItem({ item, onClick }) {
   );
 }
 
+/**
+ * A component that displays a list of items being offered in the trade.
+ * @param {object} props - The component props.
+ * @param {Array<object>} props.items - The array of item objects in the offer.
+ * @param {Function} props.onItemClick - The function to call when an item in the offer is clicked.
+ * @returns {JSX.Element}
+ */
 function TradeOffer({ items, onItemClick }) {
     return (
         <div className="bg-background/50 min-h-[6rem] h-24 rounded-lg p-2 flex items-center space-x-2 overflow-x-auto border border-accent/20">
@@ -85,6 +100,11 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
 
     useEffect(() => {
         const tradeDocRef = doc(db, 'trades', tradeId);
+        /**
+         * Subscribes to real-time updates for the current trade document.
+         * Updates the local state (`tradeData`, `otherPlayerOffer`, `localOffer`) whenever the trade data changes in Firestore.
+         * This keeps the UI in sync for both players.
+         */
         snapshotUnsubscribe.current = onSnapshot(tradeDocRef, (doc) => {
             if (!doc.exists()) {
                 onClose();
@@ -104,6 +124,11 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
 
     useEffect(() => {
         if (!tradeData || isInventoryLoaded) return;
+        /**
+         * Fetches the user's complete inventory once when the trade window opens.
+         * It aggregates items from the main tray and all containers, then filters out
+         * any items that are already part of the initial trade offer.
+         */
         const fetchInitialInventory = async () => {
             setIsLoading(true);
             try {
@@ -129,6 +154,12 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
         fetchInitialInventory();
     }, [tradeData, user.uid, localOffer, isInventoryLoaded]);
 
+    /**
+     * Handles moving an item between the user's available inventory and their current trade offer.
+     * It updates the local state and then updates the user's offer in the Firestore trade document.
+     * @param {object} item - The item being moved.
+     * @param {('inventory'|'offer')} source - The area the item is being moved from.
+     */
     const handleItemClick = async (item, source) => {
         let newLocalInventory, newLocalOffer;
         if (source === 'inventory') {
@@ -148,6 +179,10 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
         });
     };
 
+    /**
+     * Marks the current user's side of the trade as 'accepted' in Firestore.
+     * If both players have accepted, it triggers the trade finalization process.
+     */
     const handleAcceptTrade = async () => {
         setIsSubmitting(true);
         const tradeDocRef = doc(db, 'trades', tradeId);
@@ -167,6 +202,13 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
         }
     };
     
+    /**
+     * Finalizes the trade by performing the item swap between both players' inventories.
+     * This function reads the final state of the trade, then uses a batched write to
+     * remove items from the givers' inventories and add them to the receivers' trays.
+     * It operates on the client-side for immediate feedback.
+     * @param {object} finalTradeData - The complete trade data object when both players have accepted.
+     */
     const finalizeTradeOnClient = async (finalTradeData) => {
         try {
             const { campaignId, playerA, playerB, offerA, offerB } = finalTradeData;
@@ -239,6 +281,10 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
         }
     };
 
+    /**
+     * Cancels the trade by deleting the trade document from Firestore.
+     * This closes the trade window for both participants.
+     */
     const handleCancelTrade = async () => {
         setIsSubmitting(true);
         try {

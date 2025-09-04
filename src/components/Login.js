@@ -8,6 +8,9 @@ export default function Login({ onSwitchToSignUp, onGoogleSignIn }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Handles user sign-in using email and password with Firebase Authentication.
+   */
   const handleSignIn = async () => {
     setLoading(true);
     try {
@@ -19,6 +22,10 @@ export default function Login({ onSwitchToSignUp, onGoogleSignIn }) {
     }
   };
 
+  /**
+   * Allows the user to submit the login form by pressing the 'Enter' key.
+   * @param {React.KeyboardEvent} e - The keyboard event.
+   */
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleSignIn();

@@ -6,6 +6,19 @@ import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSe
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+/**
+ * Renders a single player item within a sortable list. It uses the `useSortable`
+ * hook from dnd-kit to enable drag-and-drop functionality. It also includes
+ * controls to toggle the player's visibility and to remove them from the list.
+ *
+ * @param {object} props - The component's props.
+ * @param {string} props.id - The unique identifier for the player, used for sorting.
+ * @param {string} props.name - The display name of the player.
+ * @param {boolean} props.isVisible - Whether the player's inventory is currently visible to others.
+ * @param {Function} props.onVisibilityChange - Callback triggered when the visibility checkbox is changed. Receives the player ID.
+ * @param {Function} props.onRemovePlayer - Callback triggered when the remove button is clicked. Receives the player ID and name.
+ * @returns {JSX.Element} A sortable list item representing a player.
+ */
 function SortablePlayer({ id, name, isVisible, onVisibilityChange, onRemovePlayer }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
     const style = {
@@ -62,6 +75,13 @@ export default function CampaignLayout({ campaign, inventories, playerProfiles, 
         })
     );
 
+    /**
+     * Handles the drag end event from dnd-kit. When a player item is dropped
+     * in a new position, this function updates the `playerOrder` state to
+     * reflect the new arrangement.
+     * @param {object} event - The event object provided by dnd-kit's onDragEnd listener, containing `active` and `over` properties.
+     * @returns {void}
+     */
     const handleDragEnd = (event) => {
         const { active, over } = event;
         if (active.id !== over.id) {
@@ -73,6 +93,12 @@ export default function CampaignLayout({ campaign, inventories, playerProfiles, 
         }
     };
 
+    /**
+     * Toggles the visibility state for a specific player. It takes a player ID
+     * and flips the corresponding boolean value in the `visiblePlayers` state object.
+     * @param {string} playerId - The unique identifier of the player whose visibility to toggle.
+     * @returns {void}
+     */
     const handleVisibilityChange = (playerId) => {
         setVisiblePlayers(prev => ({
             ...prev,
@@ -80,6 +106,12 @@ export default function CampaignLayout({ campaign, inventories, playerProfiles, 
         }));
     };
 
+    /**
+     * Asynchronously saves the current player order and visibility settings to the
+     * campaign document in Firestore. It provides user feedback via toasts and
+     * handles the loading state during the operation.
+     * @returns {Promise<void>} A promise that resolves when the save operation finishes.
+     */
     const handleSave = async () => {
         setLoading(true);
         try {
@@ -97,6 +129,16 @@ export default function CampaignLayout({ campaign, inventories, playerProfiles, 
         }
     };
 
+
+    
+    /**
+     * Asynchronously removes a player from the campaign. This is a destructive action that
+     * first deletes the player's entire inventory (including all containers and items)
+     * and then removes the player from the campaign's `players` list and layout settings.
+     * @param {string} playerId - The ID of the player to remove.
+     * @param {string} playerName - The name of the player, used for the confirmation dialog.
+     * @returns {Promise<void>} A promise that resolves when the removal is complete.
+     */
     const handleRemovePlayer = async (playerId, playerName) => {
         if (!window.confirm(`Are you sure you want to remove ${playerName} from the campaign? This will permanently delete their inventory.`)) {
             return;

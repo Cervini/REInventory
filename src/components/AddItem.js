@@ -30,6 +30,14 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
   const [stealthDisadvantage, setStealthDisadvantage] = useState(isEditMode ? itemBeingEdited.armorStats?.stealthDisadvantage ?? false : false);
   const [strengthRequirement, setStrengthRequirement] = useState(isEditMode ? itemBeingEdited.armorStats?.strengthRequirement : 0);
 
+  /**
+   * Handles the form submission for creating or editing a compendium item.
+   * It prevents the default form action, validates required fields, constructs
+   * the item data object (including conditional stats for weapons/armor),
+   * and then calls the onAddItem callback before closing the form.
+   * @param {React.FormEvent} e - The form submission event.
+   * @returns {void}
+   */
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim() || w <= 0 || h <= 0) {
@@ -54,7 +62,11 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
     };
 
     if (type === 'Weapon') {
-      itemData.weaponStats = { damage, damageType, properties };
+      itemData.weaponStats = { 
+        damage, 
+        damageType, 
+        properties 
+      };
     }
 
     if (type === 'Armor') {
@@ -177,6 +189,7 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
           </div>
         </fieldset>
 
+        {/* Conditional weapon fields */}
         {type === 'Weapon' && (
           <fieldset className="border-t border-surface/50 pt-4">
             <legend className="text-sm font-bold mb-2 text-text-muted">Weapon Stats</legend>
@@ -197,6 +210,7 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
           </fieldset>
         )}
 
+        {/* Conditional armor fields */}
         {type === 'Armor' && (
           <fieldset className="border-t border-surface/50 pt-4 space-y-4">
             <legend className="text-sm font-bold mb-2 text-text-muted">Armor Stats</legend>

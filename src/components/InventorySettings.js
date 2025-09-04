@@ -20,6 +20,12 @@ export default function InventorySettings({ onClose, campaignId, userId, current
   
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Updates a specific field of a container in the local state.
+   * @param {string} containerId - The ID of the container to update.
+   * @param {string} field - The name of the property to update (e.g., 'name', 'gridWidth').
+   * @param {*} value - The new value for the field.
+   */
   const handleContainerChange = (containerId, field, value) => {
     setContainers(prev => 
       prev.map(c => c.id === containerId ? { ...c, [field]: value } : c)
@@ -27,6 +33,10 @@ export default function InventorySettings({ onClose, campaignId, userId, current
   };
 
   // Function to add a new, temporary container to the UI
+  /**
+   * Adds a new, temporary container object to the local `containers` state.
+   * This new container is flagged with `isNew: true` to be identified during the save process.
+   */
   const handleAddNewContainer = () => {
     const newContainer = {
       id: `new-${Date.now()}`, // Temporary ID for the key
@@ -42,6 +52,12 @@ export default function InventorySettings({ onClose, campaignId, userId, current
   };
 
   // Function to mark a container for deletion
+  /**
+   * Marks a container for deletion. It removes the container from the local UI state
+   * and, if it's an existing container (not a new one), adds its ID to a separate
+   * list to be deleted from Firestore on save.
+   * @param {string} containerId - The ID of the container to delete.
+   */
   const handleDeleteContainer = (containerId) => {
     if (!window.confirm("Are you sure you want to delete this container and all items within it? This cannot be undone.")) {
         return;
@@ -53,6 +69,12 @@ export default function InventorySettings({ onClose, campaignId, userId, current
     }
   };
 
+  /**
+   * Saves all character and inventory settings to Firestore using a batched write.
+   * This includes updating the character name and weight, creating new containers,
+   * updating existing ones, and deleting marked containers.
+   * @param {React.FormEvent} e - The form submission event.
+   */
   const handleSave = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -106,6 +128,12 @@ export default function InventorySettings({ onClose, campaignId, userId, current
     }
   };
 
+  /**
+   * Handles the logic for a player to permanently leave a campaign.
+   * It deletes the player's entire inventory (including all containers and items),
+   * removes them from the campaign's player list and layout, and then reloads the page.
+   * A confirmation dialog is shown before proceeding.
+   */
   const handleLeaveCampaign = async () => {
         if (!window.confirm("Are you sure you want to leave this campaign? Your inventory will be permanently deleted.")) {
             return;

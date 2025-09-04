@@ -21,6 +21,12 @@ import { usePlayerProfiles } from '../hooks/usePlayerProfiles';
 import CampaignLayout from './CampaignLayout';
 import WeightCounter from './WeightCounter';
 
+/**
+ * Renders the complete inventory for a single player, including their character name,
+ * weight display, settings button, all containers (grids), and the main item tray.
+ * @param {object} props - The component props.
+ * @returns {JSX.Element|null} The rendered player inventory or null if data is not ready.
+ */
 const PlayerInventory = ({
   playerId, inventoryData, campaign, playerProfiles, user,
   setEditingSettings, cellSizes, gridRefs, onContextMenu
@@ -191,6 +197,10 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
 
   }, [campaign, inventories, user, isDM]);
 
+  /**
+   * Sets the active trade, which triggers the Trade component to be rendered.
+   * @param {object} trade - The trade object.
+   */
   const handleTradeStarted = (trade) => {
     setActiveTrade(trade);
   };
@@ -198,6 +208,10 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   useEffect(() => {
     if (!user || !campaignId) return;
 
+    /**
+     * Listens for a trade to become 'active' after the current user (as playerB) accepts an invitation.
+     * When an accepted trade is detected, it opens the trade window.
+     */
     const tradesRef = collection(db, 'trades');
     
     // Create a query that looks for trades in this campaign where:
@@ -226,6 +240,11 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   useEffect(() => {
     const observers = [];
     
+    /**
+     * Measures the dimensions of each inventory grid element whenever the component mounts
+     * or the container structure changes. The calculated cell size is used to render
+     * the drag overlay for items at the correct dimensions.
+     */
     Object.entries(gridRefs.current).forEach(([containerId, gridElement]) => {
       if (gridElement) {
         const measure = () => {
@@ -265,6 +284,16 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     };
   }, [containerStructureSignature, inventories]);
 
+  /**
+   * Handles the right-click event on an item to display a context menu.
+   * It constructs a list of available actions (e.g., Rotate, Split, Edit, Delete)
+   * based on the item's properties and the user's permissions (DM or owner).
+   * @param {React.MouseEvent} event - The mouse event.
+   * @param {object} item - The item that was right-clicked.
+   * @param {string} playerId - The ID of the owner of the item.
+   * @param {('grid'|'tray')} source - The location of the item.
+   * @param {string} containerId - The ID of the container holding the item.
+   */
   const handleContextMenu = (event, item, playerId, source, containerId) => {
     event.preventDefault();
     
@@ -317,10 +346,23 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     });
   };
 
+  /**
+   * Sets the state to show the 'Split Stack' modal for a given item.
+   * @param {object} item - The stackable item to be split.
+   * @param {string} playerId - The ID of the item's owner.
+   * @param {string} containerId - The ID of the container holding the item.
+   */
   const handleStartSplit = (item, playerId, containerId) => {
     setSplittingItem({ item, playerId, containerId });
   };
 
+  /**
+   * Deletes an item from an inventory.
+   * @param {object} item - The item to delete.
+   * @param {string} playerId - The ID of the item's owner.
+   * @param {('grid'|'tray')} source - The location of the item.
+   * @param {string} containerId - The ID of the container holding the item.
+   */
   const handleDeleteItem = async (item, playerId, source, containerId) => {
     if (!item || !playerId || !source || !containerId) return;
 
@@ -337,12 +379,25 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     await updateDoc(containerDocRef, updatePayload);
   };
 
+  /**
+   * Sets the state to show the 'Add Item' modal in edit mode for a specific item.
+   * @param {object} item - The item to be edited.
+   * @param {string} playerId - The ID of the item's owner.
+   * @param {string} containerId - The ID of the container holding the item.
+   */
   const handleStartEdit = (item, playerId, containerId) => {
     if (!item) return;
     setItemToEdit({ item, playerId, containerId });
     setShowAddItem(true);
   };
 
+  /**
+   * Handles both creating a new item and updating an existing one.
+   * It determines the target player and location (grid or tray) and performs
+   * the necessary Firestore operations, including collision detection for edits.
+   * @param {object} itemData - The data for the new or updated item.
+   * @param {string} [targetPlayerId] - The ID of the player to receive the item (used when adding from compendium).
+   */
   const handleAddItem = async (itemData, targetPlayerId) => {
     let finalPlayerId;
 
@@ -450,6 +505,11 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     setItemToEdit(null);
   };
 
+  /**
+   * Splits a stack of items into two. The new stack is placed in the first available
+   * grid slot or, if none is available, in the container's tray.
+   * @param {number} splitAmount - The quantity for the new stack.
+   */
   const handleSplitStack = async (splitAmount) => {
     if (!splittingItem) return;
 
@@ -491,6 +551,11 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     setSplittingItem(null);
   };
 
+  /**
+   * Handles the start of a drag-and-drop operation.
+   * It captures the item being dragged and calculates its dimensions for the drag overlay.
+   * @param {object} event - The drag start event from dnd-kit.
+   */
   const handleDragStart = (event) => {
     const { active } = event;
     const item = active.data.current?.item;
@@ -521,10 +586,19 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     setActiveItem({ item, dimensions });
   };
 
+  /**
+   * Resets the active item state when a drag operation is cancelled.
+   */
   const handleDragCancel = () => {
     setActiveItem(null);
   };
 
+  /**
+   * Handles the end of a drag-and-drop operation. This is the core logic for
+   * moving items, stacking items, and transferring items between players. It updates
+   * the local state optimistically and then commits the changes to Firestore in a batch.
+   * @param {object} event - The drag end event from dnd-kit.
+   */
   const handleDragEnd = async (event) => {
     setActiveItem(null);
     const { active, over } = event;
@@ -730,6 +804,14 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     }
   };
 
+  /**
+   * (DM-only) Sends an item from a source player's inventory to a target player's tray.
+   * @param {object} item - The item to send.
+   * @param {('grid'|'tray')} source - The original location of the item.
+   * @param {string} sourcePlayerId - The ID of the player sending the item.
+   * @param {string} targetPlayerId - The ID of the player receiving the item.
+   * @param {string} sourceContainerId - The ID of the container the item is coming from.
+   */
   const handleSendItem = async (item, source, sourcePlayerId, targetPlayerId, sourceContainerId) => {
     if (!item || !source || !sourcePlayerId || !targetPlayerId || !sourceContainerId) return;
 
@@ -759,6 +841,11 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     toast.success(`Sent ${item.name} to ${targetName}.`);
   };
 
+  /**
+   * Creates a duplicate of an item and places it in the owner's main tray.
+   * @param {object} item - The item to duplicate.
+   * @param {string} playerId - The ID of the item's owner.
+   */
   const handleDuplicateItem = async (item, playerId) => {
     if (!item || !playerId) return;
 
@@ -776,6 +863,14 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     toast.success(`Duplicated ${item.name}.`);
   };
 
+  /**
+   * Rotates an item in a grid by swapping its width and height.
+   * It performs collision checks to see if the item can stay in place. If not, it
+   * attempts to find a new available slot or moves the item to the tray if no space is found.
+   * @param {object} item - The grid item to rotate.
+   * @param {string} playerId - The ID of the item's owner.
+   * @param {string} containerId - The ID of the container holding the item.
+   */
   const handleRotateItem = async (item, playerId, containerId) => {
     if (!item || !playerId || !containerId) return;
 

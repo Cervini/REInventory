@@ -8,6 +8,10 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  /**
+   * Saves the user's updated profile settings (e.g., display name) to their document in Firestore.
+   * @param {React.FormEvent} e - The form submission event.
+   */
   const handleSave = async (e) => {
     e.preventDefault();
     if (!displayName.trim()) {
@@ -32,6 +36,11 @@ export default function ProfileSettings({ user, userProfile, onClose }) {
     }
   };
 
+  /**
+   * Initiates the permanent deletion of the user's account and all associated data.
+   * It gets an auth token and calls the `deleteUserAccount` Firebase Cloud Function.
+   * It requires multiple confirmations from the user.
+   */
   const handleDeleteAccount = async () => {
     if (!window.confirm("Are you ABSOLUTELY sure?") || !window.confirm("This cannot be undone. Proceed?")) return;
     

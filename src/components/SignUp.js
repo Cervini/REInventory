@@ -9,6 +9,11 @@ export default function SignUp({ onSwitchToLogin, onShowPolicy, onGoogleSignIn }
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Handles the user sign-up process with email and password.
+   * On successful creation of the Firebase Auth user, it also creates a
+   * corresponding user profile document in Firestore with default values.
+   */
   const handleSignUp = async () => {
     setLoading(true);
     try {

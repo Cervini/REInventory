@@ -5,6 +5,10 @@ export default function SplitStack({ item, onClose, onSplit }) {
   // Default split amount is half the stack, rounded down.
   const [splitAmount, setSplitAmount] = useState(Math.floor(item.quantity / 2));
 
+  /**
+   * Validates the desired split amount and, if valid, calls the `onSplit`
+   * callback with the amount for the new stack.
+   */
   const handleSplit = () => {
     const amount = parseInt(splitAmount, 10);
     // Validate the amount

@@ -40,6 +40,12 @@ export default function CampaignSelector({ onCampaignSelected }) {
       });
   }, []);
 
+  /**
+   * Asynchronously creates a new campaign in Firestore.
+   * It sets the current user as the DM, creates a default inventory and backpack for them,
+   * and then sets the newly created campaign as the active one.
+   * @returns {Promise<void>} A promise that resolves when the campaign is created.
+   */
   const handleCreateCampaign = async () => {
     if (!campaignName.trim()) {
       toast.error("Please enter a campaign name.");
@@ -84,6 +90,12 @@ export default function CampaignSelector({ onCampaignSelected }) {
     }
   };
 
+  /**
+   * Asynchronously handles the process of joining a campaign.
+   * It validates the provided join code (which is the campaign ID) and, if valid,
+   * opens a modal for the user to enter their character details.
+   * @returns {Promise<void>} A promise that resolves when the check is complete.
+   */
   const handleJoinCampaign = async () => {
     const code = joinCode.trim();
     if (!code) {
@@ -110,6 +122,14 @@ export default function CampaignSelector({ onCampaignSelected }) {
     }
   };
 
+  /**
+   * Asynchronously deletes a campaign and all its associated sub-collections from Firestore.
+   * It first deletes all 'inventories' and their nested 'containers', then deletes the main campaign document.
+   * A confirmation dialog is shown to the user before proceeding.
+   * @param {string} campaignId - The ID of the campaign to delete.
+   * @param {string} campaignName - The name of the campaign, used for the confirmation dialog.
+   * @returns {Promise<void>} A promise that resolves when the deletion is complete.
+   */
   const handleDeleteCampaign = async (campaignId, campaignName) => {
     // Show a confirmation dialog before proceeding
     if (!window.confirm(`Are you sure you want to permanently delete the campaign "${campaignName}"? This action cannot be undone.`)) {
