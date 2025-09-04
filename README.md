@@ -12,7 +12,7 @@ REInventory transforms tedious inventory management into an engaging, visual exp
 
 This tool is perfect for **D&D 5e** and other TTRPG systems, whether you're playing online with platforms like Roll20 and Discord, or using digital tools to enhance in-person sessions.
 
-![Demo](https://github.com/Cervini/REInventory/files/demo)
+![Demo GIF](./files/demo.gif)
 
 ## Key Features
 
@@ -23,13 +23,6 @@ This tool is perfect for **D&D 5e** and other TTRPG systems, whether you're play
 - **Rich Item Details:** Define items with types, rarity, weight, cost, and detailed descriptions. Track weapon stats, attunement, and more with hover-over tooltips.
 - **Item Compendium:** Speed up game prep by adding items from a global database or building your own library of frequently used custom items.
 - **Modern, Responsive UI:** A clean interface that works beautifully on desktop and mobile devices, with context menus for quick actions.
-
-### **Advanced Item Management**
-- **Comprehensive item creation** with detailed attributes
-- **Item tray system** for temporary storage
-- **Stack splitting** for consumables and similar items
-- **Item duplication** for DMs
-- **Custom item compendium** with global item database
 
 ## How It Works
 
