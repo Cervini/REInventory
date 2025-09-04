@@ -32,11 +32,11 @@ export default function InventorySettings({ onClose, campaignId, userId, current
     );
   };
 
-  // Function to add a new, temporary container to the UI
   /**
    * Adds a new, temporary container object to the local `containers` state.
    * This new container is flagged with `isNew: true` to be identified during the save process.
    */
+  // Function to add a new, temporary container to the UI
   const handleAddNewContainer = () => {
     const newContainer = {
       id: `new-${Date.now()}`, // Temporary ID for the key
@@ -45,7 +45,7 @@ export default function InventorySettings({ onClose, campaignId, userId, current
       gridHeight: 5,
       trackWeight: true,
       gridItems: [],
-      trayItems: [],
+      trayItems: [], 
       isNew: true, // Flag to identify new containers
     };
     setContainers(prev => [...prev, newContainer]);

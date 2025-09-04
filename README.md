@@ -6,157 +6,85 @@
 [![Firebase](https://img.shields.io/badge/Firebase-Hosted-orange)](https://firebase.google.com/)
 [![React](https://img.shields.io/badge/React-19+-blue)](https://reactjs.org/)
 
-## 🎯 Overview
+## Overview
 
 REInventory transforms tedious inventory management into an engaging, visual experience for tabletop RPG players and Dungeon Masters. Drawing inspiration from classic video game inventory systems, it provides an intuitive drag-and-drop interface that makes organizing loot as satisfying as finding it.
 
-## ✨ Key Features
+This tool is perfect for **D&D 5e** and other TTRPG systems, whether you're playing online with platforms like Roll20 and Discord, or using digital tools to enhance in-person sessions.
 
-### 🎮 **Tetris-Style Grid System**
-- **Visual inventory grids** with customizable dimensions
-- **Drag-and-drop functionality** for intuitive item management
-- **Collision detection** prevents item overlap
-- **Smart placement** finds available slots automatically
+## Key Features
 
-### 👥 **Multi-Player Campaign Support**
-- **Campaign-based organization** with unique join codes
-- **Real-time synchronization** across all players
-- **DM oversight** with full party inventory access
-- **Seamless item transfers** between players
+- **Visual Grid Inventory:** Organize items on a customizable, Tetris-style grid. The smart placement system automatically finds available slots.
+- **Intuitive Drag & Drop:** Effortlessly manage your inventory with a smooth, responsive drag-and-drop interface, complete with collision detection to prevent item overlap.
+- **Real-Time Multiplayer:** Share a campaign with your party using a unique join code. All inventory changes, including item transfers between players, are synchronized in real-time.
+- **Advanced Item Management:** Create detailed custom items, split item stacks, duplicate items as a DM, and use a temporary item tray for easy sorting.
+- **Rich Item Details:** Define items with types, rarity, weight, cost, and detailed descriptions. Track weapon stats, attunement, and more with hover-over tooltips.
+- **Item Compendium:** Speed up game prep by adding items from a global database or building your own library of frequently used custom items.
+- **Modern, Responsive UI:** A clean interface that works beautifully on desktop and mobile devices, with context menus for quick actions.
 
-### 📦 **Advanced Item Management**
+### **Advanced Item Management**
 - **Comprehensive item creation** with detailed attributes
 - **Item tray system** for temporary storage
 - **Stack splitting** for consumables and similar items
 - **Item duplication** for DMs
 - **Custom item compendium** with global item database
 
-### 🛠️ **Rich Item Attributes**
-- **Multiple item types** (Weapons, Armor, Potions, Magic items, etc.)
-- **Rarity system** (Common to Legendary)
-- **Weapon statistics** (damage, type, properties)
-- **Weight, cost, and attunement** tracking
-- **Detailed descriptions** with hover tooltips
+## How It Works
 
-### 🎨 **Modern User Experience**
-- **Responsive design** works on desktop and mobile
-- **Context menus** for quick item actions
-- **Intuitive user interface** requires no learning curve
+### For Players & Dungeon Masters
 
-## 🚀 Getting Started
+1.  **Visit the App:** Go to **[re-inventory-v2.web.app](https://re-inventory-v2.web.app/)**.
+2.  **Create a Campaign (DMs):** As a DM, create a new campaign to receive a unique join code to share with your players.
+3.  **Join a Campaign (Players):** As a player, use the join code to enter the campaign.
+4.  **Manage Inventory:** Everyone gets their own inventory grid. DMs can view and manage all player inventories, distribute loot, and create custom items for the party.
 
-### **For Players**
-1. Visit **[re-inventory-v2.web.app](https://re-inventory-v2.web.app/)**
-2. Create an account or sign in
-3. Join an existing campaign with a code, or create your own
-4. Start adding items and organizing your inventory!
+## Progressive Web App (PWA)
 
-### **For Dungeon Masters**
-1. Create a new campaign to get a unique join code
-2. Share the code with your players
-3. Access the **Item Compendium** to add items from a global database
-4. Create custom items and distribute loot to players
-5. Monitor all player inventories in real-time
+For a native app-like experience, you can install REInventory on your device's home screen. This provides faster loading, a full-screen interface, and better offline access.
 
-## 📱 Progressive Web App (PWA)
+#### **On Android (with Chrome)**
+1.  Open the site and tap the **menu (⋮)**.
+2.  Select **"Install app"** or **"Add to Home screen"**.
 
-REInventory works as a **Progressive Web App**, meaning you can install it directly to your device's home screen for a native app-like experience.
+<!-- 
+    Suggestion: Add a small screenshot or graphic showing the "Install app" button in the Chrome menu on Android.
+-->
 
-### **Install on Android**
-1. Open **[re-inventory-v2.web.app](https://re-inventory-v2.web.app/)** in Chrome
-2. Tap the **menu (⋮)** in the top-right corner
-3. Select **"Add to Home screen"** or **"Install app"**
-4. Confirm the installation
-5. Launch REInventory directly from your home screen!
+#### **On iOS (with Safari)**
+1.  Open the site and tap the **Share** icon (a square with an arrow).
+2.  Scroll down and select **"Add to Home Screen"**.
 
-### **Install on iOS**
-1. Open **[re-inventory-v2.web.app](https://re-inventory-v2.web.app/)** in Safari
-2. Tap the **Share button** (square with arrow pointing up)
-3. Scroll down and select **"Add to Home Screen"**
-4. Customize the name if desired and tap **"Add"**
-5. Access REInventory like any other app from your home screen!
+<!-- 
+    Suggestion: Add a small screenshot or graphic showing the "Add to Home Screen" button in the Safari share sheet on iOS.
+-->
 
-### **PWA Benefits**
-- **Faster loading** with offline caching
-- **Full-screen experience** without browser UI
-- **Native app feel** with smooth animations
-- **Background sync** for seamless multiplayer experience
+## Technical Stack
 
-## 🎲 Perfect For
+- **Frontend:** React 19
+- **Backend & Hosting:** Firebase (Firestore, Authentication, Hosting)
+- **Drag & Drop:** @dnd-kit
+- **Styling:** Tailwind CSS
+- **Notifications:** React Hot Toast
 
-- **D&D 5e** and other tabletop RPG systems
-- **Online gaming groups** using platforms like Roll20 or Discord
-- **In-person sessions** where digital tools enhance the experience
-- **Campaign organization** and session preparation
-- **Players who love visual organization**
+The application is built with real-time data synchronization using Firestore, offline capabilities through local state management, and a touch-friendly, accessible interface.
 
-## 🔧 Technical Features
+## Contributing
 
-### **Built With**
-- **React 19**
-- **Firebase** - Authentication, database, and hosting
-- **@dnd-kit** - Accessible drag-and-drop functionality
-- **Tailwind CSS** - Utility-first styling
-- **React Hot Toast** - Beautiful notifications
+We welcome contributions from the TTRPG community! Whether you're fixing bugs, adding features, or improving documentation, your help is appreciated. Please check the [issues](https://github.com/Cervini/REInventory/issues) for tasks.
 
-### **Key Capabilities**
-- **Real-time data synchronization** using Firestore
-- **Offline-capable** with local state management
-- **Touch-friendly** drag-and-drop for mobile devices
-- **Keyboard accessible** interface
-- **Responsive grid system** that adapts to screen size
+For detailed instructions on how to contribute, please read our **[CONTRIBUTING.md](CONTRIBUTING.md)**.
 
-## 📱 System Requirements
-
-- **Any modern web browser** (Chrome, Firefox, Safari, Edge)
-- **Internet connection** for real-time sync
-- **No downloads required** - runs entirely in your browser
-
-## 🎮 How It Works
-
-### **Inventory Management**
-- Items are displayed on a **visual grid** similar to classic RPG games
-- **Drag items** to reorganize your inventory layout
-- **Right-click (or long-press)** for context menu options
-- Use the **item tray** for temporary storage and organization
-
-### **Campaign Flow**
-1. **DM creates** a campaign and receives a join code
-2. **Players join** using the campaign code
-3. **Everyone gets** their own inventory grid and tray
-4. **DM can view** and manage all player inventories
-5. **Items flow seamlessly** between players as needed
-
-### **Item Creation**
-- **Rich item editor** with all D&D 5e attributes
-- **Custom compendium** for your frequently used items
-- **Global database** of common items to speed up gameplay
-- **Weapon stats, rarity, and descriptions** fully supported
-
-## 🤝 Contributing
-
-We welcome contributions from the TTRPG community! Whether you're fixing bugs, adding features, or improving documentation, your help makes REInventory better for everyone.
-
-### **How to Contribute**
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### **Development Setup**
+### Quick Development Setup
 ```bash
 # Clone the repository
-git clone [https://github.com/Cervini/REInventory.git](https://github.com/Cervini/REInventory.git)
+git clone https://github.com/Cervini/REInventory.git
+cd REInventory
 
 # Install dependencies
 npm install
 
 # Start development server
 npm start
-
-# Build for production
-npm run build
 ```
 
 ## 📄 License
