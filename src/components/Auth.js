@@ -29,6 +29,21 @@ const checkAndCreateUserProfile = async (user) => {
   }
 };
 
+const BuyMeACoffeeButton = () => (
+  <a 
+    href="https://paypal.me/simonecervini" 
+    target="_blank" 
+    rel="noopener noreferrer"
+    className="mt-8 flex items-center justify-center space-x-2 text-sm text-text-muted hover:text-accent transition-colors duration-200"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+      <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5z" />
+      <path d="M2 10.5V15a2 2 0 002 2h12a2 2 0 002-2v-4.5A2.5 2.5 0 0017.5 8h-15A2.5 2.5 0 000 10.5zM10 13a1 1 0 110-2 1 1 0 010 2z" />
+    </svg>
+    <span>Enjoying the app? Support the project!</span>
+  </a>
+);
+
 /**
  * A component that handles the user authentication flow. It conditionally renders
  * either a Login or a Sign-Up form and provides the logic for switching between
@@ -50,24 +65,23 @@ export default function Auth({ onShowPolicy }) {
     }
   };
   
-  if (showLogin) {
-    return (
+  return (
+    <>
       <div className="w-full max-w-xs mx-auto">
-        <Login 
-          onSwitchToSignUp={() => setShowLogin(false)} 
-          onGoogleSignIn={handleGoogleSignIn}
-        />
+        {showLogin ? (
+          <Login 
+            onSwitchToSignUp={() => setShowLogin(false)} 
+            onGoogleSignIn={handleGoogleSignIn}
+          />
+        ) : (
+          <SignUp 
+            onSwitchToLogin={() => setShowLogin(true)} 
+            onShowPolicy={onShowPolicy}
+            onGoogleSignIn={handleGoogleSignIn}
+          />
+        )}
       </div>
-    );
-  } else {
-    return (
-      <div className="w-full max-w-xs mx-auto">
-        <SignUp 
-          onSwitchToLogin={() => setShowLogin(true)} 
-          onShowPolicy={onShowPolicy}
-          onGoogleSignIn={handleGoogleSignIn}
-        />
-      </div>
-    );
-  }
+      <BuyMeACoffeeButton />
+    </>
+  );
 }
