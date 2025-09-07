@@ -212,7 +212,7 @@ export default function App() {
                   </button>
                 )}
                 {campaignId && (
-                  <div className="relative" onMouseLeave={handleCodeMouseLeave}>
+                  <div className="relative">
                     <button
                       className="p-2 rounded-full hover:bg-surface transition-colors duration-200"
                       onClick={() => setIsCodeVisible(true)}
@@ -222,6 +222,7 @@ export default function App() {
                     {isCodeVisible && (
                       <div
                         className="absolute left-0 mt-2 w-auto bg-gradient-to-b from-surface to-background rounded-md shadow-lg p-2 z-50 border border-accent/20"
+                        onMouseLeave={handleCodeMouseLeave}
                       >
                         <div className="flex items-center space-x-4">
                           <span className="text-text-muted font-mono text-sm whitespace-nowrap">Code: <span className="font-bold text-text-base">{campaignId}</span></span>
