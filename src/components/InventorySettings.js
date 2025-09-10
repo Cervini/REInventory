@@ -107,8 +107,6 @@ export default function InventorySettings({ onClose, campaignId, userId, current
             ? doc(inventoryDocRef, 'containers', crypto.randomUUID()) 
             : doc(inventoryDocRef, 'containers', container.id);
         
-        // This is a more explicit way to create the data object for Firestore.
-        // It ensures fields like trayItems are never undefined.
         const containerData = {
             name: container.name,
             gridWidth: container.gridWidth,

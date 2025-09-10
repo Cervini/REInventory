@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { getColorForItemType } from '../utils/itemUtils';
 
@@ -29,6 +29,39 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
   const [armorType, setArmorType] = useState(isEditMode ? itemBeingEdited.armorStats?.armorType : 'Light');
   const [stealthDisadvantage, setStealthDisadvantage] = useState(isEditMode ? itemBeingEdited.armorStats?.stealthDisadvantage ?? false : false);
   const [strengthRequirement, setStrengthRequirement] = useState(isEditMode ? itemBeingEdited.armorStats?.strengthRequirement : 0);
+
+  useEffect(() => {
+    const magicBonusMatch = name.match(/\s*\+(\d)$/);
+    if (magicBonusMatch && magicBonusMatch[1]) {
+        const bonus = parseInt(magicBonusMatch[1], 10);
+        if (bonus > 0) {
+            if (bonus === 1) setRarity('Uncommon');
+            else if (bonus === 2) setRarity('Rare');
+            else if (bonus === 3) setRarity('Very Rare');
+            else if (bonus === 4) setRarity('Legendary');
+            else if (bonus >= 5) setRarity('Artifact');
+
+            if (type === 'Weapon') {
+                // Usiamo una funzione che riceve lo stato precedente ('prevDamage')
+                setDamage(prevDamage => {
+                    const baseDamageMatch = prevDamage.match(/(\d+d\d+)/);
+                    return (baseDamageMatch && baseDamageMatch[1]) ? `${baseDamageMatch[1]} + ${bonus}` : prevDamage;
+                });
+            }
+            else if (type === 'Armor') {
+                // Usiamo una funzione che riceve lo stato precedente ('prevArmorClass')
+                setArmorClass(prevArmorClass => {
+                    const baseACMatch = prevArmorClass.match(/(\d+)/);
+                    if (baseACMatch && baseACMatch[1]) {
+                        const baseAC = parseInt(baseACMatch[1], 10);
+                        return prevArmorClass.replace(String(baseAC), String(baseAC + bonus));
+                    }
+                    return prevArmorClass;
+                });
+            }
+        }
+    }
+  }, [name, type]); // listen to item name and type changes
 
   /**
    * Handles the form submission for creating or editing a compendium item.
