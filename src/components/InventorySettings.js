@@ -2,23 +2,25 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { db } from '../firebase';
 import { doc, writeBatch, getDoc, getDocs, collection } from "firebase/firestore";
+import { calculateCarryingCapacity } from '../utils/dndUtils';
 
 const LBS_TO_KG = 0.453592;
 const KG_TO_LBS = 2.20462;
+const sizeOptions = ['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Gargantuan'];
 
 export default function InventorySettings({ onClose, campaignId, userId, currentSettings, isDMInventory }) {
   const [characterName, setCharacterName] = useState(currentSettings.characterName || '');
-  const [totalMaxWeight, setTotalMaxWeight] = useState(() => {
-    const storedWeightLbs = currentSettings.totalMaxWeight || 0;
-    return currentSettings.weightUnit === 'kg' ? storedWeightLbs * LBS_TO_KG : storedWeightLbs;
-  });
   const [weightUnit, setWeightUnit] = useState(currentSettings.weightUnit || 'lbs');
-  
   // State for containers now tracks edits, additions, and deletions
   const [containers, setContainers] = useState(Object.values(currentSettings.containers || {}));
   const [containersToDelete, setContainersToDelete] = useState([]);
-  
   const [loading, setLoading] = useState(false);
+  const [strength, setStrength] = useState(currentSettings.strength || 10);
+  // States for the automatic weight
+  const [size, setSize] = useState(currentSettings.size || 'Medium');
+  const [useCalculatedWeight, setUseCalculatedWeight] = useState(currentSettings.useCalculatedWeight ?? false);
+  // State for the manual weight input field
+  const [manualMaxWeight, setManualMaxWeight] = useState('');
 
   /**
    * Updates a specific field of a container in the local state.
@@ -79,9 +81,12 @@ export default function InventorySettings({ onClose, campaignId, userId, current
     e.preventDefault();
     setLoading(true);
 
-    let weightToSaveInLbs = parseFloat(totalMaxWeight);
-    if (weightUnit === 'kg') {
-        weightToSaveInLbs = parseFloat(totalMaxWeight) * KG_TO_LBS;
+    let finalMaxWeightLbs;
+    if (useCalculatedWeight) {
+        finalMaxWeightLbs = calculateCarryingCapacity(strength, size);
+    } else {
+        const inputValue = parseFloat(manualMaxWeight);
+        finalMaxWeightLbs = weightUnit === 'kg' ? inputValue * KG_TO_LBS : inputValue;
     }
 
     const batch = writeBatch(db);
@@ -89,19 +94,29 @@ export default function InventorySettings({ onClose, campaignId, userId, current
 
     batch.update(inventoryDocRef, { 
       characterName: characterName.trim(),
-      totalMaxWeight: weightToSaveInLbs,
-      weightUnit: weightUnit
+      totalMaxWeight: finalMaxWeightLbs,
+      weightUnit: weightUnit,
+      strength: Number(strength),
+      size: size,
+      useCalculatedWeight: useCalculatedWeight,
     });
 
-    // Process creations and updates
     containers.forEach(container => {
-        // If the container is new, create a new doc reference for it
         const isNew = container.isNew;
         const containerRef = isNew 
             ? doc(inventoryDocRef, 'containers', crypto.randomUUID()) 
             : doc(inventoryDocRef, 'containers', container.id);
         
-        const { id, isNew: newFlag, ...containerData } = container;
+        // This is a more explicit way to create the data object for Firestore.
+        // It ensures fields like trayItems are never undefined.
+        const containerData = {
+            name: container.name,
+            gridWidth: container.gridWidth,
+            gridHeight: container.gridHeight,
+            trackWeight: container.trackWeight,
+            gridItems: container.gridItems || [],
+            trayItems: container.trayItems || [],
+        };
 
         if (isNew) {
             batch.set(containerRef, containerData);
@@ -110,7 +125,6 @@ export default function InventorySettings({ onClose, campaignId, userId, current
         }
     });
     
-    // Process deletions
     for (const containerId of containersToDelete) {
         const containerRef = doc(inventoryDocRef, 'containers', containerId);
         batch.delete(containerRef);
@@ -183,21 +197,46 @@ export default function InventorySettings({ onClose, campaignId, userId, current
           Character & Inventory Settings
         </h3>
         <form onSubmit={handleSave} className="space-y-6">
-          {/* Character Name and Weight Settings... */}
+          {/* Character Name --- */}
           <div>
             <label className="block text-sm font-bold mb-2 text-text-muted">Character Name</label>
-            <input 
-                type="text" 
-                value={characterName} 
-                onChange={(e) => setCharacterName(e.target.value)} 
-                className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+            <input type="text" value={characterName} onChange={(e) => setCharacterName(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
           </div>
 
+          {/* Character Stats --- */}
           {!isDMInventory && (
-            <div className="flex items-end space-x-4 border-t border-surface/50 pt-4">
+            <div className="space-y-4 border-t border-surface/50 pt-4">
+                 <div className="flex space-x-4">
+                    <div className="w-1/2">
+                        <label className="block text-sm font-bold mb-2 text-text-muted">Strength Score</label>
+                        <input type="number" value={strength} onChange={(e) => setStrength(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+                    </div>
+                    <div className="w-1/2">
+                        <label className="block text-sm font-bold mb-2 text-text-muted">Character Size</label>
+                        <select value={size} onChange={(e) => setSize(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md">
+                            {sizeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                    </div>
+                </div>
+                <div className="flex items-center">
+                    <input id="useCalculatedWeight" type="checkbox" checked={useCalculatedWeight} onChange={(e) => setUseCalculatedWeight(e.target.checked)} className="w-4 h-4 text-primary bg-background border-surface/50 rounded focus:ring-accent" />
+                    <label htmlFor="useCalculatedWeight" className="ml-2 text-sm font-medium text-text-muted">Automatically calculate max weight from stats (5e rules)</label>
+                </div>
+            </div>
+          )}
+
+          {/* --- Max Weight Section (now conditional) --- */}
+          {!isDMInventory && (
+            <div className={`flex items-end space-x-4 pt-4 ${useCalculatedWeight ? 'opacity-50' : ''}`}>
                 <div className="flex-grow">
                   <label className="block text-sm font-bold mb-2 text-text-muted">Total Max Weight</label>
-                  <input type="number" value={totalMaxWeight} onChange={(e) => setTotalMaxWeight(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+                  <input 
+                    type="number" 
+                    value={useCalculatedWeight ? calculateCarryingCapacity(strength, size) * (weightUnit === 'kg' ? LBS_TO_KG : 1) : manualMaxWeight} 
+                    onChange={(e) => setManualMaxWeight(e.target.value)}
+                    disabled={useCalculatedWeight}
+                    className="w-full p-2 bg-background border border-surface/50 rounded-md disabled:cursor-not-allowed" 
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-bold mb-2 text-text-muted">Unit</label>
@@ -208,7 +247,6 @@ export default function InventorySettings({ onClose, campaignId, userId, current
                 </div>
             </div>
           )}
-          <hr className="border-surface/50" />
 
           {/* Container Management Section */}
           <div className="space-y-4">
