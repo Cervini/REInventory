@@ -82,12 +82,18 @@ export default function InventorySettings({ onClose, campaignId, userId, current
     setLoading(true);
 
     let finalMaxWeightLbs;
-    if (useCalculatedWeight) {
-        finalMaxWeightLbs = calculateCarryingCapacity(strength, size);
+    // for DM fields are set to default as they don't really matter
+    if (!isDMInventory) {
+        if (useCalculatedWeight) {
+            finalMaxWeightLbs = calculateCarryingCapacity(strength, size);
+        } else {
+            const inputValue = parseFloat(manualMaxWeight);
+            finalMaxWeightLbs = weightUnit === 'kg' ? inputValue * KG_TO_LBS : inputValue;
+        }
     } else {
-        const inputValue = parseFloat(manualMaxWeight);
-        finalMaxWeightLbs = weightUnit === 'kg' ? inputValue * KG_TO_LBS : inputValue;
+        finalMaxWeightLbs = currentSettings.totalMaxWeight || 0;
     }
+
 
     const batch = writeBatch(db);
     const inventoryDocRef = doc(db, 'campaigns', campaignId, 'inventories', userId);
@@ -101,39 +107,41 @@ export default function InventorySettings({ onClose, campaignId, userId, current
       useCalculatedWeight: useCalculatedWeight,
     });
 
-    containers.forEach(container => {
-        const isNew = container.isNew;
-        const containerRef = isNew 
-            ? doc(inventoryDocRef, 'containers', crypto.randomUUID()) 
-            : doc(inventoryDocRef, 'containers', container.id);
-        
-        const containerData = {
-            name: container.name,
-            gridWidth: container.gridWidth,
-            gridHeight: container.gridHeight,
-            trackWeight: container.trackWeight,
-            gridItems: container.gridItems || [],
-            trayItems: container.trayItems || [],
-        };
+    if (!isDMInventory) {
+        containers.forEach(container => {
+            const isNew = container.isNew;
+            const containerRef = isNew 
+                ? doc(inventoryDocRef, 'containers', crypto.randomUUID()) 
+                : doc(inventoryDocRef, 'containers', container.id);
+            
+            const containerData = {
+                name: container.name,
+                gridWidth: container.gridWidth,
+                gridHeight: container.gridHeight,
+                trackWeight: container.trackWeight ?? true, // 'true' if trackWeight undefined
+                gridItems: container.gridItems || [],
+                trayItems: container.trayItems || [],
+            };
 
-        if (isNew) {
-            batch.set(containerRef, containerData);
-        } else {
-            batch.update(containerRef, containerData);
+            if (isNew) {
+                batch.set(containerRef, containerData);
+            } else {
+                batch.update(containerRef, containerData);
+            }
+        });
+        
+        for (const containerId of containersToDelete) {
+            const containerRef = doc(inventoryDocRef, 'containers', containerId);
+            batch.delete(containerRef);
         }
-    });
-    
-    for (const containerId of containersToDelete) {
-        const containerRef = doc(inventoryDocRef, 'containers', containerId);
-        batch.delete(containerRef);
     }
 
     try {
       await batch.commit();
-      toast.success("Settings updated successfully!");
+      toast.success("Inventory settings updated!");
       onClose();
     } catch (err) {
-      toast.error("Failed to update settings.");
+      toast.error("Unable to update inventory settings.");
       console.error(err);
     } finally {
       setLoading(false);
@@ -247,52 +255,54 @@ export default function InventorySettings({ onClose, campaignId, userId, current
           )}
 
           {/* Container Management Section */}
-          <div className="space-y-4">
-            <h4 className="text-xl font-bold font-fantasy text-accent">Containers</h4>
-            {containers.map((container) => (
-              <div key={container.id} className="p-4 border border-surface/50 rounded-lg space-y-4 bg-background/50">
-                <div className="flex items-center justify-between">
-                    <input 
-                        type="text"
-                        value={container.name}
-                        onChange={(e) => handleContainerChange(container.id, 'name', e.target.value)}
-                        className="font-bold text-lg bg-transparent border-b border-surface/50 focus:outline-none focus:border-accent"
-                    />
-                    <button type="button" onClick={() => handleDeleteContainer(container.id)} className="text-destructive/70 hover:text-destructive transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                    </button>
-                </div>
-
-                <div className="flex space-x-4">
-                  <div className="w-1/2">
-                    <label className="block text-sm font-bold mb-2 text-text-muted">Grid Width</label>
-                    <input type="number" min="1" value={container.gridWidth} onChange={(e) => handleContainerChange(container.id, 'gridWidth', parseInt(e.target.value, 10) || 1)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+          {!isDMInventory && (
+            <div className="space-y-4">
+              <h4 className="text-xl font-bold font-fantasy text-accent">Containers</h4>
+              {containers.map((container) => (
+                <div key={container.id} className="p-4 border border-surface/50 rounded-lg space-y-4 bg-background/50">
+                  <div className="flex items-center justify-between">
+                      <input 
+                          type="text"
+                          value={container.name}
+                          onChange={(e) => handleContainerChange(container.id, 'name', e.target.value)}
+                          className="font-bold text-lg bg-transparent border-b border-surface/50 focus:outline-none focus:border-accent"
+                      />
+                      <button type="button" onClick={() => handleDeleteContainer(container.id)} className="text-destructive/70 hover:text-destructive transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                      </button>
                   </div>
-                  <div className="w-1/2">
-                    <label className="block text-sm font-bold mb-2 text-text-muted">Grid Height</label>
-                    <input type="number" min="1" value={container.gridHeight} onChange={(e) => handleContainerChange(container.id, 'gridHeight', parseInt(e.target.value, 10) || 1)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
-                  </div>
-                </div>
 
-                {!isDMInventory && (
-                    <div className="flex items-center">
-                        <input 
-                            id={`track-${container.id}`} 
-                            type="checkbox" 
-                            checked={container.trackWeight ?? true}
-                            onChange={(e) => handleContainerChange(container.id, 'trackWeight', e.target.checked)} 
-                            className="w-4 h-4 text-primary bg-background border-surface/50 rounded focus:ring-accent" />
-                        <label htmlFor={`track-${container.id}`} className="ml-2 text-sm font-medium text-text-muted">Track weight for this container</label>
+                  <div className="flex space-x-4">
+                    <div className="w-1/2">
+                      <label className="block text-sm font-bold mb-2 text-text-muted">Grid Width</label>
+                      <input type="number" min="1" value={container.gridWidth} onChange={(e) => handleContainerChange(container.id, 'gridWidth', parseInt(e.target.value, 10) || 1)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
                     </div>
-                )}
-              </div>
-            ))}
-            <button type="button" onClick={handleAddNewContainer} className="w-full bg-surface/50 hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors border border-dashed border-surface">
-              + Add New Container
-            </button>
-          </div>
+                    <div className="w-1/2">
+                      <label className="block text-sm font-bold mb-2 text-text-muted">Grid Height</label>
+                      <input type="number" min="1" value={container.gridHeight} onChange={(e) => handleContainerChange(container.id, 'gridHeight', parseInt(e.target.value, 10) || 1)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+                    </div>
+                  </div>
+
+                  {!isDMInventory && (
+                      <div className="flex items-center">
+                          <input 
+                              id={`track-${container.id}`} 
+                              type="checkbox" 
+                              checked={container.trackWeight ?? true}
+                              onChange={(e) => handleContainerChange(container.id, 'trackWeight', e.target.checked)} 
+                              className="w-4 h-4 text-primary bg-background border-surface/50 rounded focus:ring-accent" />
+                          <label htmlFor={`track-${container.id}`} className="ml-2 text-sm font-medium text-text-muted">Track weight for this container</label>
+                      </div>
+                  )}
+                </div>
+              ))}
+              <button type="button" onClick={handleAddNewContainer} className="w-full bg-surface/50 hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors border border-dashed border-surface">
+                + Add New Container
+              </button>
+            </div>
+          )}
 
           {!isDMInventory && (
               <div className="border-t border-destructive/20 mt-8 pt-4">
