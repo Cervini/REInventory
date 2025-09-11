@@ -1,6 +1,7 @@
 import React from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { getColorForItemType } from '../utils/itemUtils';
+import { useLongPress } from '../hooks/useLongPress';
 
 /**
  * Renders a single draggable and droppable inventory item.
@@ -25,6 +26,11 @@ export default function InventoryItem({ item, onContextMenu, playerId, source, c
     id: item.id,
     data: { ownerId: playerId, item, source, containerId },
   });
+
+  const longPressEvents = useLongPress((event) => {
+    event.preventDefault();
+    onContextMenu(event, item, source);
+  }, 500); // 500ms delay for the long press
 
   const style = {
     gridColumn: source === 'grid' ? `${item.x + 1} / span ${item.w}` : undefined,
@@ -86,9 +92,10 @@ export default function InventoryItem({ item, onContextMenu, playerId, source, c
       }}
       style={style}
       className="relative flex"
-      onContextMenu={(e) => onContextMenu(e, item, source)}
+      // onContextMenu={(e) => onContextMenu(e, item, source)}
       data-tooltip-id="item-tooltip"
       data-tooltip-html={tooltipContent}
+      {...longPressEvents}
     >
       <div
         {...listeners}

@@ -301,7 +301,8 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     const isMyInventory = user.uid === playerId;
     const availableActions = [];
 
-    if (source === 'grid' && !item.stackable) {
+    // if (source === 'grid' && !item.stackable)
+    if (source === 'grid') {
         availableActions.push({ 
             label: 'Rotate', 
             onClick: () => handleRotateItem(item, playerId, containerId) 
