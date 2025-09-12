@@ -28,6 +28,8 @@ export default function CampaignSelector({ onCampaignSelected }) {
   
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [campaignToJoin, setCampaignToJoin] = useState(null);
+  const [showAddCharacterModal, setShowAddCharacterModal] = useState(false);
+  const [campaignForNewCharacter, setCampaignForNewCharacter] = useState(null);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -188,6 +190,17 @@ export default function CampaignSelector({ onCampaignSelected }) {
           onJoinSuccess={onCampaignSelected}
         />
       )}
+      {showAddCharacterModal && (
+        <JoinCampaign
+          campaignId={campaignForNewCharacter}
+          onClose={() => setShowAddCharacterModal(false)}
+          onJoinSuccess={() => {
+            setShowAddCharacterModal(false);
+            onCampaignSelected(campaignForNewCharacter);
+          }}
+          isDMAddingCharacter={true}
+        />
+      )}
 
       {/* --- Empty State --- */}
       {!loading && myCampaigns.length === 0 && (
@@ -211,16 +224,25 @@ export default function CampaignSelector({ onCampaignSelected }) {
                   {campaign.name}
                 </button>
                 {auth.currentUser?.uid === campaign.dmId && (
-                  <button
-                    onClick={() => handleDeleteCampaign(campaign.id, campaign.name)}
-                    disabled={loading}
-                    className="p-3 bg-destructive hover:bg-destructive/80 text-text-base rounded focus:outline-none focus:shadow-outline disabled:opacity-50 transition-colors duration-200"
-                    aria-label={`Delete campaign ${campaign.name}`}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        setCampaignForNewCharacter(campaign.id);
+                        setShowAddCharacterModal(true);
+                      }}
+                      disabled={loading}
+                      className="p-3 bg-primary/80 hover:bg-primary text-text-base rounded focus:outline-none focus:shadow-outline disabled:opacity-50 transition-colors duration-200"
+                      aria-label={`Add a character to ${campaign.name}`}
+                      title="Add Character"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 11a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1v-1z" />
+                      </svg>
+                    </button>
+                    <button onClick={() => handleDeleteCampaign(campaign.id, campaign.name)} disabled={loading} className="p-3 bg-destructive hover:bg-destructive/80 text-text-base rounded focus:outline-none focus:shadow-outline disabled:opacity-50 transition-colors duration-200" aria-label={`Delete campaign ${campaign.name}`} title="Delete Campaign">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                    </button>
+                  </>
                 )}
               </div>
             ))}

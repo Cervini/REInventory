@@ -56,7 +56,7 @@ const PlayerInventory = ({
   if (!inventoryData) return null;
 
   const isPlayerDM = campaign?.dmId === playerId;
-  const isMyInventory = user.uid === playerId;
+  const isMyInventory = user.uid === inventoryData.ownerId;
 
   return (
     <div className="bg-surface rounded-lg shadow-lg shadow-accent/10 border border-accent/20 overflow-hidden">

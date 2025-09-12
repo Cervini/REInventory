@@ -7,7 +7,7 @@ import { doc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore';
 // Import the new hook
 import { useStarterPacks } from '../hooks/useStarterPacks';
 
-export default function JoinCampaign({ campaignId, onClose, onJoinSuccess }) {
+export default function JoinCampaign({ campaignId, onClose, onJoinSuccess, isDMAddingCharacter = false }) {
   const [characterName, setCharacterName] = useState('');
   const [selectedPackId, setSelectedPackId] = useState('none');
   const [loading, setLoading] = useState(false);
@@ -49,30 +49,63 @@ export default function JoinCampaign({ campaignId, onClose, onJoinSuccess }) {
 
     try {
       const campaignDocRef = doc(db, 'campaigns', campaignId);
-      await updateDoc(campaignDocRef, {
-        players: arrayUnion(currentUser.uid),
-        [`layout.order`]: arrayUnion(currentUser.uid),
-        [`layout.visible.${currentUser.uid}`]: true
-      });
-
-      const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", currentUser.uid);
-      // THIS IS THE FIX (Part 2): Add starter items to the main player tray.
-      await setDoc(inventoryDocRef, {
-        characterName: characterName.trim(),
-        ownerId: currentUser.uid,
-        trayItems: startingItems, // <-- Correct location
-        totalMaxWeight: 100,
-        weightUnit: 'lbs'
-      });
       
-      const backpackRef = doc(inventoryDocRef, "containers", "backpack");
-      await setDoc(backpackRef, {
-          name: "Backpack",
-          gridItems: [], // The backpack starts empty
-          gridWidth: 10,
-          gridHeight: 5,
-          trackWeight: true
-      });
+      if (isDMAddingCharacter) {
+        const newCharacterId = crypto.randomUUID();
+        
+        await updateDoc(campaignDocRef, {
+          players: arrayUnion(newCharacterId),
+          [`layout.order`]: arrayUnion(newCharacterId),
+          [`layout.visible.${newCharacterId}`]: true
+        });
+
+        const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", newCharacterId);
+        await setDoc(inventoryDocRef, {
+          characterName: characterName.trim(),
+          ownerId: currentUser.uid, // DM is the owner
+          trayItems: startingItems,
+          totalMaxWeight: 150,
+          weightUnit: 'lbs',
+          strength: 10,
+          size: 'Medium',
+          useCalculatedWeight: true,
+        });
+
+        const backpackRef = doc(inventoryDocRef, "containers", "backpack");
+        await setDoc(backpackRef, {
+            name: "Backpack",
+            gridItems: [],
+            gridWidth: 10,
+            gridHeight: 5,
+            trackWeight: true
+        });
+
+      } else {
+        // Existing logic for a player joining
+        await updateDoc(campaignDocRef, {
+          players: arrayUnion(currentUser.uid),
+          [`layout.order`]: arrayUnion(currentUser.uid),
+          [`layout.visible.${currentUser.uid}`]: true
+        });
+
+        const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", currentUser.uid);
+        await setDoc(inventoryDocRef, {
+          characterName: characterName.trim(),
+          ownerId: currentUser.uid,
+          trayItems: startingItems, // <-- Correct location
+          totalMaxWeight: 100,
+          weightUnit: 'lbs'
+        });
+        
+        const backpackRef = doc(inventoryDocRef, "containers", "backpack");
+        await setDoc(backpackRef, {
+            name: "Backpack",
+            gridItems: [], // The backpack starts empty
+            gridWidth: 10,
+            gridHeight: 5,
+            trackWeight: true
+        });
+      }
 
       toast.success(`Welcome, ${characterName.trim()}!`);
       onJoinSuccess(campaignId);
@@ -87,8 +120,12 @@ export default function JoinCampaign({ campaignId, onClose, onJoinSuccess }) {
   return (
     <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-40 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-6 rounded-lg shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
-        <h3 className="text-2xl font-bold mb-4 font-fantasy text-accent">Join Campaign</h3>
-        <p className="text-text-muted mb-6 text-sm">Create your character for this new adventure.</p>
+        <h3 className="text-2xl font-bold mb-4 font-fantasy text-accent">
+          {isDMAddingCharacter ? 'Add New Character' : 'Join Campaign'}
+        </h3>
+        <p className="text-text-muted mb-6 text-sm">
+          {isDMAddingCharacter ? 'Create a new character for this campaign.' : 'Create your character for this new adventure.'}
+        </p>
         <form onSubmit={handleJoin} className="space-y-4">
           <div>
             <label className="block text-sm font-bold mb-2 text-text-muted">Character Name</label>
