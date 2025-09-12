@@ -5,7 +5,6 @@ import { db } from '../firebase';
 import { DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
 import PlayerInventoryGrid from './PlayerInventoryGrid';
 import { findFirstAvailableSlot, onOtherItem, outOfBounds } from '../utils/gridUtils';
-import { useCampaignData } from '../hooks/useCampaignData';
 import AddItem from './AddItem';
 import ContextMenu from './ContextMenu';
 import SplitStack from './SplitStack';
@@ -17,6 +16,7 @@ import AddFromCompendium from './AddFromCompendium';
 import StartTrade from './StartTrade';
 import TradeNotifications from './TradeNotifications';
 import Trade from './Trade';
+import { useCampaignStore } from '../stores/useCampaignStore';
 import { usePlayerProfiles } from '../hooks/usePlayerProfiles';
 import CampaignLayout from './CampaignLayout';
 import WeightCounter from './WeightCounter';
@@ -148,7 +148,14 @@ const PlayerInventory = ({
 
 export default function InventoryGrid({ campaignId, user, userProfile, isTrading, setIsTrading }) {
 
-  const { inventories, setInventories, campaign, isLoading: inventoriesLoading } = useCampaignData(campaignId, user);
+  const {
+    inventories,
+    campaignData: campaign,
+    isLoading: inventoriesLoading,
+    setInventoriesOptimistic,
+    fetchCampaign,
+    clearCampaign
+  } = useCampaignStore();
   const { playerProfiles, isLoading: profilesLoading } = usePlayerProfiles(campaignId);
   const isLoading = inventoriesLoading || profilesLoading;
 
@@ -167,6 +174,14 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   const [showLayoutSettings, setShowLayoutSettings] = useState(false);
 
   const gridRefs = useRef({});
+
+  useEffect(() => {
+    fetchCampaign(campaignId);
+    // Cleanup function to unsubscribe from listeners when the component unmounts
+    return () => {
+      clearCampaign();
+    };
+  }, [campaignId, fetchCampaign, clearCampaign]);
 
   const containerStructureSignature = useMemo(() => {
     return Object.values(inventories)
@@ -689,8 +704,8 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
             }
         }
         
-        setInventories(newInventories);
-        
+        setInventoriesOptimistic(newInventories);
+
         // Save to Firestore
         const batch = writeBatch(db);
         const sourceInvRef = doc(db, 'campaigns', campaignId, 'inventories', startPlayerId);
@@ -704,8 +719,14 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
             Object.values(newInventories[endPlayerId].containers).forEach(c => batch.update(doc(targetInvRef, 'containers', c.id), { gridItems: c.gridItems, trayItems: c.trayItems }));
         }
 
-        await batch.commit();
-        toast.success(`Stacked ${amountToTransfer} ${item.name}.`);
+        try {
+            await batch.commit();
+            toast.success(`Stacked ${amountToTransfer} ${item.name}.`);
+        } catch (error) {
+            toast.error("Failed to stack items. Reverting.");
+            console.error("Firestore batch write failed:", error);
+            setInventoriesOptimistic(inventories); // Revert on failure
+        }
         return; // End the function here
     }
 
@@ -767,7 +788,8 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
             endPlayerInv.trayItems.push(trayItem);
         }
     }
-    setInventories(newInventories);
+
+    setInventoriesOptimistic(newInventories);
 
     // 4. The final save logic
     const batch = writeBatch(db);
@@ -803,8 +825,8 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         await batch.commit();
     } catch (error) {
         toast.error("Failed to move item. Reverting changes.");
-        setInventories(inventories);
         console.error("Firestore batch write failed:", error);
+        setInventoriesOptimistic(inventories); // Revert on failure
     }
   };
 
@@ -905,8 +927,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         toast.error(`No space to rotate ${item.name}. Moved it to the tray.`);
       }
     }
-
-    setInventories(newInventories);
 
     const batch = writeBatch(db);
     const playerDocRef = doc(db, 'campaigns', campaignId, 'inventories', playerId);

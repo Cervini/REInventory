@@ -5,7 +5,7 @@ import { collection, onSnapshot, addDoc, doc, deleteDoc } from 'firebase/firesto
 import AddItem from './AddItem';
 import Spinner from './Spinner';
 import ContextMenu from './ContextMenu';
-import { getColorForItemType, itemTypeOptions } from '../utils/itemUtils';
+import { getColorForItemType, itemTypeOptions, generateItemTooltip } from '../utils/itemUtils';
 
 const rarityOptions = ['Common', 'Uncommon', 'Rare', 'Very Rare', 'Legendary', 'Artifact'];
 
@@ -134,48 +134,13 @@ export default function Compendium({ onClose }) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {items.map(item => {
-          const tooltipContent = `
-            <div style="text-align: left;">
-              <div style="display: flex; justify-content: space-between; align-items: start;">
-                <strong style="font-size: 1.1em;">${item.name}</strong>
-                <span style="font-size: 0.9em; color: #ccc; font-style: italic; margin-left: 10px;">${item.rarity || 'Common'}</span>
-              </div>
-              <div style="font-size: 0.9em; color: #ccc; margin-bottom: 5px;">
-                ${item.type || 'Misc'} ${item.attunement && item.attunement !== 'No' ? `(Requires Attunement)` : ''}
-              </div>
-              <div style="font-size: 0.9em;">
-                <strong>Cost:</strong> ${item.cost || 'N/A'}<br/>
-                <strong>Weight:</strong> ${item.weight || 'N/A'}
-              </div>
-              
-              ${item.weaponStats ? `
-                <div style="font-size: 0.9em; margin-top: 5px;">
-                  <strong>Damage:</strong> ${item.weaponStats.damage || ''} ${item.weaponStats.damageType || ''}<br/>
-                  <strong>Properties:</strong> ${item.weaponStats.properties || 'None'}
-                </div>
-              ` : ''}
-
-              ${item.armorStats ? `
-                <div style="font-size: 0.9em; margin-top: 5px;">
-                  <strong>AC:</strong> ${item.armorStats.armorClass || 'N/A'}<br/>
-                  <strong>Type:</strong> ${item.armorStats.armorType || 'N/A'}<br/>
-                  ${item.armorStats.strengthRequirement > 0 ? `<strong>Strength:</strong> ${item.armorStats.strengthRequirement}<br/>` : ''}
-                  ${item.armorStats.stealthDisadvantage ? `<em>Stealth Disadvantage</em>` : ''}
-                </div>
-              ` : ''}
-
-              <hr style="margin: 8px 0; border-color: #555;" />
-              <div style="font-size: 0.9em; max-height: 150px; overflow-y: auto; white-space: pre-wrap;">${item.description || 'No description.'}</div>
-            </div>
-          `;
-
           return (
             <div 
               key={item.id} 
               className={`${getColorForItemType(item.type)} rounded-lg p-3 text-text-base border border-surface/50 flex flex-col justify-between`}
               onContextMenu={(e) => handleContextMenu(e, item)}
               data-tooltip-id="item-tooltip"
-              data-tooltip-html={tooltipContent}
+              data-tooltip-html={generateItemTooltip(item)}
               data-tooltip-place="top"
             >
               <div className="min-w-0">

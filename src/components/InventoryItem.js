@@ -2,6 +2,7 @@ import React from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { getColorForItemType } from '../utils/itemUtils';
 import { useLongPress } from '../hooks/useLongPress';
+import { generateItemTooltip } from '../utils/itemUtils';
 
 /**
  * Renders a single draggable and droppable inventory item.
@@ -49,41 +50,6 @@ export default function InventoryItem({ item, onContextMenu, playerId, source, c
   const effectiveCellHeight = cellSize?.height > 0 ? cellSize.height : 80;
   const isTextVisible = effectiveCellWidth * item.w > 20 && effectiveCellHeight * item.h > 20;
 
-  const tooltipContent = `
-    <div style="text-align: left;">
-      <div style="display: flex; justify-content: space-between; align-items: start;">
-        <strong style="font-size: 1.1em;">${item.name}</strong>
-        <span style="font-size: 0.9em; color: #ccc; font-style: italic; margin-left: 10px;">${item.rarity || 'Common'}</span>
-      </div>
-      <div style="font-size: 0.9em; color: #ccc; margin-bottom: 5px;">
-        ${item.type || 'Misc'} ${item.attunement && item.attunement !== 'No' ? `(Requires Attunement)` : ''}
-      </div>
-      <div style="font-size: 0.9em;">
-        <strong>Cost:</strong> ${item.cost || 'N/A'}<br/>
-        <strong>Weight:</strong> ${item.weight || 'N/A'}
-      </div>
-      
-      ${item.weaponStats ? `
-        <div style="font-size: 0.9em; margin-top: 5px;">
-          <strong>Damage:</strong> ${item.weaponStats.damage || ''} ${item.weaponStats.damageType || ''}<br/>
-          <strong>Properties:</strong> ${item.weaponStats.properties || 'None'}
-        </div>
-      ` : ''}
-
-      ${item.armorStats ? `
-        <div style="font-size: 0.9em; margin-top: 5px;">
-          <strong>AC:</strong> ${item.armorStats.armorClass || 'N/A'}<br/>
-          <strong>Type:</strong> ${item.armorStats.armorType || 'N/A'}<br/>
-          ${item.armorStats.strengthRequirement > 0 ? `<strong>Strength:</strong> ${item.armorStats.strengthRequirement}<br/>` : ''}
-          ${item.armorStats.stealthDisadvantage ? `<em>Stealth Disadvantage</em>` : ''}
-        </div>
-      ` : ''}
-
-      <hr style="margin: 8px 0; border-color: #555;" />
-      <div style="font-size: 0.9em; max-height: 150px; overflow-y: auto; white-space: pre-wrap;">${item.description || 'No description.'}</div>
-    </div>
-  `;
-
   return (
     <div
       ref={(node) => {
@@ -92,9 +58,8 @@ export default function InventoryItem({ item, onContextMenu, playerId, source, c
       }}
       style={style}
       className="relative flex"
-      // onContextMenu={(e) => onContextMenu(e, item, source)}
       data-tooltip-id="item-tooltip"
-      data-tooltip-html={tooltipContent}
+      data-tooltip-html={generateItemTooltip(item)}
       {...longPressEvents}
     >
       <div
