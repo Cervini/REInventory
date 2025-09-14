@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { db, auth } from '../firebase';
 import { doc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore';
-// Import the new hook
+import { getDoc } from "firebase/firestore";
 import { useStarterPacks } from '../hooks/useStarterPacks';
 
 export default function JoinCampaign({ campaignId, onClose, onJoinSuccess, isDMAddingCharacter = false }) {
@@ -49,6 +49,10 @@ export default function JoinCampaign({ campaignId, onClose, onJoinSuccess, isDMA
 
     try {
       const campaignDocRef = doc(db, 'campaigns', campaignId);
+      const campaignDoc = await getDoc(campaignDocRef);
+      const campaignData = campaignDoc.data();
+
+      const defaultBackpackSize = campaignData?.defaultBackpackSize || { width: 10, height: 5 };
       
       if (isDMAddingCharacter) {
         const newCharacterId = crypto.randomUUID();
@@ -73,11 +77,11 @@ export default function JoinCampaign({ campaignId, onClose, onJoinSuccess, isDMA
 
         const backpackRef = doc(inventoryDocRef, "containers", "backpack");
         await setDoc(backpackRef, {
-            name: "Backpack",
-            gridItems: [],
-            gridWidth: 10,
-            gridHeight: 5,
-            trackWeight: true
+          name: "Backpack",
+          gridItems: [],
+          gridWidth: defaultBackpackSize.width,
+          gridHeight: defaultBackpackSize.height,
+          trackWeight: true,
         });
 
       } else {
@@ -99,11 +103,11 @@ export default function JoinCampaign({ campaignId, onClose, onJoinSuccess, isDMA
         
         const backpackRef = doc(inventoryDocRef, "containers", "backpack");
         await setDoc(backpackRef, {
-            name: "Backpack",
-            gridItems: [], // The backpack starts empty
-            gridWidth: 10,
-            gridHeight: 5,
-            trackWeight: true
+          name: "Backpack",
+          gridItems: [], // The backpack starts empty
+          gridWidth: defaultBackpackSize.width,
+          gridHeight: defaultBackpackSize.height,
+          trackWeight: true,
         });
       }
 

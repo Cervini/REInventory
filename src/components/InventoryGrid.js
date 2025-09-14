@@ -156,6 +156,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     fetchCampaign,
     clearCampaign
   } = useCampaignStore();
+  
   const { playerProfiles, isLoading: profilesLoading } = usePlayerProfiles(campaignId);
   const isLoading = inventoriesLoading || profilesLoading;
 
@@ -1069,7 +1070,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
                 onClick={() => setShowLayoutSettings(true)} 
                 className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors text-sm"
             >
-                Manage Layout
+                Manage Campaign
             </button>
         </div>
       )}

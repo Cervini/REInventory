@@ -3,8 +3,9 @@ import toast from 'react-hot-toast';
 import { db } from '../firebase';
 import { doc, updateDoc, getDocs, writeBatch, collection } from 'firebase/firestore';
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import CampaignSettings from './CampaignSettings';
 
 /**
  * Renders a single player item within a sortable list. It uses the `useSortable`
@@ -61,6 +62,7 @@ export default function CampaignLayout({ campaign, inventories, playerProfiles, 
     const initialOrder = useMemo(() => campaign.layout?.order || campaign.players || [], [campaign]);
     const [playerOrder, setPlayerOrder] = useState(initialOrder);
     const [visiblePlayers, setVisiblePlayers] = useState(campaign.layout?.visible || {});
+    const [showCampaignSettings, setShowCampaignSettings] = useState(false);
     const [loading, setLoading] = useState(false);
 
     // Configure both Pointer and Touch sensors.
@@ -129,8 +131,6 @@ export default function CampaignLayout({ campaign, inventories, playerProfiles, 
         }
     };
 
-
-    
     /**
      * Asynchronously removes a player from the campaign. This is a destructive action that
      * first deletes the player's entire inventory (including all containers and items)
@@ -182,6 +182,14 @@ export default function CampaignLayout({ campaign, inventories, playerProfiles, 
     
     return (
         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-40 backdrop-blur-sm" onClick={onClose}>
+            {/* --- Modals --- */}
+            {showCampaignSettings && (
+            <CampaignSettings
+                onClose={() => setShowCampaignSettings(null)}
+                campaign={campaign}
+            />
+
+            )}
             <div className="bg-gradient-to-b from-surface to-background border border-accent/20 p-6 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
                 <h3 className="text-2xl font-bold mb-4 font-fantasy text-accent">Manage Layout</h3>
                 <p className="text-text-muted mb-6 text-sm">Drag players to reorder them and use the checkbox to toggle their visibility.</p>
@@ -202,12 +210,14 @@ export default function CampaignLayout({ campaign, inventories, playerProfiles, 
                     </SortableContext>
                 </DndContext>
                 <div className="flex justify-end space-x-4 pt-6">
+                    <button type="button" onClick={() => setShowCampaignSettings(true)} disabled={loading} className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors">Campaign settings</button>
                     <button type="button" onClick={onClose} disabled={loading} className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors">Cancel</button>
                     <button type="button" onClick={handleSave} disabled={loading} className="bg-primary hover:bg-accent hover:text-background text-text-base font-bold py-2 px-4 rounded transition-colors">
                         {loading ? 'Saving...' : 'Save'}
                     </button>
                 </div>
             </div>
+
         </div>
     );
 }
