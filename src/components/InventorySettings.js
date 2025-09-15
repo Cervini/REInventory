@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { db } from '../firebase';
 import { doc, writeBatch, getDoc, getDocs, collection } from "firebase/firestore";
 import { calculateCarryingCapacity } from '../utils/dndUtils';
+import CollapsibleSection from './CollapsibleSection';
 
 const LBS_TO_KG = 0.453592;
 const KG_TO_LBS = 2.20462;
@@ -208,116 +209,120 @@ export default function InventorySettings({ onClose, campaignId, userId, current
             <label className="block text-sm font-bold mb-2 text-text-muted">Character Name</label>
             <input type="text" value={characterName} onChange={(e) => setCharacterName(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
           </div>
+          
+          <CollapsibleSection title="Weight Settings" defaultOpen={false}>
+            {/* Character Stats --- */}
+            {!isDMInventory && (
+              <div className="space-y-4 border-t border-surface/50 pt-4">
+                  <div className="flex space-x-4">
+                      <div className="w-1/2">
+                          <label className="block text-sm font-bold mb-2 text-text-muted">Strength Score</label>
+                          <input type="number" value={strength} onChange={(e) => setStrength(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+                      </div>
+                      <div className="w-1/2">
+                          <label className="block text-sm font-bold mb-2 text-text-muted">Character Size</label>
+                          <select value={size} onChange={(e) => setSize(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md">
+                              {sizeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                      </div>
+                  </div>
+                  <div className="flex items-center">
+                      <input id="useCalculatedWeight" type="checkbox" checked={useCalculatedWeight} onChange={(e) => setUseCalculatedWeight(e.target.checked)} className="w-4 h-4 text-primary bg-background border-surface/50 rounded focus:ring-accent" />
+                      <label htmlFor="useCalculatedWeight" className="ml-2 text-sm font-medium text-text-muted">Automatically calculate max weight from stats (5e rules)</label>
+                  </div>
+              </div>
+            )}
 
-          {/* Character Stats --- */}
-          {!isDMInventory && (
-            <div className="space-y-4 border-t border-surface/50 pt-4">
-                 <div className="flex space-x-4">
-                    <div className="w-1/2">
-                        <label className="block text-sm font-bold mb-2 text-text-muted">Strength Score</label>
-                        <input type="number" value={strength} onChange={(e) => setStrength(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
-                    </div>
-                    <div className="w-1/2">
-                        <label className="block text-sm font-bold mb-2 text-text-muted">Character Size</label>
-                        <select value={size} onChange={(e) => setSize(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md">
-                            {sizeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                        </select>
-                    </div>
-                </div>
-                <div className="flex items-center">
-                    <input id="useCalculatedWeight" type="checkbox" checked={useCalculatedWeight} onChange={(e) => setUseCalculatedWeight(e.target.checked)} className="w-4 h-4 text-primary bg-background border-surface/50 rounded focus:ring-accent" />
-                    <label htmlFor="useCalculatedWeight" className="ml-2 text-sm font-medium text-text-muted">Automatically calculate max weight from stats (5e rules)</label>
-                </div>
-            </div>
-          )}
-
-          {/* --- Max Weight Section (now conditional) --- */}
-          {!isDMInventory && (
-            <div className={`flex items-end space-x-4 pt-4 ${useCalculatedWeight ? 'opacity-50' : ''}`}>
-                <div className="flex-grow">
-                  <label className="block text-sm font-bold mb-2 text-text-muted">Total Max Weight</label>
-                  <input 
-                    type="number" 
-                    value={useCalculatedWeight ? calculateCarryingCapacity(strength, size) * (weightUnit === 'kg' ? LBS_TO_KG : 1) : manualMaxWeight} 
-                    onChange={(e) => setManualMaxWeight(e.target.value)}
-                    disabled={useCalculatedWeight}
-                    className="w-full p-2 bg-background border border-surface/50 rounded-md disabled:cursor-not-allowed" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold mb-2 text-text-muted">Unit</label>
-                  <select value={weightUnit} onChange={(e) => setWeightUnit(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md">
-                    <option value="lbs">lbs</option>
-                    <option value="kg">kg</option>
-                  </select>
-                </div>
-            </div>
-          )}
+            {/* --- Max Weight Section (now conditional) --- */}
+            {!isDMInventory && (
+              <div className={`flex items-end space-x-4 pt-4 ${useCalculatedWeight ? 'opacity-50' : ''}`}>
+                  <div className="flex-grow">
+                    <label className="block text-sm font-bold mb-2 text-text-muted">Total Max Weight</label>
+                    <input 
+                      type="number" 
+                      value={useCalculatedWeight ? calculateCarryingCapacity(strength, size) * (weightUnit === 'kg' ? LBS_TO_KG : 1) : manualMaxWeight} 
+                      onChange={(e) => setManualMaxWeight(e.target.value)}
+                      disabled={useCalculatedWeight}
+                      className="w-full p-2 bg-background border border-surface/50 rounded-md disabled:cursor-not-allowed" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold mb-2 text-text-muted">Unit</label>
+                    <select value={weightUnit} onChange={(e) => setWeightUnit(e.target.value)} className="w-full p-2 bg-background border border-surface/50 rounded-md">
+                      <option value="lbs">lbs</option>
+                      <option value="kg">kg</option>
+                    </select>
+                  </div>
+              </div>
+            )}
+          </CollapsibleSection>
 
           {/* Container Management Section */}
-          {!isDMInventory && (
-            <div className="space-y-4">
-              <h4 className="text-xl font-bold font-fantasy text-accent">Containers</h4>
-              {containers.map((container) => (
-                <div key={container.id} className="p-4 border border-surface/50 rounded-lg space-y-4 bg-background/50">
-                  <div className="flex items-center justify-between">
-                      <input 
-                          type="text"
-                          value={container.name}
-                          onChange={(e) => handleContainerChange(container.id, 'name', e.target.value)}
-                          className="font-bold text-lg bg-transparent border-b border-surface/50 focus:outline-none focus:border-accent"
-                      />
-                      <button type="button" onClick={() => handleDeleteContainer(container.id)} className="text-destructive/70 hover:text-destructive transition-colors">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                      </button>
-                  </div>
-
-                  <div className="flex space-x-4">
-                    <div className="w-1/2">
-                      <label className="block text-sm font-bold mb-2 text-text-muted">Grid Width</label>
-                      <input type="number" min="1" value={container.gridWidth} onChange={(e) => handleContainerChange(container.id, 'gridWidth', parseInt(e.target.value, 10) || 1)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+          <CollapsibleSection title="Container Management" defaultOpen={false}>
+            {!isDMInventory && (
+              <div className="space-y-4">
+                <h4 className="text-xl font-bold font-fantasy text-accent">Containers</h4>
+                {containers.map((container) => (
+                  <div key={container.id} className="p-4 border border-surface/50 rounded-lg space-y-4 bg-background/50">
+                    <div className="flex items-center justify-between">
+                        <input 
+                            type="text"
+                            value={container.name}
+                            onChange={(e) => handleContainerChange(container.id, 'name', e.target.value)}
+                            className="font-bold text-lg bg-transparent border-b border-surface/50 focus:outline-none focus:border-accent"
+                        />
+                        <button type="button" onClick={() => handleDeleteContainer(container.id)} className="text-destructive/70 hover:text-destructive transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        </button>
                     </div>
-                    <div className="w-1/2">
-                      <label className="block text-sm font-bold mb-2 text-text-muted">Grid Height</label>
-                      <input type="number" min="1" value={container.gridHeight} onChange={(e) => handleContainerChange(container.id, 'gridHeight', parseInt(e.target.value, 10) || 1)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
-                    </div>
-                  </div>
 
-                  {!isDMInventory && (
-                      <div className="flex items-center">
-                          <input 
-                              id={`track-${container.id}`} 
-                              type="checkbox" 
-                              checked={container.trackWeight ?? true}
-                              onChange={(e) => handleContainerChange(container.id, 'trackWeight', e.target.checked)} 
-                              className="w-4 h-4 text-primary bg-background border-surface/50 rounded focus:ring-accent" />
-                          <label htmlFor={`track-${container.id}`} className="ml-2 text-sm font-medium text-text-muted">Track weight for this container</label>
+                    <div className="flex space-x-4">
+                      <div className="w-1/2">
+                        <label className="block text-sm font-bold mb-2 text-text-muted">Grid Width</label>
+                        <input type="number" min="1" value={container.gridWidth} onChange={(e) => handleContainerChange(container.id, 'gridWidth', parseInt(e.target.value, 10) || 1)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
                       </div>
-                  )}
-                </div>
-              ))}
-              <button type="button" onClick={handleAddNewContainer} className="w-full bg-surface/50 hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors border border-dashed border-surface">
-                + Add New Container
-              </button>
-            </div>
-          )}
+                      <div className="w-1/2">
+                        <label className="block text-sm font-bold mb-2 text-text-muted">Grid Height</label>
+                        <input type="number" min="1" value={container.gridHeight} onChange={(e) => handleContainerChange(container.id, 'gridHeight', parseInt(e.target.value, 10) || 1)} className="w-full p-2 bg-background border border-surface/50 rounded-md" />
+                      </div>
+                    </div>
 
-          {!isDMInventory && (
-              <div className="border-t border-destructive/20 mt-8 pt-4">
-                  <h4 className="text-lg font-bold text-destructive mb-2">Danger Zone</h4>
-                  <p className="text-sm text-text-muted mb-4">Leaving the campaign will permanently delete your character and their inventory for this campaign.</p>
-                  <button 
-                      type="button" 
-                      onClick={handleLeaveCampaign} 
-                      disabled={loading} 
-                      className="w-full bg-destructive/80 hover:bg-destructive text-text-base font-bold py-2 px-4 rounded transition-colors duration-200"
-                  >
-                    {loading ? 'Leaving...' : 'Leave Campaign'}
-                  </button>
+                    {!isDMInventory && (
+                        <div className="flex items-center">
+                            <input 
+                                id={`track-${container.id}`} 
+                                type="checkbox" 
+                                checked={container.trackWeight ?? true}
+                                onChange={(e) => handleContainerChange(container.id, 'trackWeight', e.target.checked)} 
+                                className="w-4 h-4 text-primary bg-background border-surface/50 rounded focus:ring-accent" />
+                            <label htmlFor={`track-${container.id}`} className="ml-2 text-sm font-medium text-text-muted">Track weight for this container</label>
+                        </div>
+                    )}
+                  </div>
+                ))}
+                <button type="button" onClick={handleAddNewContainer} className="w-full bg-surface/50 hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors border border-dashed border-surface">
+                  + Add New Container
+                </button>
               </div>
-          )}
+            )}
+          </CollapsibleSection>
+          <CollapsibleSection title="Danger Zone" defaultOpen={false}>
+            {!isDMInventory && (
+                <div className="border-t border-destructive/20 mt-8 pt-4">
+                    <p className="text-sm text-text-muted mb-4">Leaving the campaign will permanently delete your character and their inventory for this campaign.</p>
+                    <button 
+                        type="button" 
+                        onClick={handleLeaveCampaign} 
+                        disabled={loading} 
+                        className="w-full bg-destructive/80 hover:bg-destructive text-text-base font-bold py-2 px-4 rounded transition-colors duration-200"
+                    >
+                      {loading ? 'Leaving...' : 'Leave Campaign'}
+                    </button>
+                </div>
+            )}
+          </CollapsibleSection>
           
           <div className="flex justify-end space-x-4 pt-4">
             <button type="button" onClick={onClose} disabled={loading} className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors">Cancel</button>
