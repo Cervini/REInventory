@@ -17,7 +17,7 @@ import { generateItemTooltip } from '../utils/itemUtils';
  * @param {string} props.containerId - The ID of the container holding the item.
  * @returns {JSX.Element}
  */
-export default function InventoryItem({ item, onContextMenu, playerId, source, cellSize, containerId }) {
+export default function InventoryItem({ item, onContextMenu, playerId, source, cellSize, containerId, isViewerDM }) {
   const { attributes, listeners, setNodeRef: setDraggableNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
     data: { ownerId: playerId, item, source, containerId },
@@ -59,7 +59,7 @@ export default function InventoryItem({ item, onContextMenu, playerId, source, c
       style={style}
       className="relative flex"
       data-tooltip-id="item-tooltip"
-      data-tooltip-html={generateItemTooltip(item)}
+      data-tooltip-html={generateItemTooltip(item, isViewerDM)}
       {...longPressEvents}
     >
       <div

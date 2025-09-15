@@ -16,7 +16,7 @@ import InventoryItem from './InventoryItem';
  * @param {object} props.cellSize - The calculated width and height of a single grid cell.
  * @returns {JSX.Element}
  */
-export default function PlayerInventoryGrid({ items, gridWidth, gridHeight, containerId, onContextMenu, playerId, setGridRef, cellSize }) {
+export default function PlayerInventoryGrid({ items, gridWidth, gridHeight, containerId, onContextMenu, playerId, setGridRef, cellSize, isViewerDM }) {
   
   const { setNodeRef, isOver } = useDroppable({ id: `${playerId}|${containerId}|grid` });
 
@@ -63,6 +63,7 @@ export default function PlayerInventoryGrid({ items, gridWidth, gridHeight, cont
           playerId={playerId}
           source="grid"
           cellSize={cellSize}
+          isViewerDM={isViewerDM}
         />
       ))}
     </div>

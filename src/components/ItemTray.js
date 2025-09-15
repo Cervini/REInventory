@@ -13,7 +13,7 @@ import InventoryItem from './InventoryItem';
  * @param {string} props.containerId - The ID representing this tray (e.g., 'tray' or a DM container ID).
  * @returns {JSX.Element}
  */
-export default function ItemTray({ playerId, items, onContextMenu, isDM, containerId }) {
+export default function ItemTray({ playerId, items, onContextMenu, isDM, containerId, isViewerDM }) {
 
     const { setNodeRef, isOver } = useDroppable({ id: `${playerId}|${containerId}|tray` });
 
@@ -35,6 +35,7 @@ export default function ItemTray({ playerId, items, onContextMenu, isDM, contain
               playerId={playerId}
               isDM={isDM}
               source="tray"
+              isViewerDM={isViewerDM}
               cellSize={{ width: 80, height: 80 }}
             />
           </div>

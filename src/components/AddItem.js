@@ -21,6 +21,7 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
   const [weight, setWeight] = useState(isEditMode ? itemBeingEdited.weight ?? '' : '');
   const [description, setDescription] = useState(isEditMode ? itemBeingEdited.description ?? '' : '');
   const [rarity, setRarity] = useState(isEditMode ? itemBeingEdited.rarity : 'Common');
+  const [magicProperties, setMagicProperties] = useState(isEditMode ? itemBeingEdited.magicProperties ?? '' : '');
   const [attunement, setAttunement] = useState(isEditMode ? itemBeingEdited.attunement : 'No');
   const [damage, setDamage] = useState(isEditMode ? itemBeingEdited.weaponStats?.damage : '');
   const [damageType, setDamageType] = useState(isEditMode ? itemBeingEdited.weaponStats?.damageType : '');
@@ -91,6 +92,8 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
         weight,
         description,
         rarity,
+        magicProperties,
+        magicPropertiesVisible: isEditMode ? itemBeingEdited.magicPropertiesVisible ?? false : false,
         attunement,
     };
 
@@ -203,6 +206,14 @@ export default function AddItem({ onAddItem, onClose, itemToEdit, isDM }) {
             <label className="block text-sm font-bold mb-2 text-text-muted">Description</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="3" className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200"></textarea>
           </fieldset>
+
+          {isDM && (
+            <fieldset>
+              <label className="block text-sm font-bold mb-2 text-text-muted">Magic Properties (DM Only)</label>
+              <textarea value={magicProperties} onChange={(e) => setMagicProperties(e.target.value)} rows="3" className="w-full p-2 bg-background border border-surface/50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-200" placeholder="This description is hidden from players until revealed."></textarea>
+            </fieldset>
+          )}
+
         <fieldset>
           <label className="block text-sm font-bold mb-2 text-text-muted">Type</label>
           <div className="flex flex-wrap gap-2">

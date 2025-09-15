@@ -34,6 +34,8 @@ const PlayerInventory = ({
   // We use optional chaining (?.) to prevent errors if inventoryData is not ready.
   const containers = useMemo(() => Object.values(inventoryData?.containers || {}), [inventoryData]);
 
+  const isViewerDM = campaign?.dmId === user.uid;
+
   const totalWeightLbs = useMemo(() => {
     if (!inventoryData) return 0;
     
@@ -100,6 +102,7 @@ const PlayerInventory = ({
                     containerId={container.id}
                     onContextMenu={onContextMenu}
                     playerId={playerId}
+                    isViewerDM={isViewerDM}
                 />
             ))
         ) : (
@@ -125,6 +128,7 @@ const PlayerInventory = ({
                         playerId={playerId}
                         setGridRef={(node) => (gridRefs.current[container.id] = node)}
                         cellSize={cellSizes[container.id]}
+                        isViewerDM={isViewerDM}
                       />
                     </div>
                   ))}
@@ -137,6 +141,7 @@ const PlayerInventory = ({
                         containerId="tray" 
                         onContextMenu={onContextMenu}
                         playerId={playerId}
+                        isViewerDM={isViewerDM}
                     />
                 </div>
             </>
@@ -317,6 +322,13 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     const isMyInventory = user.uid === playerId;
     const availableActions = [];
 
+    if (isDM && item.magicProperties && !item.magicPropertiesVisible) {
+      availableActions.push({
+        label: 'Reveal Magic Properties',
+        onClick: () => handleRevealMagicProperties(item, playerId, source, containerId),
+      });
+    }
+
     // if (source === 'grid' && !item.stackable)
     if (source === 'grid') {
         availableActions.push({ 
@@ -371,6 +383,45 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
    */
   const handleStartSplit = (item, playerId, containerId) => {
     setSplittingItem({ item, playerId, containerId });
+  };
+
+  /**
+   * Reveals the hidden magic properties of an item to the player by setting
+   * its `magicPropertiesVisible` flag to true in Firestore.
+   * @param {object} item - The item to update.
+   * @param {string} playerId - The ID of the item's owner.
+   * @param {('grid'|'tray')} source - The location of the item.
+   * @param {string} containerId - The ID of the container holding the item.
+   */
+  const handleRevealMagicProperties = async (item, playerId, source, containerId) => {
+    if (!item || !playerId || !source) return;
+
+    const updatedItem = { ...item, magicPropertiesVisible: true };
+
+    // Case 1: The item is in a container (either grid or a DM's tray)
+    if (containerId && containerId !== 'tray') {
+        const containerDocRef = doc(db, "campaigns", campaignId, "inventories", playerId, "containers", containerId);
+        const currentContainer = inventories[playerId]?.containers?.[containerId];
+        if (!currentContainer) return;
+
+        let updatePayload = {};
+        if (source === 'grid') {
+            updatePayload.gridItems = currentContainer.gridItems.map(i => i.id === item.id ? updatedItem : i);
+        } else { // This handles the DM's container tray
+            updatePayload.trayItems = currentContainer.trayItems.map(i => i.id === item.id ? updatedItem : i);
+        }
+        await updateDoc(containerDocRef, updatePayload);
+    
+    // Case 2: The item is in the player's main "Floor/Ground" tray
+    } else if (source === 'tray') {
+        const playerInvRef = doc(db, "campaigns", campaignId, "inventories", playerId);
+        const playerInv = inventories[playerId];
+        if (!playerInv?.trayItems) return;
+
+        const updatedTrayItems = playerInv.trayItems.map(i => i.id === item.id ? updatedItem : i);
+        await updateDoc(playerInvRef, { trayItems: updatedTrayItems });
+    }
+    toast.success(`Revealed properties for ${item.name}.`);
   };
 
   /**

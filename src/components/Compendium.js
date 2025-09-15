@@ -140,7 +140,7 @@ export default function Compendium({ onClose }) {
               className={`${getColorForItemType(item.type)} rounded-lg p-3 text-text-base border border-surface/50 flex flex-col justify-between`}
               onContextMenu={(e) => handleContextMenu(e, item)}
               data-tooltip-id="item-tooltip"
-              data-tooltip-html={generateItemTooltip(item)}
+              data-tooltip-html={generateItemTooltip(item, true)}
               data-tooltip-place="top"
             >
               <div className="min-w-0">
