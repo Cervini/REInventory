@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { collection, addDoc, doc, setDoc, getDoc, query, where, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import JoinCampaign from './JoinCampaign';
+import WhatsNewModal, { whatsNewConfig } from './WhatsNewModal';
 
 const BuyMeACoffeeButton = () => (
   <a 
@@ -29,6 +30,7 @@ export default function CampaignSelector({ onCampaignSelected }) {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [campaignToJoin, setCampaignToJoin] = useState(null);
   const [showAddCharacterModal, setShowAddCharacterModal] = useState(false);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [campaignForNewCharacter, setCampaignForNewCharacter] = useState(null);
 
   useEffect(() => {
@@ -56,6 +58,28 @@ export default function CampaignSelector({ onCampaignSelected }) {
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    const { version, expiryDate } = whatsNewConfig;
+    const storageKey = `reinventory-whats-new-${version}`;
+    
+    const hasSeen = localStorage.getItem(storageKey);
+    
+    // Check against the end of the day to make the expiry date inclusive.
+    // This avoids timezone issues where the modal might expire prematurely.
+    const isExpired = new Date() > new Date(`${expiryDate}T23:59:59`);
+    
+    if (!hasSeen && !isExpired) {
+      setShowWhatsNew(true);
+    }
+  }, []); // Run only once on mount
+
+  const handleCloseWhatsNew = () => {
+    const { version } = whatsNewConfig;
+    const storageKey = `reinventory-whats-new-${version}`;
+    localStorage.setItem(storageKey, 'true');
+    setShowWhatsNew(false);
+  };
 
   /**
    * Asynchronously creates a new campaign in Firestore.
@@ -182,6 +206,7 @@ export default function CampaignSelector({ onCampaignSelected }) {
 
   return (
     <>
+    {showWhatsNew && <WhatsNewModal onClose={handleCloseWhatsNew} />}
     <div className="w-full max-w-md mx-auto bg-surface shadow-lg shadow-accent/10 rounded-lg p-8 border border-accent/20">
       {showJoinModal && (
         <JoinCampaign
