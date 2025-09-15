@@ -3,6 +3,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { getColorForItemType } from '../utils/itemUtils';
 import { useLongPress } from '../hooks/useLongPress';
 import { generateItemTooltip } from '../utils/itemUtils';
+import DynamicIcon from './DynamicIcon';
 
 /**
  * Renders a single draggable and droppable inventory item.
@@ -68,6 +69,13 @@ export default function InventoryItem({ item, onContextMenu, playerId, source, c
         className={`${getColorForItemType(item.type)} w-full h-full rounded-lg cursor-grab active:cursor-grabbing select-none border border-surface/50 touch-none`}
       >
         <div className="absolute inset-0 p-1 flex items-center justify-center pointer-events-none">
+          {/* Render the icon */}
+          {item.icon && (
+            <div className="absolute inset-0 flex items-center justify-center text-black opacity-20 pointer-events-none">
+              <DynamicIcon iconName={item.icon} className="w-3/4 h-3/4" />
+            </div>
+          )}
+
           {isTextVisible && (
             <span className="truncate text-text-base font-bold text-xs sm:text-sm">
               {item.name}
