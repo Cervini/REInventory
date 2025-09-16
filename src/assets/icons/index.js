@@ -6,6 +6,7 @@ import { ReactComponent as BananaIcon } from './banana.svg';
 import { ReactComponent as BaseballBatIcon } from './baseball_bat.svg';
 import { ReactComponent as BattleaxeIcon } from './battleaxe.svg';
 import { ReactComponent as BeerIcon } from './beer.svg';
+import { ReactComponent as BellIcon } from './bell.svg';
 import { ReactComponent as BeltIcon } from './belt.svg';
 import { ReactComponent as BlanketIcon } from './blanket.svg';
 import { ReactComponent as BookBlackIcon } from './book_black.svg';
@@ -18,8 +19,11 @@ import { ReactComponent as BreadIcon } from './bread.svg';
 import { ReactComponent as BroadswordIcon } from './broadsword.svg';
 import { ReactComponent as BrokenBottleIcon } from './broken_bottle.svg';
 import { ReactComponent as BrushIcon } from './brush.svg';
+import { ReactComponent as CaltropsIcon } from './caltrops.svg';
 import { ReactComponent as CandleIcon } from './candle.svg';
 import { ReactComponent as CarrotIcon } from './carrot.svg';
+import { ReactComponent as CauldronIcon } from './cauldron.svg';
+import { ReactComponent as ChainsIcon } from './chains.svg';
 import { ReactComponent as ChakramIcon } from './chakram.svg';
 import { ReactComponent as ChaliceIcon } from './chalice.svg';
 import { ReactComponent as CheeseIcon } from './cheese.svg';
@@ -29,6 +33,7 @@ import { ReactComponent as ChestOpenIcon } from './chest_open.svg';
 import { ReactComponent as ChocolateIcon } from './chocolate.svg';
 import { ReactComponent as CloakIcon } from './cloak.svg';
 import { ReactComponent as ClothespinIcon } from './clothespin.svg';
+import { ReactComponent as CoatIcon } from './coat.svg';
 import { ReactComponent as CoinIcon } from './coin.svg';
 import { ReactComponent as CoinsIcon } from './coins.svg';
 import { ReactComponent as CookieIcon } from './cookie.svg';
@@ -37,6 +42,7 @@ import { ReactComponent as CrossbowIcon } from './crossbow.svg';
 import { ReactComponent as CrowbarIcon } from './crowbar.svg';
 import { ReactComponent as CrownIcon } from './crown.svg';
 import { ReactComponent as CuissesIcon } from './cuisses.svg';
+import { ReactComponent as CurvySwordIcon } from './curvy_sword.svg';
 import { ReactComponent as DiamondRingIcon } from './diamond_ring.svg';
 import { ReactComponent as EarringsIcon } from './earrings.svg';
 import { ReactComponent as EggsIcon } from './eggs.svg';
@@ -45,17 +51,23 @@ import { ReactComponent as FishIcon } from './fish.svg';
 import { ReactComponent as FishboneIcon } from './fishbone.svg';
 import { ReactComponent as FistIcon } from './fist.svg';
 import { ReactComponent as FlailIcon } from './flail.svg';
+import { ReactComponent as FlaskIcon } from './flask.svg';
 import { ReactComponent as GauntletIcon } from './gauntlet.svg';
-import { ReactComponent as GemIcon } from './gem.svg';
+import { ReactComponent as GearIcon } from './gear.svg';
 import { ReactComponent as GemChainIcon } from './gem_chain.svg';
+import { ReactComponent as GemIcon } from './gem.svg';
+import { ReactComponent as GlaiveIcon } from './glaive.svg';
 import { ReactComponent as GoldBarIcon } from './gold_bar.svg';
 import { ReactComponent as GreatswordIcon } from './greatsword.svg';
 import { ReactComponent as GreavesIcon } from './greaves.svg';
+import { ReactComponent as HalberdIcon } from './halberd.svg';
 import { ReactComponent as HandaxeIcon } from './handaxe.svg';
 import { ReactComponent as HelmClosedIcon } from './helm_closed.svg';
 import { ReactComponent as HelmHeavyIcon } from './helm_heavy.svg';
 import { ReactComponent as HelmKnightIcon } from './helm_knight.svg';
+import { ReactComponent as HookFishingIcon } from './hook_fishing.svg';
 import { ReactComponent as HookIcon } from './hook.svg';
+import { ReactComponent as JarIcon } from './jar.svg';
 import { ReactComponent as JugIcon } from './jug.svg';
 import { ReactComponent as KeyIcon } from './key.svg';
 import { ReactComponent as KeyPendantIcon } from './key_pendant.svg';
@@ -71,6 +83,7 @@ import { ReactComponent as ManaclesIcon } from './manacles.svg';
 import { ReactComponent as MantrapIcon } from './mantrap.svg';
 import { ReactComponent as MorningstarIcon } from './morningstar.svg';
 import { ReactComponent as MushroomIcon } from './mushroom.svg';
+import { ReactComponent as NailsIcon } from './nails.svg';
 import { ReactComponent as NecklaceIcon } from './necklace.svg';
 import { ReactComponent as NecklaceHeartIcon } from './necklace_heart.svg';
 import { ReactComponent as NetIcon } from './net.svg';
@@ -79,14 +92,17 @@ import { ReactComponent as PaperIcon } from './paper.svg';
 import { ReactComponent as PencilIcon } from './pencil.svg';
 import { ReactComponent as PillsIcon } from './pills.svg';
 import { ReactComponent as PoisonIcon } from './poison.svg';
+import { ReactComponent as PoleIcon } from './pole.svg';
 import { ReactComponent as PonchoIcon } from './poncho.svg';
 import { ReactComponent as PotionBadIcon } from './potion_bad.svg';
 import { ReactComponent as PotionGoodIcon } from './potion_good.svg';
 import { ReactComponent as PotionTagIcon } from './potion_tag.svg';
+import { ReactComponent as PresentIcon } from './present.svg';
 import { ReactComponent as QuillInkIcon } from './quill_ink.svg';
 import { ReactComponent as QuiverIcon } from './quiver.svg';
 import { ReactComponent as RibbonIcon } from './ribbon.svg';
 import { ReactComponent as RingIcon } from './ring.svg';
+import { ReactComponent as RobeIcon } from './robe.svg';
 import { ReactComponent as RolledClothIcon } from './rolled_cloth.svg';
 import { ReactComponent as SacrificialDaggerIcon } from './sacrificial_dagger.svg';
 import { ReactComponent as SaphirIcon } from './saphir.svg';
@@ -95,15 +111,18 @@ import { ReactComponent as ScrollTiedIcon } from './scroll_tied.svg';
 import { ReactComponent as ScrollUnfurledIcon } from './scroll_unfurled.svg';
 import { ReactComponent as SewingNeedleIcon } from './sewing_needle.svg';
 import { ReactComponent as SewingStringIcon } from './sewing_string.svg';
+import { ReactComponent as ShieldMetalIcon } from './shield_metal.svg';
+import { ReactComponent as ShieldWoodIcon  } from './shield_wood.svg';
 import { ReactComponent as ShortbowIcon } from './shortbow.svg';
 import { ReactComponent as ShovelIcon } from './shovel.svg';
 import { ReactComponent as SickleIcon } from './sickle.svg';
 import { ReactComponent as SlingIcon } from './sling.svg';
 import { ReactComponent as SpikedMaceIcon } from './spiked_mace.svg';
+import { ReactComponent as SpyglassIcon } from './spyglass.svg';
 import { ReactComponent as StaffIcon } from './staff.svg';
 import { ReactComponent as StatueIcon } from './statue.svg';
 import { ReactComponent as StatueAncientIcon } from './statue_ancient.svg';
-import { ReactComponent as StatueAtzecIcon } from './statue_atzec.svg';
+import { ReactComponent as StatueAztecIcon } from './statue_aztec.svg';
 import { ReactComponent as StatueBastetIcon } from './statue_bastet.svg';
 import { ReactComponent as SteeltoeBootsIcon } from './steeltoe_boots.svg';
 import { ReactComponent as StringIcon } from './string.svg';
@@ -136,6 +155,7 @@ export const icons = {
   baseball_bat: BaseballBatIcon,
   battleaxe: BattleaxeIcon,
   beer: BeerIcon,
+  bell: BellIcon,
   belt: BeltIcon,
   blanket: BlanketIcon,
   book_black: BookBlackIcon,
@@ -148,8 +168,11 @@ export const icons = {
   broadsword: BroadswordIcon,
   broken_bottle: BrokenBottleIcon,
   brush: BrushIcon,
+  caltrops: CaltropsIcon,
   candle: CandleIcon,
   carrot: CarrotIcon,
+  cauldron: CauldronIcon,
+  chains: ChainsIcon,
   chakram: ChakramIcon,
   chalice: ChaliceIcon,
   cheese: CheeseIcon,
@@ -159,6 +182,7 @@ export const icons = {
   chocolate: ChocolateIcon,
   cloak: CloakIcon,
   clothespin: ClothespinIcon,
+  coat: CoatIcon,
   coin: CoinIcon,
   coins: CoinsIcon,
   cookie: CookieIcon,
@@ -167,6 +191,7 @@ export const icons = {
   crowbar: CrowbarIcon,
   crown: CrownIcon,
   cuisses: CuissesIcon,
+  curvy_sword: CurvySwordIcon,
   diamond_ring: DiamondRingIcon,
   earrings: EarringsIcon,
   eggs: EggsIcon,
@@ -175,17 +200,23 @@ export const icons = {
   fishbone: FishboneIcon,
   fist: FistIcon,
   flail: FlailIcon,
+  flask: FlaskIcon,
   gauntlet: GauntletIcon,
+  gear: GearIcon,
   gem: GemIcon,
   gem_chain: GemChainIcon,
+  glaive: GlaiveIcon,
   gold_bar: GoldBarIcon,
   greatsword: GreatswordIcon,
   greaves: GreavesIcon,
+  halberd: HalberdIcon,
   handaxe: HandaxeIcon,
   helm_closed: HelmClosedIcon,
   helm_heavy: HelmHeavyIcon,
   helm_knight: HelmKnightIcon,
+  hook_fishing: HookFishingIcon,
   hook: HookIcon,
+  jar: JarIcon,
   jug: JugIcon,
   key: KeyIcon,
   key_pendant: KeyPendantIcon,
@@ -199,6 +230,7 @@ export const icons = {
   mace: MaceIcon,
   manacles: ManaclesIcon,
   mantrap: MantrapIcon,
+  nails: NailsIcon,
   morningstar: MorningstarIcon,
   mushroom: MushroomIcon,
   necklace: NecklaceIcon,
@@ -209,14 +241,17 @@ export const icons = {
   pencil: PencilIcon,
   pills: PillsIcon,
   poison: PoisonIcon,
+  pole: PoleIcon,
   poncho: PonchoIcon,
   potion_bad: PotionBadIcon,
   potion_good: PotionGoodIcon,
   potion_tag: PotionTagIcon,
+  present: PresentIcon,
   quill_ink: QuillInkIcon,
   quiver: QuiverIcon,
   ribbon: RibbonIcon,
   ring: RingIcon,
+  robe: RobeIcon,
   rolled_cloth: RolledClothIcon,
   sacrificial_dagger: SacrificialDaggerIcon,
   saphir: SaphirIcon,
@@ -225,15 +260,18 @@ export const icons = {
   scroll_unfurled: ScrollUnfurledIcon,
   sewing_needle: SewingNeedleIcon,
   sewing_string: SewingStringIcon,
+  shield_metal: ShieldMetalIcon,
+  shield_wood: ShieldWoodIcon,
   shortbow: ShortbowIcon,
   shovel: ShovelIcon,
   sickle: SickleIcon,
   sling: SlingIcon,
   spiked_mace: SpikedMaceIcon,
+  spyglass: SpyglassIcon,
   staff: StaffIcon,
   statue: StatueIcon,
   statue_ancient: StatueAncientIcon,
-  statue_atzec: StatueAtzecIcon,
+  statue_aztec: StatueAztecIcon,
   statue_bastet: StatueBastetIcon,
   steeltoe_boots: SteeltoeBootsIcon,
   string: StringIcon,
