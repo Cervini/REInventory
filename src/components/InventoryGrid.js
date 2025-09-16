@@ -44,7 +44,7 @@ const PlayerInventory = ({
       .flatMap(c => c.gridItems || []);
     const equippedItems = inventoryData.equippedItems || [];
 
-    // FIX: Items on the floor/ground (playerTrayItems) should not count towards encumbrance.
+    // Items on the floor/ground (playerTrayItems) should not count towards encumbrance.
     // Only items in containers and equipped items affect the character's weight.
     const allItems = [...containerGridItems, ...equippedItems];
     return allItems.reduce((total, item) => {
@@ -122,6 +122,7 @@ const PlayerInventory = ({
                         emptyMessage="No items equipped."
                         source="equipped"
                         layout="horizontal"
+                        disabled={!isEquippedVisible}
                     />
                 </div>
             </div>
@@ -749,25 +750,44 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     }  
     // --- Item Creation Logic ---
     else {
+      const originalInventories = inventories;
+      const newInventories = JSON.parse(JSON.stringify(inventories));
+      const targetInv = newInventories[finalPlayerId];
+      let firestorePromise;
+
       if (isTargetDM) {
         // If the target is the DM, add to their first container's tray.
-        const defaultContainer = Object.values(playerInventory.containers || {})[0];
+        const defaultContainer = Object.values(targetInv.containers || {})[0];
         if (!defaultContainer) {
           toast.error("DM has no containers to add items to!");
           return;
         }
+        if (!defaultContainer.trayItems) defaultContainer.trayItems = [];
+        defaultContainer.trayItems.push(itemData);
+        
         const containerDocRef = doc(db, "campaigns", campaignId, "inventories", finalPlayerId, "containers", defaultContainer.id);
-        const currentTray = defaultContainer.trayItems || [];
-        await updateDoc(containerDocRef, { trayItems: [...currentTray, itemData] });
+        firestorePromise = updateDoc(containerDocRef, { trayItems: defaultContainer.trayItems });
+
       } else {
         // If the target is a player, add to their main shared tray.
+        if (!targetInv.trayItems) targetInv.trayItems = [];
+        targetInv.trayItems.push(itemData);
+
         const inventoryDocRef = doc(db, "campaigns", campaignId, "inventories", finalPlayerId);
-        const currentTray = playerInventory?.trayItems || [];
-        await setDoc(inventoryDocRef, { trayItems: [...currentTray, itemData] }, { merge: true });
+        firestorePromise = setDoc(inventoryDocRef, { trayItems: targetInv.trayItems }, { merge: true });
       }
       
-      const targetName = playerInventory?.characterName || playerProfiles[finalPlayerId]?.displayName;
-      toast.success(`Added ${itemData.name} to ${targetName}'s inventory.`);
+      setInventoriesOptimistic(newInventories);
+      
+      try {
+        await firestorePromise;
+        const targetName = playerInventory?.characterName || playerProfiles[finalPlayerId]?.displayName;
+        toast.success(`Added ${itemData.name} to ${targetName}'s inventory.`);
+      } catch (error) {
+        toast.error("Failed to add item. Reverting changes.");
+        console.error("Firestore write failed:", error);
+        setInventoriesOptimistic(originalInventories);
+      }
     }
 
     setItemToEdit(null);

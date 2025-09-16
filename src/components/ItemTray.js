@@ -13,11 +13,15 @@ import InventoryItem from './InventoryItem';
  * @param {string} props.containerId - The ID representing this tray (e.g., 'tray', 'equipped', or a DM container ID).
  * @param {string} [props.source='tray'] - The source type for items in this tray.
  * @param {string} [props.emptyMessage] - A custom message to show when the tray is empty.
+ * @param {boolean} [props.disabled=false] - Whether the droppable area is disabled.
  * @returns {JSX.Element}
  */
-export default function ItemTray({ playerId, items, onContextMenu, isDM, containerId, isViewerDM, emptyMessage, source = 'tray', layout = 'horizontal' }) {
+export default function ItemTray({ playerId, items, onContextMenu, isDM, containerId, isViewerDM, emptyMessage, source = 'tray', layout = 'horizontal', disabled = false }) {
 
-    const { setNodeRef, isOver } = useDroppable({ id: `${playerId}|${containerId}|${source}` });
+    const { setNodeRef, isOver } = useDroppable({
+      id: `${playerId}|${containerId}|${source}`,
+      disabled,
+    });
 
    return (
       <div 
