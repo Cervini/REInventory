@@ -13,7 +13,7 @@ import DynamicIcon from './DynamicIcon';
  * @param {object} props.item - The item data object.
  * @param {Function} props.onContextMenu - The context menu handler.
  * @param {string} props.playerId - The ID of the player who owns the item.
- * @param {('grid'|'tray')} props.source - The location of the item.
+ * @param {('grid'|'tray'|'equipped')} props.source - The location of the item.
  * @param {object} props.cellSize - The calculated size of a grid cell.
  * @param {string} props.containerId - The ID of the container holding the item.
  * @returns {JSX.Element}
@@ -43,8 +43,8 @@ export default function InventoryItem({ item, onContextMenu, playerId, source, c
     visibility: isDragging ? 'hidden' : 'visible',
     
     zIndex: isDragging ? 20 : 10,
-    width: source === 'tray' ? '100%' : undefined,
-    height: source === 'tray' ? '100%' : undefined,
+    width: (source === 'tray' || source === 'equipped') ? '100%' : undefined,
+    height: (source === 'tray' || source === 'equipped') ? '100%' : undefined,
   };
 
   const effectiveCellWidth = cellSize?.width > 0 ? cellSize.width : 80;

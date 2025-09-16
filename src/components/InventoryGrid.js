@@ -29,7 +29,7 @@ import WeightCounter from './WeightCounter';
  */
 const PlayerInventory = ({
   playerId, inventoryData, campaign, playerProfiles, user,
-  setEditingSettings, cellSizes, gridRefs, onContextMenu
+  setEditingSettings, cellSizes, gridRefs, onContextMenu, onToggleEquipped, isEquippedVisible
 }) => {
   // We use optional chaining (?.) to prevent errors if inventoryData is not ready.
   const containers = useMemo(() => Object.values(inventoryData?.containers || {}), [inventoryData]);
@@ -42,9 +42,11 @@ const PlayerInventory = ({
     const containerGridItems = containers
       .filter(c => c.trackWeight ?? true)
       .flatMap(c => c.gridItems || []);
-    const playerTrayItems = inventoryData.trayItems || [];
-    const allItems = [...containerGridItems, ...playerTrayItems];
+    const equippedItems = inventoryData.equippedItems || [];
 
+    // FIX: Items on the floor/ground (playerTrayItems) should not count towards encumbrance.
+    // Only items in containers and equipped items affect the character's weight.
+    const allItems = [...containerGridItems, ...equippedItems];
     return allItems.reduce((total, item) => {
         const weightValue = parseFloat(item.weight);
         if (!isNaN(weightValue)) {
@@ -62,17 +64,29 @@ const PlayerInventory = ({
 
   return (
     <div className="bg-surface rounded-lg shadow-lg shadow-accent/10 border border-accent/20 overflow-hidden">
-      <div className="w-full p-2 text-left bg-surface/80 flex justify-between items-center">
+      <div className="w-full p-2 text-left bg-surface/80 flex justify-between items-center border-b border-surface/50">
         <h2 className="text-xl font-bold text-accent font-fantasy tracking-wider">
           {inventoryData.characterName || playerProfiles[playerId]?.displayName}
         </h2>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
           {!isPlayerDM && (
             <WeightCounter
               currentWeight={totalWeightLbs}
               maxWeight={inventoryData.totalMaxWeight || 0}
               unit={inventoryData.weightUnit || 'lbs'}
             />
+          )}
+          {!isPlayerDM && (
+            <button
+              onClick={onToggleEquipped}
+              className="p-2 rounded-full hover:bg-background transition-colors"
+              aria-label="Toggle equipped items view"
+              title="Toggle Equipped Items"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.602-3.751m-.228-1.12A12.001 12.001 0 0012 2.75c-2.652 0-5.115 1.02-6.974 2.722" />
+              </svg>
+            </button>
           )}
           {isMyInventory && (
             <button
@@ -93,59 +107,83 @@ const PlayerInventory = ({
         </div>
       </div>
       
-      <div className="p-2 bg-background/50 space-y-4">
-        {isPlayerDM ? (
-            containers.map(container => (
-                <ItemTray
-                    key={container.id}
-                    items={container.trayItems || []}
-                    containerId={container.id}
-                    onContextMenu={onContextMenu}
-                    playerId={playerId}
-                    isViewerDM={isViewerDM}
-                />
-            ))
-        ) : (
-            <>
-                <div className="flex flex-row flex-wrap gap-4">
-                  {containers.map((container) => (
-                    // THIS IS THE FIX (Part 2): Set a dynamic width for each container
-                    // The width is based on the container's gridWidth, with min/max values.
-                    <div 
-                      key={container.id} 
-                      className="bg-surface/50 rounded-lg p-2 flex-grow"
-                      style={{ flexBasis: `${container.gridWidth * 3.5}rem`, minWidth: '12rem' }}
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-bold text-text-muted">{container.name}</h3>
-                      </div>
-                      <PlayerInventoryGrid
-                        items={container.gridItems || []}
-                        gridWidth={container.gridWidth}
-                        gridHeight={container.gridHeight}
-                        containerId={container.id}
+      {/* Collapsible Equipped Items Tray */}
+      {!isPlayerDM && (
+        <div className={`transition-[max-height] duration-300 ease-in-out overflow-hidden ${isEquippedVisible ? 'max-h-96' : 'max-h-0'}`}>
+            <div className="p-2 bg-background/50 border-b border-surface/50">
+                <h3 className="font-bold font-fantasy text-text-muted px-2 text-sm">Equipped</h3>
+                <div className="bg-background/50 rounded-lg p-2 border border-accent/10 shadow-inner">
+                    <ItemTray
+                        items={inventoryData.equippedItems || []}
+                        containerId="equipped"
                         onContextMenu={onContextMenu}
                         playerId={playerId}
-                        setGridRef={(node) => (gridRefs.current[container.id] = node)}
-                        cellSize={cellSizes[container.id]}
                         isViewerDM={isViewerDM}
-                      />
-                    </div>
-                  ))}
+                        emptyMessage="No items equipped."
+                        source="equipped"
+                        layout="horizontal"
+                    />
                 </div>
+            </div>
+        </div>
+      )}
 
-                <div className="mt-2">
-                    <h3 className="font-bold font-fantasy text-text-muted p-2">Floor / Ground</h3>
+      <div className="bg-background/50">
+        <div className="p-2 space-y-4">
+          {isPlayerDM ? (
+              containers.map(container => (
+                  <div key={container.id} className="bg-background/50 rounded-lg p-2 border border-accent/10 shadow-inner">
                     <ItemTray
-                        items={inventoryData.trayItems || []}
-                        containerId="tray" 
+                        items={container.trayItems || []}
+                        containerId={container.id}
                         onContextMenu={onContextMenu}
                         playerId={playerId}
                         isViewerDM={isViewerDM}
                     />
-                </div>
-            </>
-        )}
+                  </div>
+              ))
+          ) : (
+              <>
+                  <div className="flex flex-row flex-wrap gap-4">
+                    {containers.map((container) => (
+                      <div 
+                        key={container.id} 
+                        className="bg-surface/50 rounded-lg p-2 flex-grow"
+                        style={{ flexBasis: `${container.gridWidth * 3.5}rem`, minWidth: '12rem' }}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="font-bold text-text-muted">{container.name}</h3>
+                        </div>
+                        <PlayerInventoryGrid
+                          items={container.gridItems || []}
+                          gridWidth={container.gridWidth}
+                          gridHeight={container.gridHeight}
+                          containerId={container.id}
+                          onContextMenu={onContextMenu}
+                          playerId={playerId}
+                          setGridRef={(node) => (gridRefs.current[container.id] = node)}
+                          cellSize={cellSizes[container.id]}
+                          isViewerDM={isViewerDM}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-2">
+                      <h3 className="font-bold font-fantasy text-text-muted p-2 mt-2">Floor / Ground</h3>
+                      <div className="bg-background/50 rounded-lg p-2 border border-accent/10 shadow-inner">
+                        <ItemTray
+                            items={inventoryData.trayItems || []}
+                            containerId="tray" 
+                            onContextMenu={onContextMenu}
+                            playerId={playerId}
+                            isViewerDM={isViewerDM}
+                        />
+                      </div>
+                  </div>
+              </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -172,18 +210,17 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   const [itemToEdit, setItemToEdit] = useState(null);
   const [splittingItem, setSplittingItem] = useState(null);
   const [activeItem, setActiveItem] = useState(null);
-  const [openTrays, setOpenTrays] = useState({});
   const [editingSettings, setEditingSettings] = useState(null);
   const [cellSizes, setCellSizes] = useState({});
   const [showCompendium, setShowCompendium] = useState(false);
   const [activeTrade, setActiveTrade] = useState(null);
+  const [showEquipped, setShowEquipped] = useState({});
   const [showLayoutSettings, setShowLayoutSettings] = useState(false);
 
   const gridRefs = useRef({});
 
   useEffect(() => {
     fetchCampaign(campaignId);
-    // Cleanup function to unsubscribe from listeners when the component unmounts
     return () => {
       clearCampaign();
     };
@@ -226,6 +263,9 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     setActiveTrade(trade);
   };
 
+  const toggleEquipped = (playerId) => {
+    setShowEquipped(prev => ({ ...prev, [playerId]: !(prev[playerId] ?? true) }));
+  };
   useEffect(() => {
     if (!user || !campaignId) return;
 
@@ -317,10 +357,32 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
    */
   const handleContextMenu = (event, item, playerId, source, containerId) => {
     event.preventDefault();
+
+    // Prevent the "ghost click" that immediately closes the menu on mobile.
+    // When a long press ends (touchend), mobile browsers fire a synthetic click event.
+    // This prevents that click from happening, so our "click-outside" handler doesn't close the menu.
+    const preventGhostClick = (e) => {
+      e.preventDefault();
+      event.currentTarget.removeEventListener('touchend', preventGhostClick);
+    };
+    event.currentTarget.addEventListener('touchend', preventGhostClick);
     
     const isDM = campaign?.dmId === user?.uid;
     const isMyInventory = user.uid === playerId;
     const availableActions = [];
+    const isPlayerDM = campaign?.dmId === playerId;
+
+    // Equip/Unequip is only for non-DM players
+    if (!isPlayerDM) {
+      if (source === 'equipped') {
+        availableActions.push({
+          label: 'Unequip',
+          onClick: () => handleUnequipItem(item, playerId),
+        });
+      } else {
+        availableActions.push({ label: 'Equip', onClick: () => handleEquipItem(item, playerId, source, containerId) });
+      }
+    }
 
     if (isDM && item.magicProperties && !item.magicPropertiesVisible) {
       availableActions.push({
@@ -373,6 +435,129 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
       position: { x: event.clientX, y: event.clientY },
       actions: availableActions,
     });
+  };
+
+  const handleEquipItem = async (item, playerId, source, containerId) => {
+    if (!item || !playerId || !source) return;
+
+    const originalInventories = inventories;
+    const newInventories = JSON.parse(JSON.stringify(originalInventories));
+    const playerInv = newInventories[playerId];
+    if (!playerInv) return;
+
+    // 1. Remove from source optimistically
+    let itemRemoved = false;
+    if (source === 'grid') {
+      const container = playerInv.containers?.[containerId];
+      if (container?.gridItems) {
+        const itemIndex = container.gridItems.findIndex(i => i.id === item.id);
+        if (itemIndex > -1) {
+          container.gridItems.splice(itemIndex, 1);
+          itemRemoved = true;
+        }
+      }
+    } else { // source === 'tray'
+      if (playerInv.trayItems) {
+        const itemIndex = playerInv.trayItems.findIndex(i => i.id === item.id);
+        if (itemIndex > -1) {
+          playerInv.trayItems.splice(itemIndex, 1);
+          itemRemoved = true;
+        }
+      }
+    }
+
+    if (!itemRemoved) {
+      toast.error("Item to equip not found.");
+      return;
+    }
+
+    // 2. Add to equippedItems optimistically
+    const { x, y, ...equippedItem } = item;
+    if (!playerInv.equippedItems) playerInv.equippedItems = [];
+    playerInv.equippedItems.push(equippedItem);
+
+    setInventoriesOptimistic(newInventories);
+
+    const batch = writeBatch(db);
+    const playerInvRef = doc(db, "campaigns", campaignId, "inventories", playerId);
+    if (source === 'grid') {
+      const containerRef = doc(playerInvRef, "containers", containerId);
+      batch.update(containerRef, { gridItems: playerInv.containers[containerId].gridItems });
+    } else {
+      batch.update(playerInvRef, { trayItems: playerInv.trayItems });
+    }
+    batch.update(playerInvRef, { equippedItems: playerInv.equippedItems });
+
+    try {
+      await batch.commit();
+      toast.success(`${item.name} equipped.`);
+    } catch (error) {
+      toast.error("Failed to equip item. Reverting changes.");
+      console.error("Firestore batch write failed:", error);
+      setInventoriesOptimistic(originalInventories);
+    }
+  };
+
+  const handleUnequipItem = async (item, playerId) => {
+    if (!item || !playerId) return;
+
+    const originalInventories = inventories;
+    const newInventories = JSON.parse(JSON.stringify(originalInventories));
+    const playerInv = newInventories[playerId];
+
+    // 1. Remove from equippedItems
+    const itemIndex = playerInv.equippedItems?.findIndex(i => i.id === item.id);
+    if (itemIndex === -1 || !playerInv.equippedItems) {
+      toast.error("Item to unequip not found.");
+      return;
+    }
+    playerInv.equippedItems.splice(itemIndex, 1);
+
+    // 2. Add back to inventory (find slot or add to tray)
+    let placed = false;
+    const { x, y, ...itemToPlace } = item; // Strip coordinates just in case
+    if (playerInv.containers) {
+      for (const container of Object.values(playerInv.containers)) {
+        if (!container.gridItems) container.gridItems = [];
+        const availableSlot = findFirstAvailableSlot(container.gridItems, itemToPlace, container.gridWidth, container.gridHeight);
+        if (availableSlot) {
+          container.gridItems.push({ ...itemToPlace, ...availableSlot });
+          placed = true;
+          break;
+        }
+      }
+    }
+
+    if (!placed) {
+      if (!playerInv.trayItems) playerInv.trayItems = [];
+      playerInv.trayItems.push(itemToPlace);
+    }
+
+    setInventoriesOptimistic(newInventories);
+
+    const batch = writeBatch(db);
+    const playerInvRef = doc(db, "campaigns", campaignId, "inventories", playerId);
+
+    batch.update(playerInvRef, {
+      equippedItems: playerInv.equippedItems,
+      trayItems: playerInv.trayItems,
+    });
+
+    if (playerInv.containers) {
+      Object.values(playerInv.containers).forEach(container => {
+        const containerRef = doc(playerInvRef, 'containers', container.id);
+        batch.update(containerRef, { gridItems: container.gridItems });
+      });
+    }
+
+    try {
+      await batch.commit();
+      toast.success(`${item.name} unequipped.`);
+    } catch (error) {
+      toast.error("Failed to unequip item. Reverting changes.");
+      console.error("Firestore batch write failed:", error);
+      setInventoriesOptimistic(originalInventories);
+    }
   };
 
   /**
@@ -798,6 +983,10 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         if (!sourceContainer?.gridItems) return;
         const itemIndex = sourceContainer.gridItems.findIndex(i => i.id === item.id);
         if (itemIndex > -1) [movedItem] = sourceContainer.gridItems.splice(itemIndex, 1);
+    } else if (startSource === 'equipped') {
+        if (!startPlayerInv.equippedItems) return;
+        const itemIndex = startPlayerInv.equippedItems.findIndex(i => i.id === item.id);
+        if (itemIndex > -1) [movedItem] = startPlayerInv.equippedItems.splice(itemIndex, 1);
     } else {
         const sourceTray = isStartDM ? startPlayerInv.containers?.[startContainerId]?.trayItems : startPlayerInv.trayItems;
         if (!sourceTray) return;
@@ -824,18 +1013,22 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         if (finalPos) {
             endContainer.gridItems.push({ ...movedItem, ...finalPos });
         } else {
+            // No space in grid, move to source player's tray
             toast.error("No space in destination!");
             const sourceTray = isStartDM ? startPlayerInv.containers[startContainerId].trayItems : startPlayerInv.trayItems;
             sourceTray.push(movedItem);
         }
-    } else { // 'tray'
+    } else { // 'tray' or 'equipped'
         const { x, y, ...trayItem } = movedItem;
-        if (isEndDM) {
+        if (endDestination === 'equipped') {
+            if (!endPlayerInv.equippedItems) endPlayerInv.equippedItems = [];
+            endPlayerInv.equippedItems.push(trayItem);
+        } else if (isEndDM) {
             const destContainer = endPlayerInv.containers?.[endContainerId];
             if (!destContainer) return;
             if (!destContainer.trayItems) destContainer.trayItems = [];
             destContainer.trayItems.push(trayItem);
-        } else {
+        } else { // player tray
             if (!endPlayerInv.trayItems) endPlayerInv.trayItems = [];
             endPlayerInv.trayItems.push(trayItem);
         }
@@ -850,7 +1043,10 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
 
     // Update Source Player
     const sourcePlayerInvRef = doc(db, "campaigns", campaignId, "inventories", startPlayerId);
-    batch.update(sourcePlayerInvRef, { trayItems: finalSourceInventory.trayItems || [] });
+    batch.update(sourcePlayerInvRef, { 
+        trayItems: finalSourceInventory.trayItems || [],
+        equippedItems: finalSourceInventory.equippedItems || [],
+    });
     Object.values(finalSourceInventory.containers).forEach(container => {
         const containerRef = doc(sourcePlayerInvRef, 'containers', container.id);
         // Ensure all fields are arrays before committing
@@ -863,7 +1059,10 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     if (startPlayerId !== endPlayerId) {
         // Update Destination Player
         const endPlayerInvRef = doc(db, "campaigns", campaignId, "inventories", endPlayerId);
-        batch.update(endPlayerInvRef, { trayItems: finalEndInventory.trayItems || [] });
+        batch.update(endPlayerInvRef, { 
+            trayItems: finalEndInventory.trayItems || [],
+            equippedItems: finalEndInventory.equippedItems || [],
+        });
         Object.values(finalEndInventory.containers).forEach(container => {
             const containerRef = doc(endPlayerInvRef, 'containers', container.id);
             batch.update(containerRef, { 
@@ -1114,19 +1313,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
         />
       )}
 
-      {/* --- DM-Only Button --- */}
-      {campaign?.dmId === user?.uid && (
-        <div className="w-full max-w-4xl flex justify-end mb-4 px-4">
-            <button 
-                onClick={() => setShowLayoutSettings(true)} 
-                className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors text-sm"
-            >
-                Manage Campaign
-            </button>
-        </div>
-      )}
-
-      {/* --- Main Content --- */}
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
@@ -1138,23 +1324,58 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
             easing: 'cubic-bezier(0.18, 1, 0.4, 1)',
         }}
       >
-        <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24 overscroll-contain">
-          {orderedAndVisibleInventories.map(([playerId, inventoryData]) => (
-            <PlayerInventory
-              key={playerId}
-              playerId={playerId}
-              inventoryData={inventoryData}
-              campaign={campaign}
-              playerProfiles={playerProfiles}
-              user={user}
-              setEditingSettings={setEditingSettings}
-              cellSizes={cellSizes}
-              gridRefs={gridRefs}
-              onContextMenu={handleContextMenu}
-              openTrays={openTrays}
-              setOpenTrays={setOpenTrays}
-            />
-          ))}
+        {/* Main Content Area */}
+        <div className="w-full h-full flex flex-col flex-grow min-w-0 relative">
+          {isDM && (
+            <div className="w-full max-w-4xl flex justify-end mb-4 px-4 pt-4 mx-auto">
+                <button 
+                    onClick={() => setShowLayoutSettings(true)} 
+                    className="bg-surface hover:bg-surface/80 text-text-base font-bold py-2 px-4 rounded transition-colors text-sm"
+                >
+                    Manage Campaign
+                </button>
+            </div>
+          )}
+          <div className="w-full flex-grow overflow-auto p-4 space-y-8 pb-24 overscroll-contain max-w-4xl mx-auto">
+            {orderedAndVisibleInventories.map(([playerId, inventoryData]) => (
+              <PlayerInventory
+                key={playerId}
+                playerId={playerId}
+                inventoryData={inventoryData}
+                campaign={campaign}
+                playerProfiles={playerProfiles}
+                user={user}
+                setEditingSettings={setEditingSettings}
+                cellSizes={cellSizes}
+                gridRefs={gridRefs}
+                onContextMenu={handleContextMenu}
+                onToggleEquipped={() => toggleEquipped(playerId)}
+                isEquippedVisible={showEquipped[playerId] ?? true}
+              />
+            ))}
+          </div>
+          {/* --- Floating Action Buttons --- */}
+          <div className="fixed z-30 bottom-8 right-8 flex flex-col space-y-2">
+            <button
+              onClick={() => setShowCompendium(true)}
+              className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background rounded-full p-4 shadow-lg"
+              aria-label="Add Item from Compendium"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v11.494m-5.747-5.747H17.747" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowAddItem(true)}
+              className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background rounded-full p-4 shadow-lg"
+              aria-label="Create New Item"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
         </div>
         <DragOverlay>
           {activeItem ? (
@@ -1175,29 +1396,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
           ) : null}
         </DragOverlay>
       </DndContext>
-      
-      {/* --- Floating Action Buttons --- */}
-      <div className="fixed z-30 bottom-8 right-8 flex flex-col space-y-2">
-        <button
-          onClick={() => setShowCompendium(true)}
-          className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background rounded-full p-4 shadow-lg"
-          aria-label="Add Item from Compendium"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v11.494m-5.747-5.747H17.747" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
-          </svg>
-        </button>
-        <button
-          onClick={() => setShowAddItem(true)}
-          className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background rounded-full p-4 shadow-lg"
-          aria-label="Create New Item"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
-      </div>
     </div>
   );
 }

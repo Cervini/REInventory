@@ -76,6 +76,13 @@ export default function Compendium({ onClose }) {
     // This feature should only work on the "Global Compendium" tab
     if (activeTab !== 'global') return;
 
+    // Prevent the "ghost click" that immediately closes the menu on mobile.
+    const preventGhostClick = (e) => {
+      e.preventDefault();
+      event.currentTarget.removeEventListener('touchend', preventGhostClick);
+    };
+    event.currentTarget.addEventListener('touchend', preventGhostClick);
+
     setContextMenu({
       visible: true,
       position: { x: event.clientX, y: event.clientY },

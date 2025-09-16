@@ -10,37 +10,37 @@ import InventoryItem from './InventoryItem';
  * @param {string} props.playerId - The ID of the player who owns this tray.
  * @param {Array<object>} props.items - The array of item objects in the tray.
  * @param {Function} props.onContextMenu - The context menu handler.
- * @param {string} props.containerId - The ID representing this tray (e.g., 'tray' or a DM container ID).
+ * @param {string} props.containerId - The ID representing this tray (e.g., 'tray', 'equipped', or a DM container ID).
+ * @param {string} [props.source='tray'] - The source type for items in this tray.
+ * @param {string} [props.emptyMessage] - A custom message to show when the tray is empty.
  * @returns {JSX.Element}
  */
-export default function ItemTray({ playerId, items, onContextMenu, isDM, containerId, isViewerDM }) {
+export default function ItemTray({ playerId, items, onContextMenu, isDM, containerId, isViewerDM, emptyMessage, source = 'tray', layout = 'horizontal' }) {
 
-    const { setNodeRef, isOver } = useDroppable({ id: `${playerId}|${containerId}|tray` });
+    const { setNodeRef, isOver } = useDroppable({ id: `${playerId}|${containerId}|${source}` });
 
    return (
-    <div className="bg-background/50 rounded-lg p-2 mt-2 border border-accent/10 shadow-inner">
       <div 
         ref={setNodeRef} 
-        className={`flex flex-wrap gap-2 items-center rounded-md transition-colors duration-200 min-h-[6rem] ${isOver ? 'bg-accent/10' : ''}`}
+        className={`flex gap-2 rounded-md transition-colors duration-200 ${isOver ? 'bg-accent/10' : ''} ${layout === 'vertical' ? 'flex-col' : 'flex-wrap items-center min-h-[6rem]'}`}
       >
         {items.length === 0 && (
-          <p className="text-text-muted text-sm px-4 font-fantasy italic w-full text-center">There is nothing on the ground.</p>
+          <p className="text-text-muted text-sm px-4 font-fantasy italic w-full text-center">{emptyMessage || 'There is nothing on the ground.'}</p>
         )}
         {items.map(item => (
           <div key={item.id} className="w-20 h-20 flex-shrink-0">
             <InventoryItem
               item={item}
               containerId={containerId}
-              onContextMenu={(e, item, source) => onContextMenu(e, item, playerId, source, containerId)}
+              onContextMenu={(e, item, itemSource) => onContextMenu(e, item, playerId, itemSource, containerId)}
               playerId={playerId}
               isDM={isDM}
-              source="tray"
+              source={source}
               isViewerDM={isViewerDM}
               cellSize={{ width: 80, height: 80 }}
             />
           </div>
         ))}
       </div>
-    </div>
   );
 }

@@ -6,9 +6,9 @@ import React from 'react';
 // 2. Set the 'expiryDate' for when the message should stop appearing.
 // 3. Update the 'title' and 'content'.
 export const whatsNewConfig = {
-  version: '2025-09-15', // Unique ID for this message. Change for new messages.
+  version: '2025-09-16', // Unique ID for this message. Change for new messages.
   expiryDate: '2025-10-01', // Date to stop showing this. Format: YYYY-MM-DD
-  title: "Version 2.9.2: Listening to feedbacks",
+  title: "Version 2.10.0: Listening to feedbacks",
   content: (
     <div className="space-y-4 text-text-base/90 text-sm">
       <p>Welcome to the latest version of REInventory! Based on your valuable feedback, I've introduced some major updates to make your D&D inventory management even smoother! This update includes new features for both players and Dungeon Masters, a more intuitive encumbrance system, and new customization options.</p>
@@ -31,6 +31,9 @@ export const whatsNewConfig = {
       <h2 className="text-lg font-fantasy text-accent pt-2">Item Icons</h2>
       <p>We've added a new way to organize your inventory! You can now give each item an icon to help you quickly find what you're looking for.</p>
     
+      <h2 className="text-lg font-fantasy text-accent pt-2">Equipping Items</h2>
+      <p>Items can now be equipped by characters, equipped items will still affect the total weight but won't fill the inventory. You can choose to show or hide equipped items.</p>
+
       <h2 className="text-lg font-fantasy text-accent pt-2">Bug fixes and stability improvements</h2>
       
     </div>
