@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-export default function StartTrade({ onClose, campaign, user, playerProfiles, onTradeStarted }) {
+export default function StartTrade({ onClose, campaign, user, playerProfiles, onTradeStarted, inventories }) {
   const otherPlayers = campaign.players.filter(pId => pId !== user.uid);
 
   /**
@@ -25,7 +25,7 @@ export default function StartTrade({ onClose, campaign, user, playerProfiles, on
         createdAt: serverTimestamp(),
       });
       
-      const targetName = playerProfiles[targetPlayerId]?.characterName || playerProfiles[targetPlayerId]?.displayName;
+      const targetName = inventories[targetPlayerId]?.characterName || playerProfiles[targetPlayerId]?.displayName;
       toast.success(`Trade request sent to ${targetName}.`);
       
       // Immediately open the trade window for the initiator
@@ -51,7 +51,7 @@ export default function StartTrade({ onClose, campaign, user, playerProfiles, on
                     onClick={() => handleInitiateTrade(pId)}
                     className="w-full text-left p-3 bg-background hover:bg-surface/80 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-between items-center"
                   >
-                    <span>{playerProfiles[pId]?.characterName || playerProfiles[pId]?.displayName || pId}</span>
+                    <span>{inventories[pId]?.characterName || playerProfiles[pId]?.displayName || pId}</span>
                   </button>
                 </li>
               );

@@ -8,7 +8,7 @@ import React from 'react';
 export const whatsNewConfig = {
   version: '2025-09-16', // Unique ID for this message. Change for new messages.
   expiryDate: '2025-10-01', // Date to stop showing this. Format: YYYY-MM-DD
-  title: "Version 2.10.0: Listening to feedbacks",
+  title: "Version 2.10.2: Listening to feedbacks",
   content: (
     <div className="space-y-4 text-text-base/90 text-sm">
       <p>Welcome to the latest version of REInventory! Based on your valuable feedback, I've introduced some major updates to make your D&D inventory management even smoother! This update includes new features for both players and Dungeon Masters, a more intuitive encumbrance system, and new customization options.</p>

@@ -369,7 +369,6 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     event.currentTarget.addEventListener('touchend', preventGhostClick);
     
     const isDM = campaign?.dmId === user?.uid;
-    const isMyInventory = user.uid === playerId;
     const availableActions = [];
     const isPlayerDM = campaign?.dmId === playerId;
 
@@ -401,13 +400,14 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     }
 
     if (isDM) {
-      const otherPlayers = Object.keys(playerProfiles).filter(id => id !== playerId);
+      const allPlayerIds = campaign?.players || [];
+      const otherPlayers = allPlayerIds.filter(id => id !== playerId);
       if (otherPlayers.length > 0) {
         availableActions.push({
           label: 'Send to...',
           submenu: otherPlayers.map(targetId => ({
-            label: playerProfiles[targetId]?.characterName || playerProfiles[targetId]?.displayName || targetId,
-            onClick: () => handleSendItem(item, source, playerId, targetId, containerId),
+            label: inventories[targetId]?.characterName || playerProfiles[targetId]?.displayName || targetId,
+            onClick: () => handleSendItem(item, source, playerId, targetId, containerId, isPlayerDM),
           })),
         });
       }
@@ -416,14 +416,14 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     if (item.stackable && item.quantity > 1) {
       availableActions.push({ label: 'Split Stack', onClick: () => handleStartSplit(item, playerId, containerId) });
     }
-    if (isDM || isMyInventory) {
+    if (isDM || user.uid === playerId) {
       availableActions.push({ 
         label: 'Edit Item', 
         onClick: () => handleStartEdit(item, playerId, containerId),
       });
       availableActions.push({ 
         label: 'Duplicate Item', 
-        onClick: () => handleDuplicateItem(item, playerId, containerId, source),
+        onClick: () => handleDuplicateItem(item, playerId),
       });
       availableActions.push({
         label: 'Delete Item',
@@ -857,7 +857,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
     if (source === 'grid' && containerId && gridRefs.current[containerId]) {
       const gridElement = gridRefs.current[containerId];
       const ownerId = active.data.current?.ownerId;
-      const container = inventories[ownerId]?.containers[containerId];
+      const container = inventories[ownerId]?.containers?.[containerId];
       
       if (container) {
         const cellSize = {
@@ -1109,33 +1109,74 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
    * @param {string} targetPlayerId - The ID of the player receiving the item.
    * @param {string} sourceContainerId - The ID of the container the item is coming from.
    */
-  const handleSendItem = async (item, source, sourcePlayerId, targetPlayerId, sourceContainerId) => {
-    if (!item || !source || !sourcePlayerId || !targetPlayerId || !sourceContainerId) return;
+  const handleSendItem = async (item, source, sourcePlayerId, targetPlayerId, sourceContainerId, isSourcePlayerDM) => {
+    if (!item || !source || !sourcePlayerId || !targetPlayerId) return;
 
-    const sourceInventory = inventories[sourcePlayerId];
-    const targetInventory = inventories[targetPlayerId];
-    if (!sourceInventory || !targetInventory) return;
-
-    const sourceContainer = sourceInventory.containers[sourceContainerId];
-    const targetContainer = Object.values(targetInventory.containers || {})[0];
-    if (!sourceContainer || !targetContainer) return;
-
-    const batch = writeBatch(db);
-    const sourceContainerRef = doc(db, 'campaigns', campaignId, 'inventories', sourcePlayerId, 'containers', sourceContainer.id);
-    const targetContainerRef = doc(db, 'campaigns', campaignId, 'inventories', targetPlayerId, 'containers', targetContainer.id);
-    
-    if (source === 'grid') {
-      batch.update(sourceContainerRef, { gridItems: sourceContainer.gridItems.filter(i => i.id !== item.id) });
-    } else {
-      batch.update(sourceContainerRef, { trayItems: sourceContainer.trayItems.filter(i => i.id !== item.id) });
+    const originalInventories = inventories;
+    const newInventories = JSON.parse(JSON.stringify(inventories));
+    const sourceInventory = newInventories[sourcePlayerId];
+    const targetInventory = newInventories[targetPlayerId];
+    if (!sourceInventory || !targetInventory) {
+      toast.error("Could not find source or target inventory.");
+      return;
     }
-    
-    const { x, y, ...itemForTray } = item;
-    batch.update(targetContainerRef, { trayItems: [...(targetContainer.trayItems || []), itemForTray] });
 
-    await batch.commit();
-    const targetName = targetInventory.characterName || playerProfiles[targetPlayerId]?.displayName;
-    toast.success(`Sent ${item.name} to ${targetName}.`);
+    const { x, y, ...itemForTray } = item;
+    const isTargetDM = campaign?.dmId === targetPlayerId;
+
+    // --- 1. Remove from source ---
+    if (source === 'grid') {
+      const sourceContainer = sourceInventory.containers?.[sourceContainerId];
+      if (sourceContainer?.gridItems) {
+        sourceContainer.gridItems = sourceContainer.gridItems.filter(i => i.id !== item.id);
+      }
+    } else if (source === 'tray') {
+      if (isSourcePlayerDM) {
+        const sourceContainer = sourceInventory.containers?.[sourceContainerId];
+        if (sourceContainer?.trayItems) {
+          sourceContainer.trayItems = sourceContainer.trayItems.filter(i => i.id !== item.id);
+        }
+      } else {
+        if (sourceInventory.trayItems) {
+          sourceInventory.trayItems = sourceInventory.trayItems.filter(i => i.id !== item.id);
+        }
+      }
+    }
+
+    // --- 2. Add to target ---
+    if (isTargetDM) {
+      const targetContainer = Object.values(targetInventory.containers || {})[0];
+      if (!targetContainer) { toast.error("Target DM has no containers."); return; }
+      if (!targetContainer.trayItems) targetContainer.trayItems = [];
+      targetContainer.trayItems.push(itemForTray);
+    } else {
+      if (!targetInventory.trayItems) targetInventory.trayItems = [];
+      targetInventory.trayItems.push(itemForTray);
+    }
+
+    setInventoriesOptimistic(newInventories);
+
+    // --- 3. Save to Firestore ---
+    const batch = writeBatch(db);
+    const sourcePlayerInvRef = doc(db, "campaigns", campaignId, "inventories", sourcePlayerId);
+    const targetPlayerInvRef = doc(db, "campaigns", campaignId, "inventories", targetPlayerId);
+
+    // Update all potentially changed fields for both players
+    batch.update(sourcePlayerInvRef, { trayItems: newInventories[sourcePlayerId].trayItems || [] });
+    Object.values(newInventories[sourcePlayerId].containers).forEach(c => batch.update(doc(sourcePlayerInvRef, 'containers', c.id), { gridItems: c.gridItems || [], trayItems: c.trayItems || [] }));
+    
+    batch.update(targetPlayerInvRef, { trayItems: newInventories[targetPlayerId].trayItems || [] });
+    Object.values(newInventories[targetPlayerId].containers).forEach(c => batch.update(doc(targetPlayerInvRef, 'containers', c.id), { gridItems: c.gridItems || [], trayItems: c.trayItems || [] }));
+
+    try {
+      await batch.commit();
+      const targetName = targetInventory.characterName || playerProfiles[targetPlayerId]?.displayName;
+      toast.success(`Sent ${item.name} to ${targetName}.`);
+    } catch (error) {
+      toast.error("Failed to send item. Reverting.");
+      console.error("Firestore batch write failed:", error);
+      setInventoriesOptimistic(originalInventories);
+    }
   };
 
   /**
@@ -1146,18 +1187,47 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   const handleDuplicateItem = async (item, playerId) => {
     if (!item || !playerId) return;
 
+    const originalInventories = inventories;
+    const newInventories = JSON.parse(JSON.stringify(inventories));
+    const playerInv = newInventories[playerId];
+    if (!playerInv) return;
+
+    const { x, y, ...itemForTray } = item;
     const newItem = {
-      ...item,
+      ...itemForTray,
       id: crypto.randomUUID(),
     };
 
-    // Duplicated items are always placed in the main player tray for simplicity.
-    const playerInv = inventories[playerId];
-    const newTrayItems = [...(playerInv.trayItems || []), newItem];
-    const playerInvRef = doc(db, 'campaigns', campaignId, 'inventories', playerId);
-    
-    await updateDoc(playerInvRef, { trayItems: newTrayItems });
-    toast.success(`Duplicated ${item.name}.`);
+    const isPlayerDM = campaign?.dmId === playerId;
+    let firestorePromise;
+
+    if (isPlayerDM) {
+        const container = Object.values(playerInv.containers || {})[0];
+        if (!container) {
+            toast.error("DM has no containers to add items to!");
+            return;
+        }
+        if (!container.trayItems) container.trayItems = [];
+        container.trayItems.push(newItem);
+        const containerRef = doc(db, 'campaigns', campaignId, 'inventories', playerId, 'containers', container.id);
+        firestorePromise = updateDoc(containerRef, { trayItems: container.trayItems });
+    } else {
+        if (!playerInv.trayItems) playerInv.trayItems = [];
+        playerInv.trayItems.push(newItem);
+        const playerInvRef = doc(db, 'campaigns', campaignId, 'inventories', playerId);
+        firestorePromise = updateDoc(playerInvRef, { trayItems: playerInv.trayItems });
+    }
+
+    setInventoriesOptimistic(newInventories);
+
+    try {
+        await firestorePromise;
+        toast.success(`Duplicated ${item.name}.`);
+    } catch (error) {
+        toast.error("Failed to duplicate item. Reverting.");
+        console.error("Firestore write failed:", error);
+        setInventoriesOptimistic(originalInventories);
+    }
   };
 
   /**
@@ -1256,11 +1326,12 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
           onClose={() => setActiveTrade(null)}
           user={user}
           playerProfiles={playerProfiles}
+          inventories={inventories}
           campaign={campaign}
         />
       )}
 
-      <TradeNotifications campaignId={campaignId} />
+      <TradeNotifications campaignId={campaignId} inventories={inventories} />
 
       {isTrading && (
         <StartTrade
@@ -1278,6 +1349,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
           onClose={() => setShowCompendium(false)}
           players={Object.keys(inventories)}
           dmId={campaign?.dmId}
+          inventories={inventories}
           playerProfiles={playerProfiles}
           onAddItem={handleAddItem}
           user={user}

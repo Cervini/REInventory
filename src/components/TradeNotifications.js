@@ -4,7 +4,7 @@ import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { usePlayerProfiles } from '../hooks/usePlayerProfiles';
 
-export default function TradeNotifications({ campaignId }) {
+export default function TradeNotifications({ campaignId, inventories }) {
     const { playerProfiles } = usePlayerProfiles(campaignId);
 
     useEffect(() => {
@@ -27,7 +27,7 @@ export default function TradeNotifications({ campaignId }) {
                 if (change.type === 'added') {
                     const trade = { id: change.doc.id, ...change.doc.data() };
                      if (trade.status === 'pending' && trade.playerB === auth.currentUser.uid) {
-                        const requesterName = playerProfiles[trade.playerA]?.displayName || 'A player';
+                        const requesterName = inventories?.[trade.playerA]?.characterName || playerProfiles[trade.playerA]?.displayName || 'A player';
 
                         toast((t) => (
                             <div className="flex flex-col items-center gap-2">
@@ -58,7 +58,7 @@ export default function TradeNotifications({ campaignId }) {
         });
 
         return () => unsubscribe();
-    }, [campaignId, playerProfiles]);
+    }, [campaignId, playerProfiles, inventories]);
 
     /**
      * Accepts a trade request by updating its status to 'active' in Firestore.

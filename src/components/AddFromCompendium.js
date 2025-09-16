@@ -4,7 +4,7 @@ import { useCompendium } from '../hooks/useCompendium';
 import Spinner from './Spinner';
 import { getColorForItemType } from '../utils/itemUtils';
 
-export default function AddFromCompendiumModal({ onClose, onAddItem, players, dmId, playerProfiles, user }) {
+export default function AddFromCompendiumModal({ onClose, onAddItem, players, dmId, playerProfiles, user, inventories }) {
     const { allItems, isLoading } = useCompendium();
     const [selectedItem, setSelectedItem] = useState(null);
     const [quantity, setQuantity] = useState(1);
@@ -68,7 +68,7 @@ export default function AddFromCompendiumModal({ onClose, onAddItem, players, dm
                             >
                                 {targetablePlayers.map(pId => 
                                   <option key={pId} value={pId}>
-                                    {playerProfiles[pId]?.characterName || playerProfiles[pId]?.displayName || pId}
+                                    {inventories[pId]?.characterName || playerProfiles[pId]?.displayName || pId}
                                   </option>
                                 )}
                             </select>

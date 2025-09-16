@@ -53,7 +53,7 @@ function TradeOffer({ items, onItemClick }) {
 }
 
 
-export default function Trade({ onClose, tradeId, user, playerProfiles }) {
+export default function Trade({ onClose, tradeId, user, playerProfiles, inventories }) {
     const [tradeData, setTradeData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -277,13 +277,13 @@ export default function Trade({ onClose, tradeId, user, playerProfiles }) {
                   <div className="flex flex-col space-y-4 md:w-1/3">
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                          <h4 className="font-bold text-lg">{playerProfiles[yourData.id]?.characterName || 'Your'} Offer</h4>
+                          <h4 className="font-bold text-lg">{(inventories[yourData.id]?.characterName || playerProfiles[yourData.id]?.displayName) || 'Your'}'s Offer</h4>
                       </div>
                       <TradeOffer items={localOffer} onItemClick={(item) => handleItemClick(item, 'offer')} />
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                          <h4 className="font-bold text-lg">{playerProfiles[otherPlayer.id]?.characterName}'s Offer</h4>
+                          <h4 className="font-bold text-lg">{(inventories[otherPlayer.id]?.characterName || playerProfiles[otherPlayer.id]?.displayName)}'s Offer</h4>
                           {otherPlayer.accepted && (
                             <span className="bg-green-800/80 text-text-base text-xs font-bold px-2 py-1 rounded-md">
                               Accepted
