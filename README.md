@@ -12,7 +12,7 @@ REInventory transforms tedious inventory management into an engaging, visual exp
 
 This tool is perfect for **D&D 5e** and other TTRPG systems, whether you're playing online with platforms like Roll20 and Discord, or using digital tools to enhance in-person sessions.
 
-![Demo GIF](./files/demo.gif)
+![Demo GIF](./files/demo2.gif)
 
 ## Key Features
 
@@ -20,7 +20,7 @@ This tool is perfect for **D&D 5e** and other TTRPG systems, whether you're play
 - **Intuitive Drag & Drop:** Effortlessly manage your inventory with a smooth, responsive drag-and-drop interface, complete with collision detection to prevent item overlap.
 - **Real-Time Multiplayer:** Share a campaign with your party using a unique join code. All inventory changes, including item transfers between players, are synchronized in real-time.
 - **Advanced Item Management:** Create detailed custom items, split item stacks, duplicate items as a DM, and use a temporary item tray for easy sorting.
-- **Rich Item Details:** Define items with types, rarity, weight, cost, and detailed descriptions. Track weapon stats, attunement, and more with hover-over tooltips.
+- **Rich Item Details:** Define items with types, rarity, weight, cost, icon and detailed descriptions. Track weapon stats, attunement, and more with hover-over tooltips.
 - **Item Compendium:** Speed up game prep by adding items from a global database or building your own library of frequently used custom items.
 - **Modern, Responsive UI:** A clean interface that works beautifully on desktop and mobile devices, with context menus for quick actions.
 
