@@ -218,7 +218,7 @@ export const icons = {
   ribbon: RibbonIcon,
   ring: RingIcon,
   rolled_cloth: RolledClothIcon,
-  sacrifical_dagger: SacrificalDaggerIcon,
+  sacrificial_dagger: SacrificialDaggerIcon,
   saphir: SaphirIcon,
   scissors: ScissorsIcon,
   scroll_tied: ScrollTiedIcon,
