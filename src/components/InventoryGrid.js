@@ -265,7 +265,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
   };
 
   const toggleEquipped = (playerId) => {
-    setShowEquipped(prev => ({ ...prev, [playerId]: !(prev[playerId] ?? true) }));
+    setShowEquipped(prev => ({ ...prev, [playerId]: !(prev[playerId] ?? false) }));
   };
   useEffect(() => {
     if (!user || !campaignId) return;
@@ -1442,7 +1442,7 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
                 gridRefs={gridRefs}
                 onContextMenu={handleContextMenu}
                 onToggleEquipped={() => toggleEquipped(playerId)}
-                isEquippedVisible={showEquipped[playerId] ?? true}
+                isEquippedVisible={showEquipped[playerId] ?? false}
               />
             ))}
           </div>
