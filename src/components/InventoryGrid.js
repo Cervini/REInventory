@@ -64,11 +64,11 @@ const PlayerInventory = ({
 
   return (
     <div className="bg-surface rounded-lg shadow-lg shadow-accent/10 border border-accent/20 overflow-hidden">
-      <div className="w-full p-2 text-left bg-surface/80 flex justify-between items-center border-b border-surface/50">
-        <h2 className="text-xl font-bold text-accent font-fantasy tracking-wider">
+      <div className="w-full p-2 text-left bg-surface/80 flex flex-wrap justify-between items-center border-b border-surface/50 gap-2">
+        <h2 className="text-xl font-bold text-accent font-fantasy tracking-wider truncate">
           {inventoryData.characterName || playerProfiles[playerId]?.displayName}
         </h2>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-shrink-0">
           {!isPlayerDM && (
             <WeightCounter
               currentWeight={totalWeightLbs}
@@ -1447,23 +1447,23 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
             ))}
           </div>
           {/* --- Floating Action Buttons --- */}
-          <div className="fixed z-30 bottom-8 right-8 flex flex-col space-y-2">
+          <div className="fixed z-10 bottom-4 right-4 sm:bottom-8 sm:right-8 flex flex-row sm:flex-col space-x-2 sm:space-x-0 sm:space-y-2">
             <button
               onClick={() => setShowCompendium(true)}
-              className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background rounded-full p-4 shadow-lg"
+              className="bg-surface/80 backdrop-blur-sm border border-primary/50 text-primary hover:bg-primary hover:text-background rounded-full p-3 sm:p-4 shadow-lg transition-all"
               aria-label="Add Item from Compendium"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v11.494m-5.747-5.747H17.747" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
               </svg>
             </button>
             <button
               onClick={() => setShowAddItem(true)}
-              className="bg-transparent border border-primary text-primary hover:bg-primary hover:text-background rounded-full p-4 shadow-lg"
+              className="bg-surface/80 backdrop-blur-sm border border-primary/50 text-primary hover:bg-primary hover:text-background rounded-full p-3 sm:p-4 shadow-lg transition-all"
               aria-label="Create New Item"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
             </button>

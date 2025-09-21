@@ -35,14 +35,14 @@ function ItemListItem({ item, onClick }) {
  */
 function TradeOffer({ items, onItemClick }) {
     return (
-        <div className="bg-background/50 min-h-[6rem] h-24 rounded-lg p-2 flex items-center space-x-2 overflow-x-auto border border-accent/20">
+        <div className="bg-background/50 min-h-[5rem] h-20 sm:min-h-[6rem] sm:h-24 rounded-lg p-2 flex items-center space-x-2 overflow-x-auto border border-accent/20">
             {items.length === 0 ? (
                 <p className="text-text-muted text-sm px-2 italic w-full text-center">Offer is empty.</p>
             ) : (
                 items.map(item => (
                     <div
                         key={item.id}
-                        className="w-24 h-full flex-shrink-0"
+                        className="w-20 h-full flex-shrink-0 sm:w-24"
                     >
                        <ItemListItem item={item} onClick={() => onItemClick(item)} />
                     </div>

@@ -234,11 +234,12 @@ export default function App() {
                 )}
               </div>
 
-              {/* Center Slot */}
-              <div className="text-center">
-                <h1 className="text-2xl sm:text-4xl font-bold font-fantasy"><span className="text-accent">RE</span>Inventory</h1>
-              </div>
-
+              {/* Center Slot - Title is only shown on the auth pages */}
+              {!campaignId && (
+                <div className="text-center min-w-0 px-2">
+                  <h1 className="text-2xl sm:text-4xl font-bold font-fantasy truncate"><span className="text-accent">RE</span>Inventory</h1>
+                </div>
+              )}
               {/* Right Slot */}
               <div className="flex-1 flex justify-end">
                 {user && (

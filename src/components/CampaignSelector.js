@@ -241,22 +241,22 @@ export default function CampaignSelector({ onCampaignSelected }) {
           <h2 className="text-2xl text-center font-bold mb-4 text-accent font-fantasy">Your Campaigns</h2>
           <div className="space-y-2">
             {myCampaigns.map((campaign) => (
-              <div key={campaign.id} className="flex items-center space-x-2">
+              <div key={campaign.id} className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                 <button
                   onClick={() => onCampaignSelected(campaign.id)}
-                  className="flex-grow bg-background hover:bg-surface/80 text-text-base font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200"
+                  className="flex-grow bg-background hover:bg-surface/80 text-text-base font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 text-left"
                 >
                   {campaign.name}
                 </button>
                 {auth.currentUser?.uid === campaign.dmId && (
-                  <>
+                  <div className="flex space-x-2 justify-end">
                     <button
                       onClick={() => {
                         setCampaignForNewCharacter(campaign.id);
                         setShowAddCharacterModal(true);
                       }}
                       disabled={loading}
-                      className="p-3 bg-primary/80 hover:bg-primary text-text-base rounded focus:outline-none focus:shadow-outline disabled:opacity-50 transition-colors duration-200"
+                      className="p-3 bg-primary/80 hover:bg-primary text-text-base rounded focus:outline-none focus:shadow-outline disabled:opacity-50 transition-colors duration-200 flex-shrink-0"
                       aria-label={`Add a character to ${campaign.name}`}
                       title="Add Character"
                     >
@@ -264,10 +264,10 @@ export default function CampaignSelector({ onCampaignSelected }) {
                         <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 11a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1v-1z" />
                       </svg>
                     </button>
-                    <button onClick={() => handleDeleteCampaign(campaign.id, campaign.name)} disabled={loading} className="p-3 bg-destructive hover:bg-destructive/80 text-text-base rounded focus:outline-none focus:shadow-outline disabled:opacity-50 transition-colors duration-200" aria-label={`Delete campaign ${campaign.name}`} title="Delete Campaign">
+                    <button onClick={() => handleDeleteCampaign(campaign.id, campaign.name)} disabled={loading} className="p-3 bg-destructive hover:bg-destructive/80 text-text-base rounded focus:outline-none focus:shadow-outline disabled:opacity-50 transition-colors duration-200 flex-shrink-0" aria-label={`Delete campaign ${campaign.name}`} title="Delete Campaign">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
                     </button>
-                  </>
+                  </div>
                 )}
               </div>
             ))}
