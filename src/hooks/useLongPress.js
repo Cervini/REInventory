@@ -19,8 +19,11 @@ export function useLongPress(callback, duration = 500) {
             return;
         }
 
-        event.preventDefault();
-        
+        // For touch events, we want to allow dnd-kit to handle drag start.
+        // We don't call `event.preventDefault()` here, as it can prevent
+        // dnd-kit's sensors from working correctly. The `touch-none` CSS
+        // class on the draggable item should be used to prevent scrolling.
+
         // For touch events, continue using the timer for long press detection.
         if (timerRef.current) {
             clearTimeout(timerRef.current);

@@ -2,6 +2,7 @@ import React from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { getColorForItemType } from '../utils/itemUtils';
 import { generateItemTooltip } from '../utils/itemUtils';
+import { useLongPress } from '../hooks/useLongPress';
 import DynamicIcon from './DynamicIcon';
 
 /**
@@ -27,6 +28,11 @@ export default function InventoryItem({ item, onContextMenu, playerId, source, c
     id: item.id,
     data: { ownerId: playerId, item, source, containerId },
   });
+
+  const longPressProps = useLongPress(
+    (e) => onContextMenu(e, item, source),
+    500
+  );
 
   const style = {
     gridColumn: source === 'grid' ? `${item.x + 1} / span ${item.w}` : undefined,
@@ -55,7 +61,7 @@ export default function InventoryItem({ item, onContextMenu, playerId, source, c
       className="relative flex"
       data-tooltip-id="item-tooltip"
       data-tooltip-html={generateItemTooltip(item, isViewerDM)}
-      onContextMenu={(e) => onContextMenu(e, item, source)}
+      {...longPressProps}
     >
       <div
         {...listeners}

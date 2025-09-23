@@ -1288,16 +1288,15 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
+      // A drag will only start after the pointer has moved by 8 pixels.
+      // This allows for a long press to occur without triggering a drag.
       activationConstraint: {
         distance: 8,
       },
     }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 250,
-        tolerance: 5,
-      },
-    })
+    // The TouchSensor is removed to prevent conflicts with long-press gestures.
+    // The PointerSensor handles touch inputs perfectly and activates on distance
+    // rather than a delay, which is ideal for this use case.
   );
 
   if (isLoading) {
