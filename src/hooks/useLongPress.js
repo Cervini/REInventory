@@ -9,16 +9,33 @@ import { useRef, useCallback } from 'react';
  */
 export function useLongPress(callback, duration = 500) {
     const timerRef = useRef(null);
-    const startPosRef = useRef(null); // Ref to store initial touch position
+    const startPosRef = useRef(null);
+    const lastTap = useRef(null); // Ref to track the timestamp of the last tap for double-tap detection.
 
     const start = useCallback((event) => {
-        // Check the event type.
         // If it's a right-click, call the callback immediately.
         if (event.type === 'contextmenu') {
             event.preventDefault();
             callback(event);
             return;
         }
+
+        // --- Double Tap Logic for Touch Devices ---
+        const now = Date.now();
+        const doubleTapDelay = 300; // milliseconds
+
+        if (lastTap.current && (now - lastTap.current) < doubleTapDelay) {
+            // This is a double tap.
+            lastTap.current = null; // Reset tap tracking.
+            if (timerRef.current) { // Cancel any pending long press from the first tap.
+                clearTimeout(timerRef.current);
+                timerRef.current = null;
+            }
+            event.preventDefault(); // Prevent default double-tap behavior (like zoom).
+            callback(event);
+            return; // Stop further execution.
+        }
+        lastTap.current = now;
 
         // For touch events, record the starting position.
         if (event.touches && event.touches.length > 0) {
@@ -35,6 +52,7 @@ export function useLongPress(callback, duration = 500) {
             clearTimeout(timerRef.current);
         }
         timerRef.current = setTimeout(() => {
+            lastTap.current = null; // A long press is not part of a double tap.
             callback(event);
         }, duration);
     }, [callback, duration]);
@@ -57,6 +75,8 @@ export function useLongPress(callback, duration = 500) {
                 // Let the long press continue.
                 return;
             }
+            // If movement is > tolerance, it's a drag. Reset double-tap tracking.
+            lastTap.current = null;
         }
 
         // If movement is > tolerance, or if it's onTouchEnd, clear the timer.
