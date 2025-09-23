@@ -19,6 +19,8 @@ export function useLongPress(callback, duration = 500) {
             return;
         }
 
+        event.preventDefault();
+        
         // For touch events, continue using the timer for long press detection.
         if (timerRef.current) {
             clearTimeout(timerRef.current);
