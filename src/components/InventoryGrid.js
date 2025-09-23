@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { doc, updateDoc, writeBatch, setDoc, collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from '../firebase';
-import { DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
 import PlayerInventoryGrid from './PlayerInventoryGrid';
 import { findFirstAvailableSlot, onOtherItem, outOfBounds } from '../utils/gridUtils';
 import AddItem from './AddItem';
