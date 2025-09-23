@@ -431,9 +431,14 @@ export default function InventoryGrid({ campaignId, user, userProfile, isTrading
       });
     }
 
+    const position = {
+      x: event.touches ? event.touches[0].clientX : event.clientX,
+      y: event.touches ? event.touches[0].clientY : event.clientY,
+    };
+
     setContextMenu({
       visible: true,
-      position: { x: event.clientX, y: event.clientY },
+      position: position,
       actions: availableActions,
     });
   };
